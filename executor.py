@@ -37,9 +37,3 @@ pwm = input_to_pwm(thrust_input)
 send_servo_command(connection, servo_number=3, pwm_value=pwm)
 
 
-
-
-for motor_key, value in data.items():
-    motor_num = int(motor_key.replace("motor", ""))
-    pwm = input_to_pwm(value)
-    send_servo_command(connection, servo_number=motor_num, pwm_value=pwm)
