@@ -5,11 +5,12 @@ class ROVController:
     def __init__(self):
         self.state = {
             "x": 0.0,
-            "y":0.0,
+            "y": 0.0,
             "z": 0.0,
             "thrust": 0.0,
             "yaw": 0.0,
-            "depth": 0.0
+            "depth": 0.0,
+            "pressure_abs": 1013.25
         }
 
     async def update_state(self, request):
@@ -28,20 +29,29 @@ class ROVController:
             web.get('/state', self.get_state)
         ]
 
-# Launch the aiohttp server
 async def main():
     controller = ROVController()
     app = web.Application()
     app.add_routes(controller.routes())
+    
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', 8080)
     await site.start()
+
     print("ROV Controller API running on http://localhost:8080")
 
-    # Run indefinitely
-    while True:
-        await asyncio.sleep(3600)
+    try:
+        while True:
+            await asyncio.sleep(3600)
+    except asyncio.CancelledError:
+        print("Shutting down server...")
+    finally:
+        await runner.cleanup()
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Server interrupted by user.")
+

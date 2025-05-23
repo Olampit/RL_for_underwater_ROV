@@ -19,7 +19,7 @@ my_actions = [
 
 async def train():
     env = ROVEnvironment(action_map=my_actions, api_url="http://localhost:8080")
-    agent = QLearningAgent(state_size=20, action_size=len(my_actions))
+    agent = QLearningAgent(action_size=len(my_actions))
 
     for episode in range(100):
         state = await env.get_state()
@@ -29,7 +29,7 @@ async def train():
             action = agent.choose_action(state_idx)
             await env.apply_action(action)
 
-            await asyncio.sleep(0.5)  # laisser le ROV bouger un peu
+            await asyncio.sleep(1)  # laisser le ROV bouger un peu
 
             next_state = await env.get_state()
             next_state_idx = env.state_to_index(next_state)

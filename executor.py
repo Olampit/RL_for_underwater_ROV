@@ -31,9 +31,8 @@ connection = mavutil.mavlink_connection('udp:0.0.0.0:14550')
 connection.wait_heartbeat()
 print(f"Connected to system {connection.target_system}, component {connection.target_component}")
 
-# Example: set servo 3 to 75% forward
-thrust_input = 0.04  # range from -1.0 to 1.0
+thrust_input = 0.04  # -1.0 to 1.0, equivalent to -100 to 100%
 pwm = input_to_pwm(thrust_input)
-send_servo_command(connection, servo_number=3, pwm_value=pwm)
+send_servo_command(connection, servo_number=3, pwm_value=pwm) #you can change said motor here
 
 

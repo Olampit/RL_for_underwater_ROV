@@ -6,7 +6,7 @@ from pymavlink import mavutil
 #this one did not work, since it is on myself ?
 
 
-#listening to everything should ? work
+#listening to everything ? should ? work
 connection = mavutil.mavlink_connection('udp:0.0.0.0:14550')
 
 
