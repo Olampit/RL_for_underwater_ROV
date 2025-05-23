@@ -37,4 +37,4 @@ pymavlink
 
 
 ## Collaborators
-Sébastien TravLuca Istrate, Aymeric Cardot, 
+Sébastien Travadel, Luca Istrate, Aymeric Cardot
