@@ -15,4 +15,4 @@ PID4=$!
 # Wait all & clean up on Ctrl+C
 trap "echo 'Ctrl+C reçu, arrêt des scripts...'; kill $PID1 $PID2 $PID3 $PID4; exit" SIGINT
 
-wait
+waits
