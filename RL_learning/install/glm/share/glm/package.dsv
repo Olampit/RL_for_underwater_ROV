@@ -1,0 +1,3 @@
+source;share/glm/hook/cmake_prefix_path.ps1
+source;share/glm/hook/cmake_prefix_path.dsv
+source;share/glm/hook/cmake_prefix_path.sh

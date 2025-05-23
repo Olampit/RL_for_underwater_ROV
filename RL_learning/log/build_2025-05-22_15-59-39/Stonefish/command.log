@@ -1,0 +1,3 @@
+Invoking command in '/home/mig/Documents/RL/build/Stonefish': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake /home/mig/Documents/RL/stonefish/stonefish -DCMAKE_INSTALL_PREFIX=/home/mig/Documents/RL/install/Stonefish
+Invoked command in '/home/mig/Documents/RL/build/Stonefish' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake /home/mig/Documents/RL/stonefish/stonefish -DCMAKE_INSTALL_PREFIX=/home/mig/Documents/RL/install/Stonefish
+Invoking command in '/home/mig/Documents/RL/build/Stonefish': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --build /home/mig/Documents/RL/build/Stonefish -- -j32 -l32

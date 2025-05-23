@@ -1,0 +1,330 @@
+[0.108s] Invoking command in '/home/mig/Documents/RL/build/mavlink': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake /home/mig/Documents/RL/mavlink/venv/mavlink -DCMAKE_INSTALL_PREFIX=/home/mig/Documents/RL/install/mavlink
+[0.212s] -- The C compiler identification is GNU 12.3.0
+[0.212s] -- The CXX compiler identification is GNU 12.3.0
+[0.212s] -- Detecting C compiler ABI info
+[0.238s] -- Detecting C compiler ABI info - done
+[0.243s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.243s] -- Detecting C compile features
+[0.243s] -- Detecting C compile features - done
+[0.248s] -- Detecting CXX compiler ABI info
+[0.303s] -- Detecting CXX compiler ABI info - done
+[0.308s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.308s] -- Detecting CXX compile features
+[0.308s] -- Detecting CXX compile features - done
+[0.423s] -- Found Python: /home/mig/Documents/RL/mavlink/venv/bin/python3 (found version "3.12.3") found components: Interpreter 
+[0.569s] -- MAVLink dialect: common
+[0.570s] -- MAVLink version: 2.0
+[0.570s] -- Configuring done (0.5s)
+[0.572s] -- Generating done (0.0s)
+[0.573s] -- Build files have been written to: /home/mig/Documents/RL/build/mavlink
+[0.578s] Invoked command in '/home/mig/Documents/RL/build/mavlink' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake /home/mig/Documents/RL/mavlink/venv/mavlink -DCMAKE_INSTALL_PREFIX=/home/mig/Documents/RL/install/mavlink
+[0.579s] Invoking command in '/home/mig/Documents/RL/build/mavlink': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --build /home/mig/Documents/RL/build/mavlink -- -j32 -l32
+[0.627s] [100%] [34m[1mGenerating C headers[0m
+[1.374s] Collecting lxml>=3.6.0 (from -r pymavlink/requirements.txt (line 1))
+[1.386s]   Using cached lxml-5.4.0-cp312-cp312-manylinux_2_28_x86_64.whl.metadata (3.5 kB)
+[1.442s] Collecting future>=0.15.2 (from -r pymavlink/requirements.txt (line 2))
+[1.444s]   Using cached future-1.0.0-py3-none-any.whl.metadata (4.0 kB)
+[1.506s] Collecting wheel>=0.37.1 (from -r pymavlink/requirements.txt (line 3))
+[1.512s]   Using cached wheel-0.45.1-py3-none-any.whl.metadata (2.3 kB)
+[1.745s] Collecting setuptools>=42 (from -r pymavlink/requirements.txt (line 4))
+[1.749s]   Using cached setuptools-80.8.0-py3-none-any.whl.metadata (6.6 kB)
+[1.910s] Collecting fastcrc (from -r pymavlink/requirements.txt (line 5))
+[1.915s]   Using cached fastcrc-0.3.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (2.6 kB)
+[2.061s] Collecting pytest<=7.4.4 (from -r pymavlink/requirements.txt (line 8))
+[2.063s]   Using cached pytest-7.4.4-py3-none-any.whl.metadata (7.9 kB)
+[2.162s] Collecting syrupy (from -r pymavlink/requirements.txt (line 9))
+[2.168s]   Using cached syrupy-4.9.1-py3-none-any.whl.metadata (38 kB)
+[2.210s] Collecting wsproto (from -r pymavlink/requirements.txt (line 10))
+[2.215s]   Using cached wsproto-1.2.0-py3-none-any.whl.metadata (5.6 kB)
+[2.418s] Collecting iniconfig (from pytest<=7.4.4->-r pymavlink/requirements.txt (line 8))
+[2.423s]   Using cached iniconfig-2.1.0-py3-none-any.whl.metadata (2.7 kB)
+[2.472s] Collecting packaging (from pytest<=7.4.4->-r pymavlink/requirements.txt (line 8))
+[2.478s]   Using cached packaging-25.0-py3-none-any.whl.metadata (3.3 kB)
+[2.525s] Collecting pluggy<2.0,>=0.12 (from pytest<=7.4.4->-r pymavlink/requirements.txt (line 8))
+[2.526s]   Using cached pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+[2.603s] Collecting h11<1,>=0.9.0 (from wsproto->-r pymavlink/requirements.txt (line 10))
+[2.604s]   Using cached h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+[2.632s] Using cached lxml-5.4.0-cp312-cp312-manylinux_2_28_x86_64.whl (5.0 MB)
+[2.646s] Using cached future-1.0.0-py3-none-any.whl (491 kB)
+[2.652s] Using cached wheel-0.45.1-py3-none-any.whl (72 kB)
+[2.654s] Using cached setuptools-80.8.0-py3-none-any.whl (1.2 MB)
+[2.661s] Using cached fastcrc-0.3.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (275 kB)
+[2.665s] Using cached pytest-7.4.4-py3-none-any.whl (325 kB)
+[2.669s] Using cached syrupy-4.9.1-py3-none-any.whl (52 kB)
+[2.674s] Using cached wsproto-1.2.0-py3-none-any.whl (24 kB)
+[2.678s] Using cached h11-0.16.0-py3-none-any.whl (37 kB)
+[2.683s] Using cached pluggy-1.6.0-py3-none-any.whl (20 kB)
+[2.683s] Using cached iniconfig-2.1.0-py3-none-any.whl (6.0 kB)
+[2.688s] Using cached packaging-25.0-py3-none-any.whl (66 kB)
+[2.940s] Installing collected packages: wheel, setuptools, pluggy, packaging, lxml, iniconfig, h11, future, fastcrc, wsproto, pytest, syrupy
+[4.991s] Successfully installed fastcrc-0.3.2 future-1.0.0 h11-0.16.0 iniconfig-2.1.0 lxml-5.4.0 packaging-25.0 pluggy-1.6.0 pytest-7.4.4 setuptools-80.8.0 syrupy-4.9.1 wheel-0.45.1 wsproto-1.2.0
+[5.338s] Validating message_definitions/v1.0/common.xml
+[5.371s] Parsing message_definitions/v1.0/common.xml
+[5.446s] Validating /home/mig/Documents/RL/mavlink/venv/mavlink/message_definitions/v1.0/standard.xml
+[5.447s] Parsing /home/mig/Documents/RL/mavlink/venv/mavlink/message_definitions/v1.0/standard.xml
+[5.448s] Validating /home/mig/Documents/RL/mavlink/venv/mavlink/message_definitions/v1.0/minimal.xml
+[5.456s] Parsing /home/mig/Documents/RL/mavlink/venv/mavlink/message_definitions/v1.0/minimal.xml
+[5.475s] Found 229 MAVLink message types in 3 XML files
+[5.475s] Generating C implementation in directory /home/mig/Documents/RL/build/mavlink/include/mavlink/common
+[5.793s] Generating C implementation in directory /home/mig/Documents/RL/build/mavlink/include/mavlink/standard
+[5.794s] Generating C implementation in directory /home/mig/Documents/RL/build/mavlink/include/mavlink/minimal
+[5.799s] Copying fixed headers for protocol 2.0 to /home/mig/Documents/RL/build/mavlink/include/mavlink/
+[5.870s] [100%] Built target generate_c_headers
+[5.891s] Invoked command in '/home/mig/Documents/RL/build/mavlink' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --build /home/mig/Documents/RL/build/mavlink -- -j32 -l32
+[5.891s] Invoking command in '/home/mig/Documents/RL/build/mavlink': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --install /home/mig/Documents/RL/build/mavlink
+[5.904s] -- Install configuration: ""
+[5.905s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink
+[5.908s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/mavlink_helpers.h
+[5.908s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common
+[5.908s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/testsuite.h
+[5.909s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_tunnel.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_log_request_list.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_logging_data.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_link_node_status.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_rtk.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_logging_ack.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_request.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_uavcan_node_info.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_ais_vessel.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_current_mode.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_component_metadata.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_ext_request_read.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_command_ack.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_optical_flow_rad.h
+[5.910s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_inject_data.h
+[5.911s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_request_int.h
+[5.914s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_settings.h
+[5.914s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_basic_id.h
+[5.914s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_operator_id.h
+[5.914s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_memory_vect.h
+[5.914s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_ext_ack.h
+[5.914s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_change_operator_control_ack.h
+[5.914s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_ext_set.h
+[5.914s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_cellular_config.h
+[5.915s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_log_entry.h
+[5.915s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_debug_float_array.h
+[5.915s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps2_rtk.h
+[5.915s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_esc_info.h
+[5.915s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_adsb_vehicle.h
+[5.919s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_supported_tunes.h
+[5.919s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink.h
+[5.919s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_manager_status.h
+[5.919s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_rc_channels_raw.h
+[5.919s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_sensor.h
+[5.919s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_message_interval.h
+[5.919s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_status.h
+[5.919s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_manager_set_manual_control.h
+[5.919s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_current.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_position_target_local_ned.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_authentication.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_request_event.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_storage_information.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_setup_signing.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_tracking_geo_status.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_manager_set_attitude.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_attitude_target.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_servo_output_raw.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_rc_inputs_raw.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_fence_status.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_global_position_int_cov.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_debug_vect.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_estimator_status.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_item_reached.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_scaled_imu.h
+[5.920s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_rc_channels_scaled.h
+[5.921s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_set.h
+[5.921s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_component_information_basic.h
+[5.921s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_ping.h
+[5.921s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_capture_status.h
+[5.923s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_distance_sensor.h
+[5.923s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_uavcan_node_status.h
+[5.923s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_scaled_pressure3.h
+[5.923s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_ack.h
+[5.923s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_rc_channels.h
+[5.923s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_raw_rpm.h
+[5.923s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_efi_status.h
+[5.923s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_message_pack.h
+[5.923s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_high_latency.h
+[5.923s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_manager_set_pitchyaw.h
+[5.923s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_actuator_output_status.h
+[5.923s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_winch_status.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_global_origin.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_item_int.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_actuator_controls.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_high_latency2.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_attitude_target.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_write_partial_list.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_orbit_execution_status.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_odometry.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_sys_status.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_fov_status.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_resource_request.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_named_value_int.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_gps.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_trajectory_representation_waypoints.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_response_event_error.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_location.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_logging_data_acked.h
+[5.924s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_flight_information.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_optical_flow.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_battery_status.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_local_position_ned.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_available_modes_monitor.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mag_cal_report.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_control_system_state.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_command_long.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_wheel_distance.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_actuator_control_target.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_time_estimate_to_target.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_isbd_link_status.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_attitude_quaternion.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_current_event_sequence.h
+[5.925s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_command_int.h
+[5.928s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_scaled_imu3.h
+[5.928s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_wind_cov.h
+[5.928s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_ext_value.h
+[5.928s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_request_read.h
+[5.928s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_system.h
+[5.929s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_global_position_int.h
+[5.929s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_generator_status.h
+[5.929s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_local_position_ned_system_global_offset.h
+[5.930s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_serial_control.h
+[5.930s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_mode.h
+[5.931s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_manual_control.h
+[5.931s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_log_request_data.h
+[5.931s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_vfr_hud.h
+[5.931s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_extended_sys_state.h
+[5.931s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_raw_int.h
+[5.931s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_device_attitude_status.h
+[5.931s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_terrain_data.h
+[5.931s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_can_frame.h
+[5.931s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_request_partial_list.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_home_position.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_log_erase.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_manual_setpoint.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_tracking_image_status.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_global_vision_position_estimate.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_gps_global_origin.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_radio_status.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_trigger.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_highres_imu.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_set_current.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_vision_speed_estimate.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_state.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_vibration.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_smart_battery_info.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_clear_all.h
+[5.935s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hygrometer_sensor.h
+[5.936s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_arm_status.h
+[5.936s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_vicon_position_estimate.h
+[5.936s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_command_cancel.h
+[5.936s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_request_list.h
+[5.937s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps2_raw.h
+[5.937s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_scaled_pressure2.h
+[5.937s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_vision_position_estimate.h
+[5.940s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_home_position.h
+[5.940s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_local_position_ned_cov.h
+[5.940s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_can_filter_modify.h
+[5.940s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_request_data_stream.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_cellular_status.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_terrain_report.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_altitude.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_sim_state.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_request_list.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_landing_target.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mount_orientation.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_collision.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_autopilot_state_for_gimbal_device.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_actuator_control_target.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_scaled_imu2.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_button_change.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_manager_information.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_controls.h
+[5.941s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_scaled_pressure.h
+[5.942s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_onboard_computer_status.h
+[5.942s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/version.h
+[5.942s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_statustext.h
+[5.942s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_device_set_attitude.h
+[5.942s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_attitude.h
+[5.942s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_count.h
+[5.942s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_safety_allowed_area.h
+[5.942s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_fuel_status.h
+[5.942s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_map_rc.h
+[5.942s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_change_operator_control.h
+[5.950s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_information.h
+[5.950s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_attitude_quaternion_cov.h
+[5.950s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_value.h
+[5.950s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_raw_pressure.h
+[5.950s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_autopilot_version.h
+[5.950s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_optical_flow.h
+[5.950s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_rc_channels_override.h
+[5.950s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_v2_extension.h
+[5.950s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_rtcm_data.h
+[5.950s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_item.h
+[5.950s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_video_stream_information.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_file_transfer_protocol.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_log_data.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_play_tune_v2.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_device_information.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_encapsulated_data.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_battery_info.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_esc_status.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_position_target_local_ned.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_log_request_end.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_self_id.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_data_stream.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_video_stream_status.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_power_status.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_state_quaternion.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_obstacle_distance.h
+[5.951s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_debug.h
+[5.952s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_named_value_float.h
+[5.952s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_nav_controller_output.h
+[5.952s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_ext_request_list.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_att_pos_mocap.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_illuminator_status.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_timesync.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_component_information.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_thermal_range.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_canfd_frame.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_follow_target.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_image_captured.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_trajectory_representation_bezier.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_input.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_data_transmission_handshake.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_terrain_request.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_play_tune.h
+[5.956s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_system_update.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_event.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_auth_key.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_system_time.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_available_modes.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_raw_imu.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_position_target_global_int.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/common.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_safety_set_allowed_area.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_wifi_config_ap.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_position_target_global_int.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_terrain_check.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_utm_global_position.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/protocol.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/checksum.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/mavlink_conversions.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal/testsuite.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal/mavlink.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal/mavlink_msg_heartbeat.h
+[5.957s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal/mavlink_msg_protocol_version.h
+[5.958s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal/minimal.h
+[5.958s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal/version.h
+[5.958s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/mavlink_types.h
+[5.958s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/standard
+[5.958s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/standard/testsuite.h
+[5.958s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/standard/mavlink.h
+[5.958s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/standard/standard.h
+[5.958s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/standard/version.h
+[5.958s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/mavlink_sha256.h
+[5.958s] -- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/mavlink_get_info.h
+[5.958s] -- Installing: /home/mig/Documents/RL/install/mavlink/lib/cmake/MAVLink/MAVLinkTargets.cmake
+[5.958s] -- Installing: /home/mig/Documents/RL/install/mavlink/lib/cmake/MAVLink/MAVLinkConfig.cmake
+[5.959s] Invoked command in '/home/mig/Documents/RL/build/mavlink' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --install /home/mig/Documents/RL/build/mavlink

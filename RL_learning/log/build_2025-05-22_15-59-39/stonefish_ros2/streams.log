@@ -1,0 +1,115 @@
+[0.210s] Invoking command in '/home/mig/Documents/RL/build/stonefish_ros2': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake /home/mig/Documents/RL/stonefish/stonefish_ros2 -DCMAKE_INSTALL_PREFIX=/home/mig/Documents/RL/install/stonefish_ros2
+[0.238s] -- The C compiler identification is GNU 12.3.0
+[0.266s] -- The CXX compiler identification is GNU 12.3.0
+[0.275s] -- Detecting C compiler ABI info
+[0.323s] -- Detecting C compiler ABI info - done
+[0.329s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.329s] -- Detecting C compile features
+[0.329s] -- Detecting C compile features - done
+[0.334s] -- Detecting CXX compiler ABI info
+[0.387s] -- Detecting CXX compiler ABI info - done
+[0.391s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.391s] -- Detecting CXX compile features
+[0.391s] -- Detecting CXX compile features - done
+[0.395s] -- Found ament_cmake: 2.5.4 (/opt/ros/jazzy/share/ament_cmake/cmake)
+[0.501s] -- Found Python3: /home/mig/Documents/RL/mavlink/venv/bin/python3 (found version "3.12.3") found components: Interpreter 
+[0.604s] -- Found rclcpp: 28.1.9 (/opt/ros/jazzy/share/rclcpp/cmake)
+[0.701s] -- Found rosidl_generator_c: 4.6.5 (/opt/ros/jazzy/share/rosidl_generator_c/cmake)
+[0.724s] -- Found rosidl_generator_cpp: 4.6.5 (/opt/ros/jazzy/share/rosidl_generator_cpp/cmake)
+[0.762s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.805s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.985s] -- Found rmw_implementation_cmake: 7.3.2 (/opt/ros/jazzy/share/rmw_implementation_cmake/cmake)
+[0.992s] -- Found rmw_fastrtps_cpp: 8.4.2 (/opt/ros/jazzy/share/rmw_fastrtps_cpp/cmake)
+[1.104s] -- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.13")  
+[1.142s] -- Found FastRTPS: /opt/ros/jazzy/include (Required is at least version "2.13") 
+[1.191s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[1.383s] -- Found std_srvs: 5.3.6 (/opt/ros/jazzy/share/std_srvs/cmake)
+[1.428s] -- Found geometry_msgs: 5.3.6 (/opt/ros/jazzy/share/geometry_msgs/cmake)
+[1.498s] -- Found nav_msgs: 5.3.6 (/opt/ros/jazzy/share/nav_msgs/cmake)
+[1.555s] -- Found sensor_msgs: 5.3.6 (/opt/ros/jazzy/share/sensor_msgs/cmake)
+[1.608s] -- Found visualization_msgs: 5.3.6 (/opt/ros/jazzy/share/visualization_msgs/cmake)
+[1.672s] -- Found rosidl_default_generators: 1.6.0 (/opt/ros/jazzy/share/rosidl_default_generators/cmake)
+[1.703s] -- Found rosidl_adapter: 4.6.5 (/opt/ros/jazzy/share/rosidl_adapter/cmake)
+[1.710s] -- Found pcl_conversions: 2.6.2 (/opt/ros/jazzy/share/pcl_conversions/cmake)
+[1.874s] [33mCMake Warning (dev) at /usr/lib/x86_64-linux-gnu/cmake/pcl/Modules/FindFLANN.cmake:45 (find_package):
+[1.875s]   Policy CMP0144 is not set: find_package uses upper-case <PACKAGENAME>_ROOT
+[1.875s]   variables.  Run "cmake --help-policy CMP0144" for policy details.  Use the
+[1.875s]   cmake_policy command to set the policy and suppress this warning.
+[1.875s] 
+[1.875s]   CMake variable FLANN_ROOT is set to:
+[1.875s] 
+[1.875s]     /usr
+[1.875s] 
+[1.875s]   For compatibility, find_package is ignoring the variable, but code in a
+[1.875s]   .cmake module might still use it.
+[1.875s] Call Stack (most recent call first):
+[1.875s]   /usr/lib/x86_64-linux-gnu/cmake/pcl/PCLConfig.cmake:261 (find_package)
+[1.875s]   /usr/lib/x86_64-linux-gnu/cmake/pcl/PCLConfig.cmake:306 (find_flann)
+[1.875s]   /usr/lib/x86_64-linux-gnu/cmake/pcl/PCLConfig.cmake:570 (find_external_library)
+[1.876s]   /opt/ros/jazzy/share/pcl_conversions/cmake/ament_cmake_export_dependencies-extras.cmake:21 (find_package)
+[1.876s]   /opt/ros/jazzy/share/pcl_conversions/cmake/pcl_conversionsConfig.cmake:41 (include)
+[1.876s]   CMakeLists.txt:20 (find_package)
+[1.876s] This warning is for project developers.  Use -Wno-dev to suppress it.
+[1.876s] [0m
+[1.881s] -- Found flann version 1.9.2
+[2.352s] -- Found OpenMP_CXX: -fopenmp (found version "4.5") 
+[2.352s] -- Found OpenMP: TRUE (found version "4.5") found components: CXX 
+[4.511s] -- Checking for module 'libusb-1.0'
+[4.523s] --   Found libusb-1.0, version 1.0.27
+[4.557s] -- Found libusb: /usr/lib/x86_64-linux-gnu/libusb-1.0.so  
+[4.559s] -- OpenNI found (version: 1.5.4.0, include: /usr/include/ni, lib: /usr/lib/libOpenNI.so;libusb::libusb)
+[4.623s] -- OpenNI2 found (version: 2.2.0.33, include: /usr/include/openni2, lib: /usr/lib/x86_64-linux-gnu/libOpenNI2.so;libusb::libusb)
+[4.627s] -- Could NOT find Pcap (missing: PCAP_LIBRARIES PCAP_INCLUDE_DIRS) 
+[4.639s] -- Found ZLIB: /usr/lib/x86_64-linux-gnu/libz.so (found version "1.3")  
+[4.657s] -- Found PNG: /usr/lib/x86_64-linux-gnu/libpng.so (found version "1.6.43") 
+[5.355s] -- OpenNI found (version: 1.5.4.0, include: /usr/include/ni, lib: /usr/lib/libOpenNI.so;libusb::libusb)
+[5.369s] -- OpenNI2 found (version: 2.2.0.33, include: /usr/include/openni2, lib: /usr/lib/x86_64-linux-gnu/libOpenNI2.so;libusb::libusb)
+[6.155s] -- Found Qhull version 8.0.2
+[6.758s] -- OpenNI found (version: 1.5.4.0, include: /usr/include/ni, lib: /usr/lib/libOpenNI.so;libusb::libusb)
+[7.367s] -- Found PCL_COMMON: /usr/lib/x86_64-linux-gnu/libpcl_common.so  
+[7.370s] -- Found PCL_KDTREE: /usr/lib/x86_64-linux-gnu/libpcl_kdtree.so  
+[7.373s] -- Found PCL_OCTREE: /usr/lib/x86_64-linux-gnu/libpcl_octree.so  
+[7.373s] -- Found PCL_SEARCH: /usr/lib/x86_64-linux-gnu/libpcl_search.so  
+[7.376s] -- Found PCL_SAMPLE_CONSENSUS: /usr/lib/x86_64-linux-gnu/libpcl_sample_consensus.so  
+[7.378s] -- Found PCL_FILTERS: /usr/lib/x86_64-linux-gnu/libpcl_filters.so  
+[7.379s] -- Found PCL_2D: /usr/include/pcl-1.14  
+[7.380s] -- Found PCL_GEOMETRY: /usr/include/pcl-1.14  
+[7.382s] -- Found PCL_IO: /usr/lib/x86_64-linux-gnu/libpcl_io.so  
+[7.384s] -- Found PCL_FEATURES: /usr/lib/x86_64-linux-gnu/libpcl_features.so  
+[7.387s] -- Found PCL_ML: /usr/lib/x86_64-linux-gnu/libpcl_ml.so  
+[7.388s] -- Found PCL_SEGMENTATION: /usr/lib/x86_64-linux-gnu/libpcl_segmentation.so  
+[7.390s] -- Found PCL_VISUALIZATION: /usr/lib/x86_64-linux-gnu/libpcl_visualization.so  
+[7.393s] -- Found PCL_SURFACE: /usr/lib/x86_64-linux-gnu/libpcl_surface.so  
+[7.394s] -- Found PCL_REGISTRATION: /usr/lib/x86_64-linux-gnu/libpcl_registration.so  
+[7.395s] -- Found PCL_KEYPOINTS: /usr/lib/x86_64-linux-gnu/libpcl_keypoints.so  
+[7.397s] -- Found PCL_TRACKING: /usr/lib/x86_64-linux-gnu/libpcl_tracking.so  
+[7.400s] -- Found PCL_RECOGNITION: /usr/lib/x86_64-linux-gnu/libpcl_recognition.so  
+[7.401s] -- Found PCL_STEREO: /usr/lib/x86_64-linux-gnu/libpcl_stereo.so  
+[7.403s] -- Found PCL_APPS: /usr/lib/x86_64-linux-gnu/libpcl_apps.so  
+[7.405s] -- Found PCL_IN_HAND_SCANNER: /usr/include/pcl-1.14  
+[7.406s] -- Found PCL_MODELER: /usr/include/pcl-1.14  
+[7.407s] -- Found PCL_POINT_CLOUD_EDITOR: /usr/include/pcl-1.14  
+[7.410s] -- Found PCL_OUTOFCORE: /usr/lib/x86_64-linux-gnu/libpcl_outofcore.so  
+[7.413s] -- Found PCL_PEOPLE: /usr/lib/x86_64-linux-gnu/libpcl_people.so  
+[7.416s] -- Found image_transport: 5.1.6 (/opt/ros/jazzy/share/image_transport/cmake)
+[7.462s] -- Found tf2: 0.36.10 (/opt/ros/jazzy/share/tf2/cmake)
+[7.477s] -- Found tf2_ros: 0.36.10 (/opt/ros/jazzy/share/tf2_ros/cmake)
+[7.793s] [31mCMake Error at CMakeLists.txt:24 (find_package):
+[7.794s]   By not providing "FindStonefish.cmake" in CMAKE_MODULE_PATH this project
+[7.794s]   has asked CMake to find a package configuration file provided by
+[7.794s]   "Stonefish", but CMake did not find one.
+[7.794s] 
+[7.794s]   Could not find a package configuration file provided by "Stonefish" with
+[7.794s]   any of the following names:
+[7.794s] 
+[7.794s]     StonefishConfig.cmake
+[7.794s]     stonefish-config.cmake
+[7.794s] 
+[7.794s]   Add the installation prefix of "Stonefish" to CMAKE_PREFIX_PATH or set
+[7.794s]   "Stonefish_DIR" to a directory containing one of the above files.  If
+[7.794s]   "Stonefish" provides a separate development package or SDK, be sure it has
+[7.794s]   been installed.
+[7.794s] 
+[7.794s] [0m
+[7.794s] -- Configuring incomplete, errors occurred!
+[7.857s] Invoked command in '/home/mig/Documents/RL/build/stonefish_ros2' returned '1': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake /home/mig/Documents/RL/stonefish/stonefish_ros2 -DCMAKE_INSTALL_PREFIX=/home/mig/Documents/RL/install/stonefish_ros2

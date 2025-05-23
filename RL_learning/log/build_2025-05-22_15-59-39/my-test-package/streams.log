@@ -1,0 +1,16 @@
+[0.562s] Invoking command in '/home/mig/Documents/RL/mavlink/venv/lib/python3.12/site-packages/pkg_resources/tests/data/my-test-package-source': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/mig/Documents/RL/build/my-test-package/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/mig/Documents/RL/install/my-test-package/lib/python3.12/site-packages:${PYTHONPATH} VIRTUAL_ENV_PROMPT=(venv) /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../../../../../../../build/my-test-package build --build-base /home/mig/Documents/RL/build/my-test-package/build install --record /home/mig/Documents/RL/build/my-test-package/install.log --single-version-externally-managed
+[0.821s] running egg_info
+[0.821s] creating ../../../../../../../../../build/my-test-package/my_test_package.egg-info
+[0.837s] writing ../../../../../../../../../build/my-test-package/my_test_package.egg-info/PKG-INFO
+[0.837s] writing dependency_links to ../../../../../../../../../build/my-test-package/my_test_package.egg-info/dependency_links.txt
+[0.837s] writing top-level names to ../../../../../../../../../build/my-test-package/my_test_package.egg-info/top_level.txt
+[0.837s] writing manifest file '../../../../../../../../../build/my-test-package/my_test_package.egg-info/SOURCES.txt'
+[0.852s] reading manifest file '../../../../../../../../../build/my-test-package/my_test_package.egg-info/SOURCES.txt'
+[0.852s] writing manifest file '../../../../../../../../../build/my-test-package/my_test_package.egg-info/SOURCES.txt'
+[0.852s] running build
+[0.853s] running install
+[0.858s] running install_egg_info
+[0.893s] Copying ../../../../../../../../../build/my-test-package/my_test_package.egg-info to /home/mig/Documents/RL/install/my-test-package/lib/python3.12/site-packages/my_test_package-1.0-py3.12.egg-info
+[0.894s] running install_scripts
+[1.010s] writing list of installed files to '/home/mig/Documents/RL/build/my-test-package/install.log'
+[1.041s] Invoked command in '/home/mig/Documents/RL/mavlink/venv/lib/python3.12/site-packages/pkg_resources/tests/data/my-test-package-source' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/mig/Documents/RL/build/my-test-package/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/mig/Documents/RL/install/my-test-package/lib/python3.12/site-packages:${PYTHONPATH} VIRTUAL_ENV_PROMPT=(venv) /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../../../../../../../build/my-test-package build --build-base /home/mig/Documents/RL/build/my-test-package/build install --record /home/mig/Documents/RL/build/my-test-package/install.log --single-version-externally-managed

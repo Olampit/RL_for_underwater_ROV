@@ -1,0 +1,6 @@
+Invoking command in '/home/mig/Documents/RL/build/glm': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake /home/mig/Documents/RL/lib/glm-master -DCMAKE_INSTALL_PREFIX=/home/mig/Documents/RL/install/glm
+Invoked command in '/home/mig/Documents/RL/build/glm' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake /home/mig/Documents/RL/lib/glm-master -DCMAKE_INSTALL_PREFIX=/home/mig/Documents/RL/install/glm
+Invoking command in '/home/mig/Documents/RL/build/glm': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --build /home/mig/Documents/RL/build/glm -- -j32 -l32
+Invoked command in '/home/mig/Documents/RL/build/glm' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --build /home/mig/Documents/RL/build/glm -- -j32 -l32
+Invoking command in '/home/mig/Documents/RL/build/glm': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --install /home/mig/Documents/RL/build/glm
+Invoked command in '/home/mig/Documents/RL/build/glm' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --install /home/mig/Documents/RL/build/glm

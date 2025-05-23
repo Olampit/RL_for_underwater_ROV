@@ -1,0 +1,324 @@
+-- The C compiler identification is GNU 12.3.0
+-- The CXX compiler identification is GNU 12.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found Python: /home/mig/Documents/RL/mavlink/venv/bin/python3 (found version "3.12.3") found components: Interpreter 
+-- MAVLink dialect: common
+-- MAVLink version: 2.0
+-- Configuring done (0.5s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/mig/Documents/RL/build/mavlink
+[100%] [34m[1mGenerating C headers[0m
+Collecting lxml>=3.6.0 (from -r pymavlink/requirements.txt (line 1))
+  Using cached lxml-5.4.0-cp312-cp312-manylinux_2_28_x86_64.whl.metadata (3.5 kB)
+Collecting future>=0.15.2 (from -r pymavlink/requirements.txt (line 2))
+  Using cached future-1.0.0-py3-none-any.whl.metadata (4.0 kB)
+Collecting wheel>=0.37.1 (from -r pymavlink/requirements.txt (line 3))
+  Using cached wheel-0.45.1-py3-none-any.whl.metadata (2.3 kB)
+Collecting setuptools>=42 (from -r pymavlink/requirements.txt (line 4))
+  Using cached setuptools-80.8.0-py3-none-any.whl.metadata (6.6 kB)
+Collecting fastcrc (from -r pymavlink/requirements.txt (line 5))
+  Using cached fastcrc-0.3.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (2.6 kB)
+Collecting pytest<=7.4.4 (from -r pymavlink/requirements.txt (line 8))
+  Using cached pytest-7.4.4-py3-none-any.whl.metadata (7.9 kB)
+Collecting syrupy (from -r pymavlink/requirements.txt (line 9))
+  Using cached syrupy-4.9.1-py3-none-any.whl.metadata (38 kB)
+Collecting wsproto (from -r pymavlink/requirements.txt (line 10))
+  Using cached wsproto-1.2.0-py3-none-any.whl.metadata (5.6 kB)
+Collecting iniconfig (from pytest<=7.4.4->-r pymavlink/requirements.txt (line 8))
+  Using cached iniconfig-2.1.0-py3-none-any.whl.metadata (2.7 kB)
+Collecting packaging (from pytest<=7.4.4->-r pymavlink/requirements.txt (line 8))
+  Using cached packaging-25.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting pluggy<2.0,>=0.12 (from pytest<=7.4.4->-r pymavlink/requirements.txt (line 8))
+  Using cached pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+Collecting h11<1,>=0.9.0 (from wsproto->-r pymavlink/requirements.txt (line 10))
+  Using cached h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Using cached lxml-5.4.0-cp312-cp312-manylinux_2_28_x86_64.whl (5.0 MB)
+Using cached future-1.0.0-py3-none-any.whl (491 kB)
+Using cached wheel-0.45.1-py3-none-any.whl (72 kB)
+Using cached setuptools-80.8.0-py3-none-any.whl (1.2 MB)
+Using cached fastcrc-0.3.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (275 kB)
+Using cached pytest-7.4.4-py3-none-any.whl (325 kB)
+Using cached syrupy-4.9.1-py3-none-any.whl (52 kB)
+Using cached wsproto-1.2.0-py3-none-any.whl (24 kB)
+Using cached h11-0.16.0-py3-none-any.whl (37 kB)
+Using cached pluggy-1.6.0-py3-none-any.whl (20 kB)
+Using cached iniconfig-2.1.0-py3-none-any.whl (6.0 kB)
+Using cached packaging-25.0-py3-none-any.whl (66 kB)
+Installing collected packages: wheel, setuptools, pluggy, packaging, lxml, iniconfig, h11, future, fastcrc, wsproto, pytest, syrupy
+Successfully installed fastcrc-0.3.2 future-1.0.0 h11-0.16.0 iniconfig-2.1.0 lxml-5.4.0 packaging-25.0 pluggy-1.6.0 pytest-7.4.4 setuptools-80.8.0 syrupy-4.9.1 wheel-0.45.1 wsproto-1.2.0
+Validating message_definitions/v1.0/common.xml
+Parsing message_definitions/v1.0/common.xml
+Validating /home/mig/Documents/RL/mavlink/venv/mavlink/message_definitions/v1.0/standard.xml
+Parsing /home/mig/Documents/RL/mavlink/venv/mavlink/message_definitions/v1.0/standard.xml
+Validating /home/mig/Documents/RL/mavlink/venv/mavlink/message_definitions/v1.0/minimal.xml
+Parsing /home/mig/Documents/RL/mavlink/venv/mavlink/message_definitions/v1.0/minimal.xml
+Found 229 MAVLink message types in 3 XML files
+Generating C implementation in directory /home/mig/Documents/RL/build/mavlink/include/mavlink/common
+Generating C implementation in directory /home/mig/Documents/RL/build/mavlink/include/mavlink/standard
+Generating C implementation in directory /home/mig/Documents/RL/build/mavlink/include/mavlink/minimal
+Copying fixed headers for protocol 2.0 to /home/mig/Documents/RL/build/mavlink/include/mavlink/
+[100%] Built target generate_c_headers
+-- Install configuration: ""
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/mavlink_helpers.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/testsuite.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_tunnel.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_log_request_list.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_logging_data.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_link_node_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_rtk.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_logging_ack.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_request.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_uavcan_node_info.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_ais_vessel.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_current_mode.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_component_metadata.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_ext_request_read.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_command_ack.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_optical_flow_rad.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_inject_data.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_request_int.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_settings.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_basic_id.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_operator_id.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_memory_vect.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_ext_ack.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_change_operator_control_ack.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_ext_set.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_cellular_config.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_log_entry.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_debug_float_array.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps2_rtk.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_esc_info.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_adsb_vehicle.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_supported_tunes.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_manager_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_rc_channels_raw.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_sensor.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_message_interval.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_manager_set_manual_control.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_current.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_position_target_local_ned.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_authentication.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_request_event.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_storage_information.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_setup_signing.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_tracking_geo_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_manager_set_attitude.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_attitude_target.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_servo_output_raw.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_rc_inputs_raw.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_fence_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_global_position_int_cov.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_debug_vect.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_estimator_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_item_reached.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_scaled_imu.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_rc_channels_scaled.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_set.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_component_information_basic.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_ping.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_capture_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_distance_sensor.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_uavcan_node_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_scaled_pressure3.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_ack.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_rc_channels.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_raw_rpm.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_efi_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_message_pack.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_high_latency.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_manager_set_pitchyaw.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_actuator_output_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_winch_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_global_origin.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_item_int.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_actuator_controls.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_high_latency2.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_attitude_target.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_write_partial_list.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_orbit_execution_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_odometry.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_sys_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_fov_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_resource_request.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_named_value_int.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_gps.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_trajectory_representation_waypoints.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_response_event_error.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_location.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_logging_data_acked.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_flight_information.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_optical_flow.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_battery_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_local_position_ned.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_available_modes_monitor.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mag_cal_report.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_control_system_state.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_command_long.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_wheel_distance.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_actuator_control_target.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_time_estimate_to_target.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_isbd_link_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_attitude_quaternion.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_current_event_sequence.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_command_int.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_scaled_imu3.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_wind_cov.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_ext_value.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_request_read.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_system.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_global_position_int.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_generator_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_local_position_ned_system_global_offset.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_serial_control.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_mode.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_manual_control.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_log_request_data.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_vfr_hud.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_extended_sys_state.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_raw_int.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_device_attitude_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_terrain_data.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_can_frame.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_request_partial_list.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_home_position.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_log_erase.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_manual_setpoint.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_tracking_image_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_global_vision_position_estimate.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_gps_global_origin.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_radio_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_trigger.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_highres_imu.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_set_current.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_vision_speed_estimate.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_state.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_vibration.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_smart_battery_info.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_clear_all.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hygrometer_sensor.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_arm_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_vicon_position_estimate.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_command_cancel.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_request_list.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps2_raw.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_scaled_pressure2.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_vision_position_estimate.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_home_position.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_local_position_ned_cov.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_can_filter_modify.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_request_data_stream.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_cellular_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_terrain_report.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_altitude.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_sim_state.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_request_list.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_landing_target.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mount_orientation.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_collision.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_autopilot_state_for_gimbal_device.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_actuator_control_target.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_scaled_imu2.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_button_change.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_manager_information.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_controls.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_scaled_pressure.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_onboard_computer_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/version.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_statustext.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_device_set_attitude.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_attitude.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_count.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_safety_allowed_area.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_fuel_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_map_rc.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_change_operator_control.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_information.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_attitude_quaternion_cov.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_value.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_raw_pressure.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_autopilot_version.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_optical_flow.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_rc_channels_override.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_v2_extension.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_rtcm_data.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_mission_item.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_video_stream_information.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_file_transfer_protocol.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_log_data.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_play_tune_v2.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gimbal_device_information.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_encapsulated_data.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_battery_info.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_esc_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_position_target_local_ned.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_log_request_end.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_self_id.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_data_stream.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_video_stream_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_power_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_hil_state_quaternion.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_obstacle_distance.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_debug.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_named_value_float.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_nav_controller_output.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_param_ext_request_list.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_att_pos_mocap.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_illuminator_status.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_timesync.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_component_information.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_thermal_range.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_canfd_frame.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_follow_target.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_camera_image_captured.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_trajectory_representation_bezier.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_gps_input.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_data_transmission_handshake.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_terrain_request.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_play_tune.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_open_drone_id_system_update.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_event.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_auth_key.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_system_time.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_available_modes.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_raw_imu.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_position_target_global_int.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/common.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_safety_set_allowed_area.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_wifi_config_ap.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_set_position_target_global_int.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_terrain_check.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/common/mavlink_msg_utm_global_position.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/protocol.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/checksum.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/mavlink_conversions.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal/testsuite.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal/mavlink.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal/mavlink_msg_heartbeat.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal/mavlink_msg_protocol_version.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal/minimal.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/minimal/version.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/mavlink_types.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/standard
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/standard/testsuite.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/standard/mavlink.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/standard/standard.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/standard/version.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/mavlink_sha256.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/include/mavlink/mavlink_get_info.h
+-- Installing: /home/mig/Documents/RL/install/mavlink/lib/cmake/MAVLink/MAVLinkTargets.cmake
+-- Installing: /home/mig/Documents/RL/install/mavlink/lib/cmake/MAVLink/MAVLinkConfig.cmake

@@ -1,0 +1,6 @@
+Invoking command in '/home/mig/Documents/RL/build/mavlink': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake /home/mig/Documents/RL/mavlink/venv/mavlink -DCMAKE_INSTALL_PREFIX=/home/mig/Documents/RL/install/mavlink
+Invoked command in '/home/mig/Documents/RL/build/mavlink' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake /home/mig/Documents/RL/mavlink/venv/mavlink -DCMAKE_INSTALL_PREFIX=/home/mig/Documents/RL/install/mavlink
+Invoking command in '/home/mig/Documents/RL/build/mavlink': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --build /home/mig/Documents/RL/build/mavlink -- -j32 -l32
+Invoked command in '/home/mig/Documents/RL/build/mavlink' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --build /home/mig/Documents/RL/build/mavlink -- -j32 -l32
+Invoking command in '/home/mig/Documents/RL/build/mavlink': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --install /home/mig/Documents/RL/build/mavlink
+Invoked command in '/home/mig/Documents/RL/build/mavlink' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com VIRTUAL_ENV_PROMPT=(venv) /usr/bin/cmake --install /home/mig/Documents/RL/build/mavlink
