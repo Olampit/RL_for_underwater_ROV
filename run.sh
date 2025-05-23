@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 cd "$(dirname "$0")"
-source mavlink/venv/bin/activate
+source venv/bin/activate
 
 # Start all in background with &
 python3 state_server.py &

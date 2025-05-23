@@ -1,3 +1,4 @@
+#Executor that sends commands to the motors
 from pymavlink import mavutil
 import time
 
