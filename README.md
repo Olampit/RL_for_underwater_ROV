@@ -4,9 +4,9 @@
 this is the readme for the project I developped during my stage at the CRC, in Sophia-Antipolis. 
 
 
-Project structure : 
+## Project structure : 
 
-RL/
+RL/<br />
 ├── run.sh                  # Lance l’entraînement avec venv<br />
 ├── imu_reader.py           # Lit les données IMU (pour logging ou état enrichi)<br />
 ├── executor.py             # Lit l’état HTTP et envoie les PWM via MAVLink<br />
