@@ -1,5 +1,6 @@
 import asyncio
 from aiohttp import web
+import signal
 
 class ROVController:
     def __init__(self):
@@ -41,17 +42,18 @@ async def main():
 
     print("ROV Controller API running on http://localhost:8080")
 
-    try:
-        while True:
-            await asyncio.sleep(3600)
-    except asyncio.CancelledError:
-        print("Shutting down server...")
-    finally:
-        await runner.cleanup()
+    stop_event = asyncio.Event()
+
+    def handle_sigint():
+        print("Received SIGINT, shutting down...")
+        stop_event.set()
+
+    loop = asyncio.get_running_loop()
+    loop.add_signal_handler(signal.SIGINT, handle_sigint)
+    loop.add_signal_handler(signal.SIGTERM, handle_sigint)
+
+    await stop_event.wait()
+    await runner.cleanup()
 
 if __name__ == '__main__':
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("Server interrupted by user.")
-
+    asyncio.run(main())

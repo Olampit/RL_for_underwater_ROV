@@ -39,7 +39,7 @@ async def train():
 
             print(f"Step {step}, State: {state['depth']:.2f}, Reward: {reward:.2f}")
 
-            state_idx = next_state_idx  # passer à l’état suivant
+            state_idx = next_state_idx 
 
 
     with open("q_table.pkl", "wb") as f:
