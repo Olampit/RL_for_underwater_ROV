@@ -11,13 +11,22 @@ class ROVController:
             "thrust": 0.0,
             "yaw": 0.0,
             "depth": 0.0,
-            "pressure_abs": 1013.25
+            "pressure_abs": 1013.25,
+            "desired_speed": 0.0  # ← added to track joystick input
         }
 
     async def update_state(self, request):
         data = await request.json()
-        print(f"[RECEIVED COMMAND] {data}")
+        print(f"[RECEIVED COMMAND] /update {data}")
         self.state.update(data)
+        print(f"[STATE] {self.state}")
+        return web.json_response({"status": "ok", "received": data})
+
+    async def joystick_input(self, request):
+        data = await request.json()
+        print(f"[RECEIVED JOYSTICK] /joystick {data}")
+        if "desired_speed" in data:
+            self.state["desired_speed"] = data["desired_speed"]
         print(f"[STATE] {self.state}")
         return web.json_response({"status": "ok", "received": data})
 
@@ -27,6 +36,7 @@ class ROVController:
     def routes(self):
         return [
             web.post('/update', self.update_state),
+            web.post('/joystick', self.joystick_input),  # ← new route
             web.get('/state', self.get_state)
         ]
 

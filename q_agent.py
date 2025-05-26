@@ -2,10 +2,16 @@
 import numpy as np
 import random
 from collections import defaultdict
+from functools import partial
+
+
+def default_q_values(action_size):
+    return np.zeros(action_size)
+
 
 class QLearningAgent:
     def __init__(self, action_size, alpha=0.1, gamma=0.99, epsilon=1.0, epsilon_decay=0.995):
-        self.q_table = defaultdict(lambda: np.zeros(action_size))
+        self.q_table = defaultdict(partial(default_q_values, action_size))
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
