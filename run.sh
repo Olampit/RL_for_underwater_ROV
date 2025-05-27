@@ -15,13 +15,11 @@ python3 state_server.py &
 PID1=$!
 python3 executor.py &
 PID2=$!
-python3 imu_reader.py &
-PID3=$!
 python3 run_training.py &
-PID4=$!
+PID3=$!
 
 # Trap Ctrl+C to kill all background processes
-trap "echo 'Ctrl+C reçu, arrêt des scripts...'; kill $PID1 $PID2 $PID3 $PID4; exit" SIGINT
+trap "echo 'Ctrl+C reçu, arrêt des scripts...'; kill $PID1 $PID2 $PID3; exit" SIGINT
 
 # Wait for all background processes to finish
 wait

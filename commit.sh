@@ -18,3 +18,8 @@ git push -u origin main
 
 # Increment and save back
 echo $((count + 1)) > "$COUNTER_FILE"
+
+
+
+
+
