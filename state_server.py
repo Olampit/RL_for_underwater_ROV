@@ -32,15 +32,14 @@ class ROVController:
             "imu_ready": False
         }
 
-        self.imu_data = {}  # Shared dict for IMU data
-        start_imu_reader(self.imu_data)
-        print("IMU reader started.")
-
+        self.imu_data = {}
         print("Connecting to ROV via MAVLink...")
         self.connection = mavutil.mavlink_connection('udp:0.0.0.0:14550')
         print("Waiting for ROV heartbeat...")
         self.connection.wait_heartbeat()
         print(f"Connected to system {self.connection.target_system}, component {self.connection.target_component}")
+        print("Starting IMU reader...")
+        start_imu_reader(self.imu_data, self.connection)
 
     async def run_background_tasks(self):
         print("Waiting for first IMU data...")
