@@ -88,7 +88,7 @@ def start_imu_reader(latest_imu, connection):
                 except Exception as e:
                     print(f"Unexpected error: {e}")
 
-                time.sleep(0.01)
+                #time.sleep(0.01)
 
         except Exception as e:
             print(f"[IMU LOOP ERROR] {e}")
