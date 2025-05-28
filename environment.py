@@ -1,7 +1,7 @@
 # environment.py
 import aiohttp
 import numpy as np
-
+import math
 
 class ROVEnvironment:
     def __init__(self, action_map, api_url="http://localhost:8080"):
@@ -32,17 +32,15 @@ class ROVEnvironment:
         imu = state.get("IMU_COMBINED", {})
         ahrs2 = state.get("AHRS2", {})
         vibration = state.get("VIBRATION", {})
-
-        # Acceleration
-        acc_x = imu.get("acc_x", 0.0)
+        
+        # WE WILL NEED THE DVL FOR THIS
+        v_x = self.current_velocity_x if hasattr(self, "current_velocity_x") else 0.0
+        v_target = 0.5  # desired forward speed (m/s), will have to be passed way after. 
+        
+        # Acceleration penalties
         acc_y = imu.get("acc_y", 0.0)
         acc_z = imu.get("acc_z", 0.0)
-
-        # Gyro
-        gyro_x = imu.get("gyro_x", 0.0)
-        gyro_y = imu.get("gyro_y", 0.0)
-        gyro_z = imu.get("gyro_z", 0.0)
-
+        
         # Orientation
         roll = ahrs2.get("roll", 0.0)
         pitch = ahrs2.get("pitch", 0.0)
@@ -53,27 +51,33 @@ class ROVEnvironment:
         vib_y = vibration.get("vibration_y", 0.0)
         vib_z = vibration.get("vibration_z", 0.0)
 
-        # Weights
-        weight_x_accel = 0.02
-        weight_yz_accel = 0.05
-        weight_gyro = 0.02
-        weight_orientation = 0.01
-        weight_vibration = 0.001
+        # --- Reward Components ---
+        alpha = 10.0  # sharpness of reward curve for velocity match
+        speed_reward = math.exp(-alpha * (v_x - v_target) ** 2)
 
+        # Penalties
+        acc_penalty = abs(acc_y) + abs(acc_z)
+        orientation_penalty = abs(roll) + abs(pitch)
+        vibration_penalty = vib_x + vib_y + vib_z
+
+        # Weights
+        w_acc = 0.05
+        w_orientation = 0.01
+        w_vibration = 0.001
+
+        # Total reward
         reward = (
-            + weight_x_accel * acc_x
-            - weight_yz_accel * (abs(acc_y) + abs(acc_z))
-            - weight_gyro * (abs(gyro_x) + abs(gyro_y) + abs(gyro_z))
-            - weight_orientation * (abs(roll) + abs(pitch) + abs(yaw))
-            - weight_vibration * (vib_x + vib_y + vib_z)
+            + speed_reward
+            - w_acc * acc_penalty
+            - w_orientation * orientation_penalty
+            - w_vibration * vibration_penalty
         )
 
-        print(f"[REWARD] acc_x={acc_x:.2f}, penalty_yz_accel={abs(acc_y)+abs(acc_z):.2f}, "
-            f"gyro_penalty={abs(gyro_x)+abs(gyro_y)+abs(gyro_z):.2f}, "
-            f"orientation_penalty={abs(roll)+abs(pitch)+abs(yaw):.2f}, "
-            f"vibration_penalty={vib_x+vib_y+vib_z:.2f} → reward={reward:.2f}")
-
+        print(f"[REWARD] v_x={v_x:.2f}, speed_reward={speed_reward:.2f}, acc_penalty={acc_penalty:.2f}, "
+            f"orientation_penalty={orientation_penalty:.2f}, vib_penalty={vibration_penalty:.2f} → reward={reward:.2f}")
+        
         return reward
+
 
 
     def is_terminal(self, state):
