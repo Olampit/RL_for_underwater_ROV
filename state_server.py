@@ -96,7 +96,7 @@ class ROVController:
                 self.connection.target_system,
                 self.connection.target_component,
                 mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
-                0,  # confirmation
+                0,
                 motor_num,
                 pwm,
                 0, 0, 0, 0, 0
@@ -125,10 +125,8 @@ async def main():
 
     print("ROV Controller API running on http://localhost:8080")
 
-    #Lancer les tâches asynchrones après que le serveur écoute
     asyncio.create_task(controller.run_background_tasks())
 
-    # Gestion des signaux pour arrêt propre
     stop_event = asyncio.Event()
 
     def handle_sigint():

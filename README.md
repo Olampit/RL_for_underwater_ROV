@@ -18,6 +18,8 @@ RL/<br />
 └── mavlink/             # Directory for MAVLink setup and virtual environment<br />
     └── venv/            # Python virtual environment<br />
 
+
+
 ## Description
 
 This project explores online reinforcement learning for low-level motor control of an underwater robot. The agent interacts with its environment via an API that mirrors ROV dynamics and sends real commands to the robot using the MAVLink protocol.
@@ -59,7 +61,7 @@ You can set up your environment with:
 
 python3 -m venv mavlink/venv
 source mavlink/venv/bin/activate
-pip install -r requirements.txt  # if available
+pip install -r requirements.txt 
 
 
 ## How to Run

@@ -3,7 +3,7 @@ import threading
 import time
 import traceback
 
-imu_types = ['RAW_IMU', 'AHRS', 'AHRS2', 'VIBRATION']
+imu_types = ['RAW_IMU', 'AHRS2', 'VIBRATION'] #AHRS possibly added after
 
 def start_imu_reader(latest_imu, connection):
     def imu_loop():

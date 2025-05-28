@@ -29,16 +29,52 @@ class ROVEnvironment:
         await self.session.post(f"{self.api_url}/apply_action", json=command)
 
     def compute_reward(self, state):
-        target_depth = 1.0
-        depth = state.get("depth", 0.0)
-        desired_speed = state.get("desired_speed", 0.0)
+        imu = state.get("IMU_COMBINED", {})
+        ahrs2 = state.get("AHRS2", {})
+        vibration = state.get("VIBRATION", {})
 
-        tracking_error = abs(depth - target_depth)
-        stability_penalty = abs(desired_speed) * 0.1
+        # Acceleration
+        acc_x = imu.get("acc_x", 0.0)
+        acc_y = imu.get("acc_y", 0.0)
+        acc_z = imu.get("acc_z", 0.0)
 
-        reward = -tracking_error - stability_penalty
-        print(f"[REWARD] -depth error: {tracking_error:.2f}, -speed penalty: {stability_penalty:.2f} → reward = {reward:.2f}")
+        # Gyro
+        gyro_x = imu.get("gyro_x", 0.0)
+        gyro_y = imu.get("gyro_y", 0.0)
+        gyro_z = imu.get("gyro_z", 0.0)
+
+        # Orientation
+        roll = ahrs2.get("roll", 0.0)
+        pitch = ahrs2.get("pitch", 0.0)
+        yaw = ahrs2.get("yaw", 0.0)
+
+        # Vibration
+        vib_x = vibration.get("vibration_x", 0.0)
+        vib_y = vibration.get("vibration_y", 0.0)
+        vib_z = vibration.get("vibration_z", 0.0)
+
+        # Weights
+        weight_x_accel = 0.02
+        weight_yz_accel = 0.05
+        weight_gyro = 0.02
+        weight_orientation = 0.01
+        weight_vibration = 0.001
+
+        reward = (
+            + weight_x_accel * acc_x
+            - weight_yz_accel * (abs(acc_y) + abs(acc_z))
+            - weight_gyro * (abs(gyro_x) + abs(gyro_y) + abs(gyro_z))
+            - weight_orientation * (abs(roll) + abs(pitch) + abs(yaw))
+            - weight_vibration * (vib_x + vib_y + vib_z)
+        )
+
+        print(f"[REWARD] acc_x={acc_x:.2f}, penalty_yz_accel={abs(acc_y)+abs(acc_z):.2f}, "
+            f"gyro_penalty={abs(gyro_x)+abs(gyro_y)+abs(gyro_z):.2f}, "
+            f"orientation_penalty={abs(roll)+abs(pitch)+abs(yaw):.2f}, "
+            f"vibration_penalty={vib_x+vib_y+vib_z:.2f} → reward={reward:.2f}")
+
         return reward
+
 
     def is_terminal(self, state):
         depth = state.get("depth", 0.0)
