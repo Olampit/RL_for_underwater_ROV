@@ -61,7 +61,7 @@ async def train():
             action = agent.choose_action(state_idx)
             await env.apply_action(action)
 
-            await asyncio.sleep(1) ###################################################################""
+            await asyncio.sleep(0.5) ###################################################################""
 
             next_state = await env.get_state()
             next_state_idx = env.state_to_index(next_state)
