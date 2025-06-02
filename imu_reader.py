@@ -1,21 +1,15 @@
 #imu_reader.property
 from pymavlink import mavutil
 import threading
-import time
 import traceback
 
-imu_types = ['RAW_IMU', 'AHRS2', 'VIBRATION'] #AHRS possibly added after
+# Messages we are interested in
+imu_types = ['RAW_IMU', 'AHRS2', 'VIBRATION']
 
-def start_imu_reader(latest_imu, connection):
+def start_imu_listener(connection, latest_imu):
     def imu_loop():
         try:
-            print("Waiting for IMU message...")
-            msg = connection.recv_match(type=imu_types, blocking=True, timeout=5)
-            if msg is None:
-                print("No IMU message received in last 5 seconds.")
-            else:
-                print(f"Got: {msg.get_type()}")
-                print(f"[ANY MSG] {msg.get_type()} → {msg}")
+            print("[IMU] Starting listener thread...")
 
             def update_imu_combined():
                 raw = latest_imu.get("RAW_IMU", {})
@@ -31,68 +25,56 @@ def start_imu_reader(latest_imu, connection):
                     "mag_z": raw.get("mag_z", 0.0),
                 }
                 latest_imu["IMU_COMBINED"] = combined
-                print(f"[IMU UPDATE] acc=({combined['acc_x']}, {combined['acc_y']}, {combined['acc_z']})")
 
             while True:
                 msg = connection.recv_match(type=imu_types, blocking=True, timeout=5)
                 if msg is None:
-                    print("No IMU message received in last 5 seconds.")
+                    print("[IMU] No message received in last 5 seconds.")
                     continue
 
                 msg_type = msg.get_type()
-                print(f"Received: {msg_type}")
-                print(msg)
+                print(f"[IMU] Received: {msg_type}")
 
                 try:
                     if msg_type == 'RAW_IMU':
                         latest_imu["RAW_IMU"] = {
-                            "acc_x": getattr(msg, 'xacc', 0.0),
-                            "acc_y": getattr(msg, 'yacc', 0.0),
-                            "acc_z": getattr(msg, 'zacc', 0.0),
-                            "gyro_x": getattr(msg, 'xgyro', 0.0),
-                            "gyro_y": getattr(msg, 'ygyro', 0.0),
-                            "gyro_z": getattr(msg, 'zgyro', 0.0),
+                            "acc_x": getattr(msg, 'xacc', 0.0) / 1000.0,
+                            "acc_y": getattr(msg, 'yacc', 0.0) / 1000.0,
+                            "acc_z": getattr(msg, 'zacc', 0.0) / 1000.0,
+                            "gyro_x": getattr(msg, 'xgyro', 0.0) / 1000.0,
+                            "gyro_y": getattr(msg, 'ygyro', 0.0) / 1000.0,
+                            "gyro_z": getattr(msg, 'zgyro', 0.0) / 1000.0,
                             "mag_x": getattr(msg, 'xmag', 0.0),
                             "mag_y": getattr(msg, 'ymag', 0.0),
                             "mag_z": getattr(msg, 'zmag', 0.0),
                         }
-                        latest_imu["imu_ready"] = True
                         update_imu_combined()
-
-                    elif msg_type == 'AHRS':
-                        latest_imu["AHRS"] = {
-                            "omegaIx": msg.omegaIx,
-                            "omegaIy": msg.omegaIy,
-                            "omegaIz": msg.omegaIz,
-                            "accel_weight": msg.accel_weight,
-                            "renorm_val": msg.renorm_val,
-                            "error_rp": msg.error_rp,
-                            "error_yaw": msg.error_yaw
-                        }
+                        latest_imu["imu_ready"] = True
 
                     elif msg_type == 'AHRS2':
                         latest_imu["AHRS2"] = {
-                            "roll": msg.roll,
-                            "pitch": msg.pitch,
-                            "yaw": msg.yaw
+                            "roll": getattr(msg, 'roll', 0.0),
+                            "pitch": getattr(msg, 'pitch', 0.0),
+                            "yaw": getattr(msg, 'yaw', 0.0),
                         }
 
                     elif msg_type == 'VIBRATION':
                         latest_imu["VIBRATION"] = {
-                            "vibration_x": msg.vibration_x,
-                            "vibration_y": msg.vibration_y,
-                            "vibration_z": msg.vibration_z
+                            "vibration_x": getattr(msg, 'vibration_x', 0.0),
+                            "vibration_y": getattr(msg, 'vibration_y', 0.0),
+                            "vibration_z": getattr(msg, 'vibration_z', 0.0),
                         }
 
                 except AttributeError as e:
-                    print(f"Skipped message due to missing attribute: {e}")
+                    print(f"[IMU] Missing attribute: {e}")
                 except Exception as e:
-                    print(f"Unexpected error: {e}")
-
-                #time.sleep(0.01)
+                    print(f"[IMU] Unexpected error: {e}")
+                    traceback.print_exc()
 
         except Exception as e:
-            print(f"[IMU LOOP ERROR] {e}")
+            print(f"[IMU THREAD ERROR] {e}")
             traceback.print_exc()
 
+    # Start thread
     threading.Thread(target=imu_loop, daemon=True).start()
+
