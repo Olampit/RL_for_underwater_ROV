@@ -45,7 +45,7 @@ def sample_action_space(num_actions=32):
 my_actions = sample_action_space(num_actions=6000)
 
 async def train():
-    api_url = "http://localhost:8080"
+    api_url = "http://localhost:311"
     await wait_for_server(api_url)
 
     env = ROVEnvironment(action_map=my_actions, api_url=api_url)  
@@ -61,7 +61,7 @@ async def train():
             action = agent.choose_action(state_idx)
             await env.apply_action(action)
 
-            await asyncio.sleep(0.5) ###################################################################""
+            await asyncio.sleep(5) ###################################################################""
 
             next_state = await env.get_state()
             next_state_idx = env.state_to_index(next_state)

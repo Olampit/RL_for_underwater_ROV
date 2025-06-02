@@ -34,7 +34,7 @@ class ROVController:
 
         self.imu_data = {}
         print("Connecting to ROV via MAVLink...")
-        self.connection = mavutil.mavlink_connection('udp:0.0.0.0:14550')
+        self.connection = mavutil.mavlink_connection('udpout:localhost:14551', source_system=1, input=True, source_address=('0.0.0.0', 14550))
         print("Waiting for ROV heartbeat...")
         self.connection.wait_heartbeat()
         print(f"Connected to system {self.connection.target_system}, component {self.connection.target_component}")
@@ -120,10 +120,10 @@ async def main():
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    site = web.TCPSite(runner, '0.0.0.0', 311)
     await site.start()
 
-    print("ROV Controller API running on http://localhost:8080")
+    print("ROV Controller API running on http://localhost:311")
 
     asyncio.create_task(controller.run_background_tasks())
 

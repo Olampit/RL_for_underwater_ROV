@@ -2,12 +2,12 @@
 cd "$(dirname "$0")"
 source venv/bin/activate
 
-# Kill anything already using port 8080 (e.g. old state_server.py)
-echo "Checking for existing processes on port 8080..."
-PID_8080=$(lsof -ti tcp:8080)
-if [ -n "$PID_8080" ]; then
-    echo "Port 8080 is in use by PID(s): $PID_8080. Killing..."
-    kill -9 $PID_8080
+# Kill anything already using port 311 (e.g. old state_server.py)
+echo "Checking for existing processes on port 311..."
+PID_311=$(lsof -ti tcp:311)
+if [ -n "$PID_311" ]; then
+    echo "Port 311 is in use by PID(s): $PID_311. Killing..."
+    kill -9 $PID_311
 fi
 
 # Start all scripts in the background

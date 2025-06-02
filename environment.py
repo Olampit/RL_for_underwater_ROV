@@ -4,7 +4,7 @@ import numpy as np
 import math
 
 class ROVEnvironment:
-    def __init__(self, action_map, api_url="http://localhost:8080"):
+    def __init__(self, action_map, api_url="http://localhost:311"):
         self.action_map = action_map
         self.api_url = api_url
         self.session = aiohttp.ClientSession()

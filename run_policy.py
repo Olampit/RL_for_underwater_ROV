@@ -16,7 +16,7 @@ my_actions = [
 ] 
 
 async def run():
-    env = ROVEnvironment(action_map=my_actions, api_url="http://localhost:8080")
+    env = ROVEnvironment(action_map=my_actions, api_url="http://localhost:311")
     with open("q_table.pkl", "rb") as f:
         q_table = pickle.load(f)
 

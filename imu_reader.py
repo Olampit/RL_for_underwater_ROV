@@ -1,3 +1,4 @@
+#imu_reader.property
 from pymavlink import mavutil
 import threading
 import time
