@@ -1,5 +1,4 @@
 # state_server.py
-
 import asyncio
 import aiohttp
 import signal
@@ -18,7 +17,6 @@ def input_to_pwm(value):
     pwm = SERVO_IDLE + (value * 400)
     return int(max(SERVO_MIN, min(SERVO_MAX, pwm)))
 
-
 class ROVController:
     def __init__(self):
         self.state = {
@@ -31,10 +29,17 @@ class ROVController:
             "mag_x": 0.0, "mag_y": 0.0, "mag_z": 0.0,
             "imu_ready": False
         }
-
         self.imu_data = {}
+        self.connection = None
+
+    async def connect_to_rov(self):
         print("Connecting to ROV via MAVLink...")
-        self.connection = mavutil.mavlink_connection('udpout:localhost:14551', source_system=1, input=True, source_address=('0.0.0.0', 14550))
+        self.connection = mavutil.mavlink_connection(
+            'udpout:localhost:14551',
+            source_system=1,
+            input=True,
+            source_address=('0.0.0.0', 14550)
+        )
         print("Waiting for ROV heartbeat...")
         self.connection.wait_heartbeat()
         print(f"Connected to system {self.connection.target_system}, component {self.connection.target_component}")
@@ -42,6 +47,8 @@ class ROVController:
         start_imu_reader(self.imu_data, self.connection)
 
     async def run_background_tasks(self):
+        await self.connect_to_rov()
+
         print("Waiting for first IMU data...")
         start_time = time.time()
         while not self.imu_data.get("imu_ready", False):
@@ -51,7 +58,6 @@ class ROVController:
             await asyncio.sleep(0.1)
 
         print("IMU ready. Starting state sync loop.")
-
         while True:
             imu = self.imu_data.get("IMU_COMBINED", {})
             self.state.update({
@@ -112,9 +118,9 @@ class ROVController:
             web.get('/state', self.get_state)
         ]
 
-
 async def main():
     controller = ROVController()
+
     app = web.Application()
     app.add_routes(controller.routes())
 
@@ -125,6 +131,7 @@ async def main():
 
     print("ROV Controller API running on http://localhost:311")
 
+    # Start MAVLink and IMU in background
     asyncio.create_task(controller.run_background_tasks())
 
     stop_event = asyncio.Event()
@@ -140,9 +147,9 @@ async def main():
     await stop_event.wait()
     await runner.cleanup()
 
-
 if __name__ == '__main__':
     try:
         asyncio.run(main())
     except Exception as e:
         print(f"[ERROR] Server failed to start: {e}")
+
