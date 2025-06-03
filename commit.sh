@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "update number : $count"
+git commit --author="Olampit <olampit@gmail.com>" -m "Working version : $count"
 git push -u origin main
 
 # Increment and save back
