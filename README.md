@@ -69,12 +69,6 @@ pip install -r requirements.txt
 To train the agent:
 ./run.sh
 
-To apply a trained policy on the real robot:
-python run_policy.py
-
-To monitor the IMU sensor:
-python imu_reader.py
-
 
 ## Current Learning Method
 

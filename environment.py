@@ -1,98 +1,97 @@
-# environment.py
-import aiohttp
+#environment.py
+from pymavlink import mavutil
 import numpy as np
-import math
+
+SERVO_MIN = 1100
+SERVO_MAX = 1900
+SERVO_IDLE = 1500
+
+def input_to_pwm(value):
+    if abs(value) < 0.05:
+        return SERVO_IDLE
+    pwm = SERVO_IDLE + (value * 400)
+    return int(max(SERVO_MIN, min(SERVO_MAX, pwm)))
 
 class ROVEnvironment:
-    def __init__(self, action_map, api_url="http://localhost:311"):
+    def __init__(self, action_map, connection, latest_imu):
         self.action_map = action_map
-        self.api_url = api_url
-        self.session = aiohttp.ClientSession()
+        self.connection = connection
+        self.latest_imu = latest_imu
 
-    async def get_state(self):
-        async with self.session.get(f"{self.api_url}/state") as resp:
-            data = await resp.json()
-            print(f"[STATE] {data}")
-            return data
+    def apply_action(self, action_idx):
+        action = self.action_map[action_idx]
+        for i in range(8):
+            motor_label = f"motor{i+1}"
+            thrust = action.get(motor_label, 0.0)
+            pwm = input_to_pwm(thrust)
+            self.connection.mav.command_long_send(
+                self.connection.target_system,
+                self.connection.target_component,
+                mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
+                0,
+                i + 1,  # servo number (assuming servo 1–8 map to motor1–motor8)
+                pwm,
+                0, 0, 0, 0, 0
+            )
+        print(f"[ACTION] Sent: {action}")
 
-    def state_to_index(self, state):
-        depth = state.get("depth", 0.0)
-        pressure = state.get("pressure_abs", 1013.25)
-        depth_idx = int(depth // 0.5)
-        pressure_idx = int((pressure - 1000) // 1)
-        return (depth_idx, pressure_idx)
+    def get_state(self):
+        imu = self.latest_imu  # shortcut
+        state = {}
 
-    async def apply_action(self, action_index):
-        command = self.action_map[action_index]
-        print(f"[ACTION] Sending: {command}")
+        # Get pitch, roll, yaw from AHRS2 if available
+        if "AHRS2" in imu:
+            state.update({
+                "pitch": imu["AHRS2"].get("pitch", 0.0),
+                "roll": imu["AHRS2"].get("roll", 0.0),
+                "yaw": imu["AHRS2"].get("yaw", 0.0)
+            })
 
-        await self.session.post(f"{self.api_url}/apply_action", json=command)
+        # Vibration as norm
+        if "VIBRATION" in imu:
+            v = imu["VIBRATION"]
+            state["vibration"] = np.linalg.norm([v.get("vibration_x", 0.0),
+                                                 v.get("vibration_y", 0.0),
+                                                 v.get("vibration_z", 0.0)])
+
+        # Accel norm from IMU_COMBINED if available
+        if "IMU_COMBINED" in imu:
+            acc = imu["IMU_COMBINED"]
+            state["accel"] = np.linalg.norm([acc["acc_x"], acc["acc_y"], acc["acc_z"]])
+
+        return state
 
     def compute_reward(self, state):
-        imu = state.get("IMU_COMBINED", {})
-        ahrs2 = state.get("AHRS2", {})
-        vibration = state.get("VIBRATION", {})
-        
-        # WE WILL NEED THE DVL FOR THIS
-        v_x = self.current_velocity_x if hasattr(self, "current_velocity_x") else 0.0
-        v_target = 0.5  # desired forward speed (m/s), will have to be passed way after. 
-        
-        # Acceleration penalties
-        acc_y = imu.get("acc_y", 0.0)
-        acc_z = imu.get("acc_z", 0.0)
-        
-        # Orientation
-        roll = ahrs2.get("roll", 0.0)
-        pitch = ahrs2.get("pitch", 0.0)
-        yaw = ahrs2.get("yaw", 0.0)
+        reward = 0.0
 
-        # Vibration
-        vib_x = vibration.get("vibration_x", 0.0)
-        vib_y = vibration.get("vibration_y", 0.0)
-        vib_z = vibration.get("vibration_z", 0.0)
+        # Orientation stability
+        pitch = state.get("pitch", 0.0)
+        roll = state.get("roll", 0.0)
+        reward -= abs(pitch) * 0.6
+        reward -= abs(roll) * 0.6
 
-        # --- Reward Components ---
-        alpha = 10.0  # sharpness of reward curve for velocity match
-        speed_reward = math.exp(-alpha * (v_x - v_target) ** 2)
+        # Vibration penalty
+        vibration = state.get("vibration", 0.0)
+        reward -= vibration * 0.1
 
-        # Penalties
-        acc_penalty = abs(acc_y) + abs(acc_z)
-        orientation_penalty = abs(roll) + abs(pitch)
-        vibration_penalty = vib_x + vib_y + vib_z
+        # Smooth acceleration
+        accel = state.get("accel", 0.0)
+        reward += max(0.0, 1.0 - abs(accel - 9.8)) * 0.2  # reward for being close to gravity
 
-        # Weights
-        w_acc = 0.05
-        w_orientation = 0.01
-        w_vibration = 0.001
+        # Depth goal
+        if "depth" in state:
+            depth_error = abs(state["depth"] - 2.0)  # target depth = 2.0 meters
+            reward -= depth_error * 0.5
 
-        # Total reward
-        reward = (
-            + speed_reward
-            - w_acc * acc_penalty
-            - w_orientation * orientation_penalty
-            - w_vibration * vibration_penalty
-        )
-
-        print(f"[REWARD] v_x={v_x:.2f}, speed_reward={speed_reward:.2f}, acc_penalty={acc_penalty:.2f}, "
-            f"orientation_penalty={orientation_penalty:.2f}, vib_penalty={vibration_penalty:.2f} → reward={reward:.2f}")
-        
         return reward
 
 
+    def state_to_index(self, state):
+        pitch = round(state.get("pitch", 0.0), 1)
+        roll = round(state.get("roll", 0.0), 1)
+        vib = round(state.get("vibration", 0.0), 1)
+        return hash((pitch, roll, vib)) % 10000
 
     def is_terminal(self, state):
-        depth = state.get("depth", 0.0)
-        desired_speed = state.get("desired_speed", 0.0)
+        return abs(state.get("pitch", 0.0)) > 1.0 or abs(state.get("roll", 0.0)) > 1.0
 
-        if depth < -0.5 or depth > 10.0:
-            print("[TERMINAL] Unsafe depth limit reached.")
-            return True
-
-        if abs(depth - 1.0) < 0.05 and abs(desired_speed) < 0.05:
-            print("[TERMINAL] Target depth reached and stable.")
-            return True
-
-        return False
-
-    async def close(self):
-        await self.session.close()

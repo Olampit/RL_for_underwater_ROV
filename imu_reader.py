@@ -1,4 +1,4 @@
-#imu_reader.property
+#imu_reader.py
 from pymavlink import mavutil
 import threading
 import traceback
@@ -33,7 +33,7 @@ def start_imu_listener(connection, latest_imu):
                     continue
 
                 msg_type = msg.get_type()
-                print(f"[IMU] Received: {msg_type}")
+                #print(f"[IMU] Received: {msg_type}")
 
                 try:
                     if msg_type == 'RAW_IMU':

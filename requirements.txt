@@ -1,0 +1,4 @@
+numpy
+asyncio
+pymavlink
+pickle
