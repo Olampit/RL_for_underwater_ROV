@@ -1,4 +1,5 @@
 #environment.py
+
 from pymavlink import mavutil
 import numpy as np
 
@@ -29,17 +30,17 @@ class ROVEnvironment:
                 self.connection.target_component,
                 mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
                 0,
-                i + 1,  # servo number (assuming servo 1–8 map to motor1–motor8)
+                i + 1,
                 pwm,
                 0, 0, 0, 0, 0
             )
         print(f"[ACTION] Sent: {action}")
 
     def get_state(self):
-        imu = self.latest_imu  # shortcut
+        imu = self.latest_imu
         state = {}
 
-        # Get pitch, roll, yaw from AHRS2 if available
+        # Orientation
         if "AHRS2" in imu:
             state.update({
                 "pitch": imu["AHRS2"].get("pitch", 0.0),
@@ -47,51 +48,55 @@ class ROVEnvironment:
                 "yaw": imu["AHRS2"].get("yaw", 0.0)
             })
 
-        # Vibration as norm
+        # Vibration
         if "VIBRATION" in imu:
             v = imu["VIBRATION"]
-            state["vibration"] = np.linalg.norm([v.get("vibration_x", 0.0),
-                                                 v.get("vibration_y", 0.0),
-                                                 v.get("vibration_z", 0.0)])
+            state["vibration"] = np.linalg.norm([
+                v.get("vibration_x", 0.0),
+                v.get("vibration_y", 0.0),
+                v.get("vibration_z", 0.0)
+            ])
 
-        # Accel norm from IMU_COMBINED if available
+        # Acceleration
         if "IMU_COMBINED" in imu:
             acc = imu["IMU_COMBINED"]
-            state["accel"] = np.linalg.norm([acc["acc_x"], acc["acc_y"], acc["acc_z"]])
+            state["accel"] = np.linalg.norm([
+                acc.get("acc_x", 0.0),
+                acc.get("acc_y", 0.0),
+                acc.get("acc_z", 0.0)
+            ])
+
+        # Velocity from Odometry
+        if "ODOMETRY" in imu and "velocity" in imu["ODOMETRY"]:
+            vel = imu["ODOMETRY"]["velocity"]
+            state.update({
+                "vel_x": vel.get("x", 0.0),
+                "vel_y": vel.get("y", 0.0),
+                "vel_z": vel.get("z", 0.0)
+            })
 
         return state
 
     def compute_reward(self, state):
-        reward = 0.0
+        vel_x = state.get("vel_x", 0.0)
+        vel_y = state.get("vel_y", 0.0)
+        vel_z = state.get("vel_z", 0.0)
 
-        # Orientation stability
-        pitch = state.get("pitch", 0.0)
-        roll = state.get("roll", 0.0)
-        reward -= abs(pitch) * 0.6
-        reward -= abs(roll) * 0.6
+        # Scale for small ROV speeds
+        forward = vel_x * 5.0           # Boost the impact of forward velocity (assuming < 0.5 m/s)
+        lateral = -abs(vel_y) * 3.0     # Strong penalty for sideways movement
+        vertical = -abs(vel_z) * 2.0    # Moderate penalty for vertical drift
 
-        # Vibration penalty
-        vibration = state.get("vibration", 0.0)
-        reward -= vibration * 0.1
+        reward = forward + lateral + vertical
 
-        # Smooth acceleration
-        accel = state.get("accel", 0.0)
-        reward += max(0.0, 1.0 - abs(accel - 9.8)) * 0.2  # reward for being close to gravity
-
-        # Depth goal
-        if "depth" in state:
-            depth_error = abs(state["depth"] - 2.0)  # target depth = 2.0 meters
-            reward -= depth_error * 0.5
-
+        # Optional: Clip extreme values (in case of spikes)
+        reward = max(-10.0, min(10.0, reward))
         return reward
 
 
     def state_to_index(self, state):
-        pitch = round(state.get("pitch", 0.0), 1)
-        roll = round(state.get("roll", 0.0), 1)
-        vib = round(state.get("vibration", 0.0), 1)
-        return hash((pitch, roll, vib)) % 10000
+        return tuple(round(state.get(k, 0.0), 1) for k in ["pitch", "roll", "vibration", "vel_x", "vel_y", "vel_z"])
+
 
     def is_terminal(self, state):
         return abs(state.get("pitch", 0.0)) > 1.0 or abs(state.get("roll", 0.0)) > 1.0
-
