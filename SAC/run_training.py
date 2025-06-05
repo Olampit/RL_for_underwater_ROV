@@ -1,18 +1,36 @@
 # run_training_sac.py
-"""Soft Actor‑Critic training loop for the 8‑motor ROV.
+"""Soft Actor-Critic training loop for the 8-motor ROV (GUI-ready).
 
-This script:
-1. Opens a MAVLink UDP connection to the simulator/hardware.
-2. Starts the IMU/Odometry listener threads (unchanged from imu_reader.py).
-3. Wraps the existing ROVEnvironment in a Gym‑style interface (ROVEnvGymWrapper).
-4. Trains a PyTorch SACAgent with continuous 8‑dimensional actions in [‑1, 1].
-5. Saves the learned actor network and a PDF of reward curves.
+This version exposes **train(**kwargs) so it can be called from a tkinter GUI or
+from the CLI. All hyper-parameters are configurable through keyword arguments
+and sensible defaults are provided.
 
-Requirements (install if missing):
-    pip install torch gym matplotlib numpy
+Key kwargs (all optional):
+    episodes            (int)   - number of training episodes (default 1000)
+    max_steps           (int)   - max steps per episode (default 300)
+    batch_size          (int)   - mini-batch size for the SAC update (256)
+    start_steps         (int)   - purely random steps before updates (5000)
+    update_every        (int)   - update frequency in env steps (1)
+    reward_scale        (float) - multiplier applied before storing in buffer
+    learning_rate       (float) - Adam LR for both actor & critic (3e-4)
+    gamma               (float) - discount factor (0.99)
+    tau                 (float) - target-net soft update (0.005)
+    mavlink_endpoint    (str)   - MAVLink URL ("udp:127.0.0.1:14550")
+    device              (str)   - "cpu", "cuda" or None to auto-select
+    progress_callback   (callable | None)
+                                A function called after every episode with
+                                signature cb(episode_idx:int, total:int, reward:float)
+
+The script can still be run directly:
+    python run_training_sac.py --episodes 300 --max_steps 200
 """
 
+from __future__ import annotations
+
+import argparse
 import time
+from typing import Callable, Optional, Dict, Any
+
 import random
 import numpy as np
 import torch
@@ -27,6 +45,9 @@ from environment import ROVEnvironment
 from rov_env_gym import ROVEnvGymWrapper
 from sac.sac_agent import SACAgent
 
+# -----------------------------------------------------------------------------
+# Utility
+# -----------------------------------------------------------------------------
 
 def wait_for_heartbeat(conn, timeout: int = 30):
     print("[WAIT] Waiting for MAVLink heartbeat…")
@@ -35,92 +56,99 @@ def wait_for_heartbeat(conn, timeout: int = 30):
 
 
 def make_env(connection, latest_imu):
-    """Instantiate low‑level ROVEnvironment and wrap it with Gym adapter."""
-    # action_map unused by SAC path ‑ pass empty list
+    """Instantiate low-level ROVEnvironment and wrap it with Gym adapter."""
     rov_env = ROVEnvironment(action_map=[], connection=connection, latest_imu=latest_imu)
     return ROVEnvGymWrapper(rov_env)
 
 
-def train():
-    # --- 1. Connect to MAVLink ‑ adjust the endpoint if needed
-    conn = mavutil.mavlink_connection("udp:127.0.0.1:14550")
+# -----------------------------------------------------------------------------
+# Main train() callable
+# -----------------------------------------------------------------------------
+
+def train(
+    *,
+    episodes: int = 1000,
+    max_steps: int = 300,
+    batch_size: int = 256,
+    start_steps: int = 5000,
+    update_every: int = 1,
+    reward_scale: float = 1.0,
+    learning_rate: float = 3e-4,
+    gamma: float = 0.99,
+    tau: float = 0.005,
+    mavlink_endpoint: str = "udp:127.0.0.1:14550",
+    device: Optional[str] = None,
+    progress_callback: Optional[Callable[[int, int, float], None]] = None,
+) -> Dict[str, Any]:
+    """Train SAC on the ROV and return a stats dictionary."""
+
+    conn = mavutil.mavlink_connection(mavlink_endpoint)
     wait_for_heartbeat(conn)
 
-    # --- 2. Shared IMU dictionary populated by background threads
-    latest_imu = {}
+    latest_imu: Dict[str, Any] = {}
     start_imu_listener(conn, latest_imu)
-
-    # Let sensors accumulate a little data
-    print("[INIT] Waiting 2 s for IMU/Odometry data …")
+    print("[INIT] Waiting 2 s for IMU/Odometry data …")
     time.sleep(2)
 
-    # --- 3. Env + agent
     env = make_env(conn, latest_imu)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
     agent = SACAgent(
         state_dim=env.observation_space.shape[0],
         action_dim=env.action_space.shape[0],
         device=device,
+        gamma=gamma,
+        tau=tau,
+        alpha=0.2,
     )
 
-    # --- 4. Hyper‑parameters
-    EPISODES = 1000
-    MAX_STEPS = 300          # per episode
-    BATCH_SIZE = 256
-    START_STEPS = 5_000      # purely random actions before learning
-    UPDATE_EVERY = 1         # train every step after buffer warm‑up
-    GAMMA = 0.99
-    REWARD_SCALE = 1.0
+    for opt in (agent.actor_opt, agent.critic_opt):
+        for param_group in opt.param_groups:
+            param_group["lr"] = learning_rate
 
-    # Tracking
-    episode_rewards = []
-
+    episode_rewards: list[float] = []
     total_steps = 0
-    for ep in range(1, EPISODES + 1):
+
+    for ep in range(1, episodes + 1):
         obs = env.reset()
         ep_reward = 0.0
-        
-        for step in range(1, MAX_STEPS + 1):
-            # --- Select action
-            if total_steps < START_STEPS:
+
+        for step in range(1, max_steps + 1):
+            if total_steps < start_steps:
                 action = env.action_space.sample()
             else:
                 action = agent.select_action(obs)
 
-            # --- Execute
             next_obs, reward, done, _ = env.step(action)
-
-            # --- Store in replay buffer
-            agent.replay_buffer.push(obs, action, reward * REWARD_SCALE, next_obs, done)
+            agent.replay_buffer.push(obs, action, reward * reward_scale, next_obs, done)
 
             obs = next_obs
             ep_reward += reward
             total_steps += 1
 
-            # --- Update agent
-            if total_steps >= START_STEPS and total_steps % UPDATE_EVERY == 0:
-                agent.update(batch_size=BATCH_SIZE)
+            if total_steps >= start_steps and total_steps % update_every == 0:
+                agent.update(batch_size=batch_size)
 
             if done:
-                print(f"[EP {ep:03d}] Done at step {step} | Reward={ep_reward:.2f}")
                 break
 
         episode_rewards.append(ep_reward)
 
-        # Safety: stop all motors between episodes
         env.rov.stop_motors(conn)
-        time.sleep(0.5)
+        time.sleep(0.2)
 
-        # Simple progress print
         if ep % 10 == 0:
             avg = np.mean(episode_rewards[-10:])
-            print(f"[INFO] Episode {ep}, 10‑ep avg reward = {avg:.2f}")
+            print(f"[INFO] Episode {ep}, 10-ep avg reward = {avg:.2f}")
 
-    # --- 5. Save results
+        if progress_callback is not None:
+            progress_callback(ep, episodes, ep_reward)
+
     torch.save(agent.actor.state_dict(), "sac_actor.pth")
     print("[SAVE] Actor network saved to sac_actor.pth")
 
-    # Plot rewards
     plt.figure(figsize=(10, 4))
     plt.title("Episode Reward")
     plt.xlabel("Episode")
@@ -130,9 +158,33 @@ def train():
     plt.savefig("sac_training_rewards.pdf")
     print("[DONE] Training curve saved to sac_training_rewards.pdf")
 
+    return {
+        "episode_rewards": episode_rewards,
+        "total_steps": total_steps,
+        "model_path": "sac_actor.pth",
+        "plot_path": "sac_training_rewards.pdf",
+    }
+
+
+# -----------------------------------------------------------------------------
+# CLI entry point
+# -----------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Train SAC for ROV control")
+    parser.add_argument("--episodes", type=int, default=1000)
+    parser.add_argument("--max_steps", type=int, default=300)
+    parser.add_argument("--learning_rate", type=float, default=3e-4)
+    parser.add_argument("--mavlink", type=str, default="udp:127.0.0.1:14550")
+    args = parser.parse_args()
+
     random.seed(0)
     np.random.seed(0)
     torch.manual_seed(0)
-    train()
+
+    train(
+        episodes=args.episodes,
+        max_steps=args.max_steps,
+        learning_rate=args.learning_rate,
+        mavlink_endpoint=args.mavlink,
+    )

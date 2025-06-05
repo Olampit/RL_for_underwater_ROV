@@ -41,7 +41,7 @@ RL/
 - A Q-table maps (state, action) pairs to expected rewards.
 - Epsilon-greedy exploration balances learning and exploitation.
 
-Goal: Reach and stabilize at a target depth using only discretized sensor and motor data.
+Goal: go forward at certain depth
 
 Limitations:
 - Poor scalability to complex or continuous environments
@@ -85,27 +85,27 @@ Requirements:
 - pymavlink
 - matplotlib
 - rclpy
-- aiohttp (for Q-learning API interface)
 
 ## How to Train and Evaluate
 
 ### Q-Learning:
 ```bash
-cd q_learning
+cd Q_learning
 ./run.sh          # Launches training
-python run_policy.py   # Runs the trained Q-policy
+# the run_policy.py file was bugged and as such has been removed for now
 ```
 
 ### SAC:
 ```bash
-cd sac
-python run_training_sac.py    # Starts SAC training
-python run_policy.py          # Runs the trained SAC actor
+cd SAC
+./run.sh    # Starts SAC training
+python3 run_policy.py          # Runs the trained SAC actor
 ```
 
 ## Output Files
 
 - `q_table.pkl`: Q-table (Q-learning)
+- `training_summary.pdf`: Learning curve
 - `sac_actor.pth`: Actor model (SAC)
 - `sac_training_rewards.pdf`: Learning curve
 

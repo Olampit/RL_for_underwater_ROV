@@ -131,9 +131,9 @@ def start_imu_listener(connection, latest_imu):
                     }
 
                     # Print every Nth callback
-                    self.odom_count += 1
-                    if self.odom_count % self.print_every == 0:
-                        print(f"[ODOM] Velocity: {velocity_mag:.2f} m/s | Avg: {average_velocity:.2f} m/s")
+                    #self.odom_count += 1
+                    #if self.odom_count % self.print_every == 0:
+                    #    print(f"[ODOM] Velocity: {velocity_mag:.2f} m/s | Avg: {average_velocity:.2f} m/s")
 
             node = OdomListener()
             #print("test2")

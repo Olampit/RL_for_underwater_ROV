@@ -2,6 +2,6 @@
 
 echo "[INFO] Launching reinforcement learning training..."
 
-python3 run_training.py
+python3 gui_launcher.py
 
 echo "[INFO] Training complete."
