@@ -70,7 +70,7 @@ def train(
     episodes: int = 1000,
     max_steps: int = 300,
     batch_size: int = 256,
-    start_steps: int = 5000,
+    start_steps: int = 15000,
     update_every: int = 1,
     reward_scale: float = 1.0,
     learning_rate: float = 3e-4,

@@ -40,8 +40,8 @@ class RLGui:
         ttk.Combobox(root, textvariable=self.agent_type, values=["sac", "q_learning"]).grid(row=0, column=1)
 
         # Parameters
-        self.episodes_var = tk.IntVar(value=200)
-        self.max_steps_var = tk.IntVar(value=300)
+        self.episodes_var = tk.IntVar(value=300)
+        self.max_steps_var = tk.IntVar(value=500)
         self.lr_var = tk.DoubleVar(value=3e-4)
 
         ttk.Label(root, text="Episodes:").grid(row=1, column=0, sticky="w")
