@@ -2,6 +2,8 @@
 
 from pymavlink import mavutil
 import numpy as np
+import time
+import subprocess
 
 SERVO_MIN = 1100
 SERVO_MAX = 1900
@@ -74,24 +76,88 @@ class ROVEnvironment:
                 "vel_y": vel.get("y", 0.0),
                 "vel_z": vel.get("z", 0.0)
             })
-
+            
+        if "ODOMETRY" in imu and "position" in imu["ODOMETRY"]:
+            pos = imu["ODOMETRY"]["position"]
+            state.update({
+                "pos_x": pos.get("x", 0.0),
+                "pos_y": pos.get("y", 0.0),
+                "pos_z": pos.get("z", 0.0)
+            })
         return state
 
+    def reset(self):
+        # appeler le script reset
+        subprocess.run(["./reset_rov.sh"])
+        return self.get_state()
+
+
+    def stop_motors(self, connection):
+        for servo in range(1, 9):
+            connection.mav.command_long_send(
+                connection.target_system,
+                connection.target_component,
+                mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
+                0,
+                servo,
+                1500,
+                0, 0, 0, 0, 0
+            )
+
+
+
     def compute_reward(self, state):
+        self.target_depth = 10.0
+        self.target_yaw = 0.0
+
         vel_x = state.get("vel_x", 0.0)
         vel_y = state.get("vel_y", 0.0)
         vel_z = state.get("vel_z", 0.0)
 
-        # Scale for small ROV speeds
-        forward = vel_x * 5.0           # Boost the impact of forward velocity (assuming < 0.5 m/s)
-        lateral = -abs(vel_y) * 3.0     # Strong penalty for sideways movement
-        vertical = -abs(vel_z) * 2.0    # Moderate penalty for vertical drift
+        z = state.get("pos_z", 0.0)
+        depth_error = abs(z - self.target_depth)
 
-        reward = forward + lateral + vertical
+        yaw = state.get("yaw", 0.0)
+        yaw_error = abs(yaw - self.target_yaw)
 
-        # Optional: Clip extreme values (in case of spikes)
-        reward = max(-10.0, min(10.0, reward))
+        # --- Directional reward: is depth error improving?
+        prev_error = getattr(self, "prev_depth_error", None)
+        if prev_error is not None:
+            depth_delta = prev_error - depth_error
+            depth_improvement_reward = max(depth_delta, 0) * 5.0  # only reward improvement
+        else:
+            depth_improvement_reward = 0.0
+        self.prev_depth_error = depth_error
+
+        # --- Core reward components
+        forward_reward = max(vel_x, 0) / 0.5 * 3.0  # reward more clearly for forward movement
+        lateral_penalty = abs(vel_y) / 0.3 * 0.5    # reduce penalty weight
+        vertical_penalty = abs(vel_z) / 0.3 * 0.5   # discourage wild depth oscillation
+
+        # Cap depth penalty to avoid harsh punishment
+        capped_depth_error = min(depth_error, 5.0)
+        depth_penalty = (capped_depth_error / 2.0) * 0.5  # reduce penalty strength
+
+        yaw_penalty = yaw_error / 30.0  # if yaw is in degrees, normalize over 30° range
+
+        base_reward = 0.5  # reduce base so reward is more dependent on action
+        reward = (
+            base_reward
+            + forward_reward
+            - lateral_penalty
+            - vertical_penalty
+            - depth_penalty
+            - yaw_penalty
+            + depth_improvement_reward
+        )
+
+        # Bonus for staying close to target depth
+        if depth_error < 0.5 and abs(yaw_error) < 10:
+            reward += 3.0  # reduce bonus to prevent overpowering signal
+
         return reward
+
+
 
 
     def state_to_index(self, state):

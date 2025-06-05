@@ -41,6 +41,9 @@ def train():
     env = ROVEnvironment(action_map=action_map, connection=connection, latest_imu=latest_imu)
     agent = QLearningAgent(action_size=len(action_map))
 
+    print("reset")
+    env.stop_motors(connection)
+    env.reset()
     print("[TRAIN] Starting training...")
 
     step_rewards = []
@@ -59,7 +62,7 @@ def train():
 
     step_counter = 0
 
-    for episode in range(6000):
+    for episode in range(600000):
         print(f"\n[EPISODE {episode + 1}]")
 
         state = env.get_state()
@@ -73,7 +76,7 @@ def train():
             
             
             
-            time.sleep(2)
+            time.sleep(0.1)
 
             next_state = env.get_state()
             next_state_idx = env.state_to_index(next_state)
@@ -120,6 +123,9 @@ def train():
         plt.pause(0.001)
 
         print(f"[EP {episode}] Total Reward: {episode_reward:.2f}")
+        
+        env.stop_motors(connection)
+        env.reset()
 
     # Save learned Q-table
     with open("q_table.pkl", "wb") as f:
