@@ -1,93 +1,118 @@
-# README
-## Reinforcement Learning for Underwater ROVs
+# Reinforcement Learning for Underwater ROVs
 
-This repository containss the code developed during my internship at the Centre de Recherche sur les Communications (CRC) in Sophia-Antipolis, focused on applying Reinforcement Learning (RL) to control an underwater Remotely Operated Vehicle (ROV) using real sensor data and simulated feedback.
+This repository contains the code developed during my internship at the Centre de Recherche sur les Communications (CRC) in Sophia-Antipolis. The project explores how Reinforcement Learning (RL) can be applied to low-level motor control for an underwater Remotely Operated Vehicle (ROV), using real sensor input and MAVLink-based actuation.
 
+## Project Structure
 
-## Project structure : 
+```
+RL/
+├── q_learning/
+│   ├── run_training.py         # Q-learning training loop
+│   ├── run_policy.py           # Runs a learned Q-learning policy
+│   ├── q_agent.py              # Discrete Q-learning agent
+│   ├── environment.py          # Environment interface (Q-learning version)
+│   ├── imu_reader.py           # Sensor listener (shared)
+│   ├── state_server.py         # API-based state interface (Q-learning specific)
+│   ├── executor.py             # Command sender via MAVLink (Q-learning specific)
+│   └── q_table.pkl             # Saved Q-table
+│
+├── sac/
+│   ├── run_training_sac.py     # SAC training loop
+│   ├── run_policy.py           # Runs a learned SAC policy
+│   ├── rov_env_gym.py          # Gym wrapper for the ROV environment
+│   ├── sac_agent.py            # SAC coordination logic
+│   ├── networks.py             # Actor and Critic networks
+│   ├── replay_buffer.py        # Experience replay buffer
+│   ├── environment.py          # Environment interface (SAC version)
+│   ├── imu_reader.py           # Sensor listener (shared)
+│   ├── sac_actor.pth           # Saved SAC policy
+│   └── sac_training_rewards.pdf # Training curve
+│
+├── README.md                   # Project overview
+└── run.sh                      # Setup and Q-learning launcher
+```
 
-RL/<br />
-├── run.sh               # Script to set up the virtual environment and launch training<br />
-├── imu_reader.py        # Reads IMU data (accelerometer, gyroscope, magnetometer)<br />
-├── executor.py          # Reads ROV state via HTTP and sends motor PWM commands via MAVLink<br />
-├── state_server.py      # aiohttp server: receives and returns state information for the agent<br />
-├── q_agent.py           # Q-learning agent implementation<br />
-├── environment.py       # Async environment wrapper interfacing agent and ROV<br />
-├── run_training.py      # Main training loop for the RL agent<br />
-├── run_policy.py        # Applies the learned policy on the physical ROV<br />
-└── mavlink/             # Directory for MAVLink setup and virtual environment<br />
-    └── venv/            # Python virtual environment<br />
+## Learning Methods
 
+### Q-Learning (Tabular)
 
+- Uses discrete states created by binning sensor values (e.g., pitch, roll, velocity).
+- Actions consist of 8 motor thrust combinations, discretized into a small set (e.g., [-1, 0, 1]).
+- A Q-table maps (state, action) pairs to expected rewards.
+- Epsilon-greedy exploration balances learning and exploitation.
 
-## Description
+Goal: Reach and stabilize at a target depth using only discretized sensor and motor data.
 
-This project explores online reinforcement learning for low-level motor control of an underwater robot. The agent interacts with its environment via an API that mirrors ROV dynamics and sends real commands to the robot using the MAVLink protocol.
+Limitations:
+- Poor scalability to complex or continuous environments
+- High variance depending on initial action samples
 
-Key goals:
+### Soft Actor-Critic (SAC)
 
-    Apply Q-learning to a real robotic system.
+- Uses continuous action control: each of the 8 motors receives a float in [-1.0, 1.0].
+- SAC is a modern off-policy algorithm using stochastic policies and entropy maximization.
+- All components are implemented in PyTorch.
+- The environment is wrapped to comply with the OpenAI Gym API.
 
-    Experiment with reward shaping and state discretization.
+Advantages:
+- Better generalization across continuous action spaces
+- Smoother and more adaptive behaviors
+- Sample-efficient updates using replay buffer
 
-    Integrate real-time pressure and IMU sensor data into the learning loop. Maybe DVL-based data as well.
+## Sensor Integration
 
-    Create a reusable and modular Python interface for ROV training and deployment.
+The ROV's state is estimated using the following inputs:
+- IMU: Acceleration, gyroscope, magnetometer (via MAVLink)
+- AHRS2: Orientation (pitch, roll, yaw)
+- Odometry: Position and velocity (via ROS2 /nav_msgs/Odometry)
 
-    Apply more advanced algorithms to get better results. 
+These are combined in a shared `latest_imu` dictionary used by both Q-learning and SAC agents.
 
+## Dependencies
 
+Install dependencies using:
 
-
-
-
-## Dependencies : 
-
-To run this project, make sure to install the following Python packages (you can use requirements.txt or a virtual environment):
-
-    numpy
-
-    aiohttp
-
-    asyncio
-
-    pymavlink
-
-    pickle
-
-Some modules like random and time are part of the Python standard library.
-
-You can set up your environment with:
-
+```bash
 python3 -m venv mavlink/venv
 source mavlink/venv/bin/activate
-pip install -r requirements.txt 
+pip install -r requirements.txt
+```
 
+Requirements:
+- numpy
+- torch
+- gym
+- pymavlink
+- matplotlib
+- rclpy
+- aiohttp (for Q-learning API interface)
 
-## How to Run
+## How to Train and Evaluate
 
-To train the agent:
-./run.sh
+### Q-Learning:
+```bash
+cd q_learning
+./run.sh          # Launches training
+python run_policy.py   # Runs the trained Q-policy
+```
 
+### SAC:
+```bash
+cd sac
+python run_training_sac.py    # Starts SAC training
+python run_policy.py          # Runs the trained SAC actor
+```
 
-## Current Learning Method
+## Output Files
 
-This project uses a simple Q-learning algorithm with epsilon-greedy exploration. The environment is discrete and defined by state bins derived from depth, pressure, and other sensor inputs. The agent’s goal is to reach and maintain a stable target depth.
-
-Upcoming extensions could include:
-
-    Support for continuous state-action spaces via Deep Q-Networks (DQN)
-
-    Improved reward functions based on sensor fusion
-
-    Sim-to-real transfer learning using synthetic data
+- `q_table.pkl`: Q-table (Q-learning)
+- `sac_actor.pth`: Actor model (SAC)
+- `sac_training_rewards.pdf`: Learning curve
 
 ## Collaborators
 
-This project was made possible with guidance and support from:
+This work was completed under the guidance of:
 
-    Sébastien Travadel
-
-    Luca Istrate
-
-    Aymeric Cardot
+- Sébastien Travadel
+- Luca Istrate
+- Aymeric Cardot
