@@ -1,4 +1,4 @@
-#run_training.py
+# run_training.py
 from q_agent import QLearningAgent
 from environment import ROVEnvironment
 from imu_reader import start_imu_listener
@@ -7,17 +7,17 @@ import pickle
 import itertools
 import random
 import time
+
+import matplotlib
+matplotlib.use('Agg')  # Headless backend for safe plotting
 import matplotlib.pyplot as plt
+
 
 def sample_action_space(num_actions=32):
     motor_levels = [-1.0, 0.0, 1.0]
     all_combos = list(itertools.product(motor_levels, repeat=8))
     sampled_combos = random.sample(all_combos, num_actions)
-
-    actions = []
-    for combo in sampled_combos:
-        action = {f"motor{i+1}": combo[i] for i in range(8)}
-        actions.append(action)
+    actions = [{f"motor{i+1}": combo[i] for i in range(8)} for combo in sampled_combos]
     return actions
 
 def wait_for_heartbeat(conn, timeout=30):
@@ -26,7 +26,6 @@ def wait_for_heartbeat(conn, timeout=30):
     print(f"[INFO] Connected to system {conn.target_system}, component {conn.target_component}")
 
 def train():
-    # Setup MAVLink connection
     connection = mavutil.mavlink_connection('udp:127.0.0.1:14550')
     wait_for_heartbeat(connection)
 
@@ -41,41 +40,26 @@ def train():
     env = ROVEnvironment(action_map=action_map, connection=connection, latest_imu=latest_imu)
     agent = QLearningAgent(action_size=len(action_map))
 
-    print("reset")
+    print("[RESET] Stopping and resetting ROV")
     env.stop_motors(connection)
-    env.reset()
+    state = env.reset()
     print("[TRAIN] Starting training...")
 
     step_rewards = []
     episode_rewards = []
+    episode_distances = []
 
-    # Setup matplotlib live plots
-    plt.ion()
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
-    ax1.set_title("Step Rewards (all episodes)")
-    ax1.set_xlabel("Step")
-    ax1.set_ylabel("Reward")
-
-    ax2.set_title("Episode Rewards")
-    ax2.set_xlabel("Episode")
-    ax2.set_ylabel("Total Reward")
-
-    step_counter = 0
-
-    for episode in range(600000):
-        print(f"\n[EPISODE {episode + 1}]")
-
-        state = env.get_state()
+    for episode in range(6000):
+        env.stop_motors(connection)
+        state = env.reset()
         state_idx = env.state_to_index(state)
-        
+
+        print(f"\n[EPISODE {episode + 1}]")
         episode_reward = 0
 
-        for step in range(10):
+        for step in range(100):
             action_idx = agent.choose_action(state_idx)
             env.apply_action(action_idx)
-            
-            
-            
             time.sleep(0.1)
 
             next_state = env.get_state()
@@ -86,20 +70,8 @@ def train():
 
             episode_reward += reward
             step_rewards.append(reward)
-            
+
             print(f"[STEP {step:02d}] Reward: {reward:.2f} | Pitch: {next_state.get('pitch', 0.0):.2f} | Roll: {next_state.get('roll', 0.0):.2f}")
-
-            # Live update plot
-            ax1.plot(step_rewards, color='blue')
-            ax1.relim()
-            ax1.autoscale_view()
-
-            plt.pause(0.0001)
-            ax1.cla()
-            ax1.set_title("Step Rewards (all episodes)")
-            ax1.set_xlabel("Step")
-            ax1.set_ylabel("Reward")
-            ax1.plot(step_rewards, color='blue')
 
             state_idx = next_state_idx
 
@@ -108,35 +80,36 @@ def train():
                 break
 
         episode_rewards.append(episode_reward)
-
-        # Update episode plot
-        ax2.plot(episode_rewards, color='green')
-        ax2.relim()
-        ax2.autoscale_view()
-
-        ax2.cla()
-        ax2.set_title("Episode Rewards")
-        ax2.set_xlabel("Episode")
-        ax2.set_ylabel("Total Reward")
-        ax2.plot(episode_rewards, color='green')
-
-        plt.pause(0.001)
+        final_state = env.get_state()
+        dx = env.total_distance(final_state)
+        episode_distances.append(dx)
 
         print(f"[EP {episode}] Total Reward: {episode_reward:.2f}")
-        
-        env.stop_motors(connection)
-        env.reset()
 
-    # Save learned Q-table
+    # Save Q-table
     with open("q_table.pkl", "wb") as f:
         pickle.dump(agent.q_table, f)
     print("[SAVE] Q-table saved to q_table.pkl")
 
-    # Keep final plot on screen
-    plt.savefig("current.pdf")
-    plt.ioff()
-    plt.show()
+    # Plot results once at the end
+    print("[PLOT] Saving final training plots...")
+    plt.figure(figsize=(12, 5))
+
+    plt.subplot(1, 2, 1)
+    plt.title("Step Rewards (Last 500)")
+    plt.xlabel("Step")
+    plt.ylabel("Reward")
+    plt.plot(step_rewards[-500:], color='blue')
+
+    plt.subplot(1, 2, 2)
+    plt.title("Distance from Spawn (X)")
+    plt.xlabel("Episode")
+    plt.ylabel("Distance (m)")
+    plt.plot(episode_distances, color='green')
+
+    plt.tight_layout()
+    plt.savefig("training_summary.pdf")
+    print("[DONE] Plot saved to training_summary.pdf")
 
 if __name__ == "__main__":
     train()
-
