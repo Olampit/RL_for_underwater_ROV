@@ -38,6 +38,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from pymavlink import mavutil
+import os
+import pickle
 
 # Local imports
 from imu_reader import start_imu_listener
@@ -61,26 +63,64 @@ def make_env(connection, latest_imu):
     return ROVEnvGymWrapper(rov_env)
 
 
+def save_checkpoint(agent, total_steps, episode_rewards, filename="sac_checkpoint.pt"):
+    print(f"[SAVE] Saving checkpoint at step {total_steps}...")
+    torch.save({
+        'actor': agent.actor.state_dict(),
+        'critic': agent.critic.state_dict(),
+        'actor_opt': agent.actor_opt.state_dict(),
+        'critic_opt': agent.critic_opt.state_dict(),
+        'replay_buffer': agent.replay_buffer,
+        'step': total_steps,
+        'rewards': episode_rewards,
+    }, filename)
+    
+    
+def load_checkpoint(agent, filename="sac_checkpoint.pt"):
+    if not os.path.exists(filename):
+        return 0, []
+
+    print("[LOAD] Loading checkpoint…")
+    checkpoint = torch.load(filename, map_location=agent.device)
+    agent.actor.load_state_dict(checkpoint['actor'])
+    agent.critic.load_state_dict(checkpoint['critic'])
+    agent.actor_opt.load_state_dict(checkpoint['actor_opt'])
+    agent.critic_opt.load_state_dict(checkpoint['critic_opt'])
+    agent.replay_buffer = checkpoint['replay_buffer']
+    return checkpoint['step'], checkpoint['rewards']
+
 # -----------------------------------------------------------------------------
 # Main train() callable
 # -----------------------------------------------------------------------------
 
 def train(
     *,
-    episodes: int = 1000,
-    max_steps: int = 300,
+    episodes: int = 500,
+    max_steps: int = 1000,
     batch_size: int = 256,
-    start_steps: int = 15000,
+    start_steps: int = 1500,
     update_every: int = 1,
     reward_scale: float = 1.0,
-    learning_rate: float = 3e-4,
+    learning_rate: float = 1e-4,
     gamma: float = 0.99,
     tau: float = 0.005,
     mavlink_endpoint: str = "udp:127.0.0.1:14550",
     device: Optional[str] = None,
     progress_callback: Optional[Callable[[int, int, float], None]] = None,
+    resume: bool = False,
+    checkpoint_every: int = 10000,
 ) -> Dict[str, Any]:
+
     """Train SAC on the ROV and return a stats dictionary."""
+    
+    if resume:
+        total_steps, episode_rewards = load_checkpoint(agent)
+        start_ep = len(episode_rewards) + 1
+    else:
+        episode_rewards = []
+        total_steps = 0
+        start_ep = 1
+
 
     conn = mavutil.mavlink_connection(mavlink_endpoint)
     wait_for_heartbeat(conn)
@@ -133,11 +173,16 @@ def train(
 
             if done:
                 break
+            
+            if total_steps > 0 and total_steps % checkpoint_every == 0:
+                save_checkpoint(agent, total_steps, episode_rewards)
+            
+            time.sleep(0.1)
+
 
         episode_rewards.append(ep_reward)
 
         env.rov.stop_motors(conn)
-        time.sleep(0.2)
 
         if ep % 10 == 0:
             avg = np.mean(episode_rewards[-10:])
@@ -145,6 +190,10 @@ def train(
 
         if progress_callback is not None:
             progress_callback(ep, episodes, ep_reward)
+    
+    save_checkpoint(agent, total_steps, episode_rewards)
+    torch.save(agent.actor.state_dict(), "sac_actor.pth")
+
 
     torch.save(agent.actor.state_dict(), "sac_actor.pth")
     print("[SAVE] Actor network saved to sac_actor.pth")

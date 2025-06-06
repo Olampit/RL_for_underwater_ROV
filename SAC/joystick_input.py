@@ -12,14 +12,17 @@ class FakeJoystick:
         vx = 0.3  # constant forward movement
         vy = 0.0
         vz = 0.0
-        depth = 10.0 + np.sin(self.t) * 1.0  # oscillates between 9 and 11 meters
-        yaw_rate = 0.0  # you can oscillate yaw later
+        yaw_rate = 0.0  
+        pitch_rate = 0.0
+        roll_rate = 0.0
 
         self.t += self.dt
         return {
             "vx": vx,
             "vy": vy,
             "vz": vz,
-            "depth": depth,
-            "yaw_rate": yaw_rate
+            "yaw_rate": yaw_rate,
+            "pitch_rate": pitch_rate,
+            "roll_rate": roll_rate
+
         }

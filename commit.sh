@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "with SAC, working : $count"
+git commit --author="Olampit <olampit@gmail.com>" -m "position finder test : $count"
 git push -u origin main
 
 # Increment and save back

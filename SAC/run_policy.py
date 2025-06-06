@@ -32,7 +32,7 @@ def run():
     agent.actor.eval()
 
     obs = env.reset()
-    for step in range(3000):  # One test episode
+    for step in range(1000):  # One test episode
         action = agent.select_action(obs, deterministic=True)
         obs, reward, done, _ = env.step(action)
         print(f"[STEP {step}] Reward: {reward:.2f}")

@@ -10,27 +10,12 @@ from nav_msgs.msg import Odometry
 import numpy as np
 
 # Messages we are interested in from MAVLink
-imu_types = ['RAW_IMU', 'AHRS2', 'VIBRATION']
+imu_types = ['ATTITUDE', 'VIBRATION']
 
 def start_imu_listener(connection, latest_imu):
     def imu_loop():
         try:
             print("[IMU] Starting MAVLink listener thread...")
-
-            def update_imu_combined():
-                raw = latest_imu.get("RAW_IMU", {})
-                combined = {
-                    "acc_x": raw.get("acc_x", 0.0),
-                    "acc_y": raw.get("acc_y", 0.0),
-                    "acc_z": raw.get("acc_z", 0.0),
-                    "gyro_x": raw.get("gyro_x", 0.0),
-                    "gyro_y": raw.get("gyro_y", 0.0),
-                    "gyro_z": raw.get("gyro_z", 0.0),
-                    "mag_x": raw.get("mag_x", 0.0),
-                    "mag_y": raw.get("mag_y", 0.0),
-                    "mag_z": raw.get("mag_z", 0.0),
-                }
-                latest_imu["IMU_COMBINED"] = combined
 
             while True:
                 msg = connection.recv_match(type=imu_types, blocking=True, timeout=5)
@@ -40,27 +25,16 @@ def start_imu_listener(connection, latest_imu):
 
                 msg_type = msg.get_type()
                 try:
-                    if msg_type == 'RAW_IMU':
-                        latest_imu["RAW_IMU"] = {
-                            "acc_x": getattr(msg, 'xacc', 0.0) / 1000.0,
-                            "acc_y": getattr(msg, 'yacc', 0.0) / 1000.0,
-                            "acc_z": getattr(msg, 'zacc', 0.0) / 1000.0,
-                            "gyro_x": getattr(msg, 'xgyro', 0.0) / 1000.0,
-                            "gyro_y": getattr(msg, 'ygyro', 0.0) / 1000.0,
-                            "gyro_z": getattr(msg, 'zgyro', 0.0) / 1000.0,
-                            "mag_x": getattr(msg, 'xmag', 0.0),
-                            "mag_y": getattr(msg, 'ymag', 0.0),
-                            "mag_z": getattr(msg, 'zmag', 0.0),
-                        }
-                        update_imu_combined()
-                        latest_imu["imu_ready"] = True
-
-                    elif msg_type == 'AHRS2':
-                        latest_imu["AHRS2"] = {
-                            "roll": getattr(msg, 'roll', 0.0),
+                    if msg_type == 'ATTITUDE': 
+                        latest_imu["ATTITUDE"] = {
                             "pitch": getattr(msg, 'pitch', 0.0),
+                            "pitchspeed": getattr(msg, 'pitchspeed', 0.0),
+                            "roll": getattr(msg, 'roll', 0.0),
+                            "rollspeed": getattr(msg, 'rollspeed', 0.0),
                             "yaw": getattr(msg, 'yaw', 0.0),
+                            "yawspeed": getattr(msg, 'yawspeed', 0.0),
                         }
+                                                
 
                     elif msg_type == 'VIBRATION':
                         latest_imu["VIBRATION"] = {

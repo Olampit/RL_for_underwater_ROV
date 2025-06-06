@@ -5,6 +5,8 @@ import numpy as np
 import time
 import subprocess
 from joystick_input import FakeJoystick
+import math
+import random
 
 SERVO_MIN = 1100
 SERVO_MAX = 1900
@@ -45,13 +47,19 @@ class ROVEnvironment:
         imu = self.latest_imu
         state = {}
 
-        # Orientation
-        if "AHRS2" in imu:
+
+        # ATTITUDE
+        if "ATTITUDE" in imu:
+            a = imu["ATTITUDE"]
             state.update({
-                "pitch": imu["AHRS2"].get("pitch", 0.0),
-                "roll": imu["AHRS2"].get("roll", 0.0),
-                "yaw": imu["AHRS2"].get("yaw", 0.0)
+                "pitch" : a.get("pitch", 0.0),
+                "pitchspeed" :a.get("pitchspeed",0.0),
+                "yaw" : a.get("yaw", 0.0),
+                "yawspeed" : a.get("yawspeed", 0.0),
+                "roll" : a.get("roll", 0.0),
+                "rollspeed" : a.get("rollspeed",0.0)
             })
+
 
         # Vibration
         if "VIBRATION" in imu:
@@ -62,14 +70,6 @@ class ROVEnvironment:
                 v.get("vibration_z", 0.0)
             ])
 
-        # Acceleration
-        if "IMU_COMBINED" in imu:
-            acc = imu["IMU_COMBINED"]
-            state["accel"] = np.linalg.norm([
-                acc.get("acc_x", 0.0),
-                acc.get("acc_y", 0.0),
-                acc.get("acc_z", 0.0)
-            ])
 
         # Velocity from Odometry
         if "ODOMETRY" in imu and "velocity" in imu["ODOMETRY"]:
@@ -87,12 +87,86 @@ class ROVEnvironment:
                 "pos_y": pos.get("y", 0.0),
                 "pos_z": pos.get("z", 0.0)
             })
+
+
+        MAX_POS = 100.0   # assume ROV won't be outside [-100, 100]
+        MAX_VEL = 1.0     # assume velocities stay under +/- 1 m/s
+        MAX_ANGLE = np.pi  # roll/pitch/yaw in radians
+        MAX_YAW_speed = 2.0  # rad/s is a safe ceiling for spin rate
+
+
+
+        state.update({
+            "norm_pos_x": np.clip(state.get("pos_x", 0.0) / MAX_POS, -1.0, 1.0),
+            "norm_pos_y": np.clip(state.get("pos_y", 0.0) / MAX_POS, -1.0, 1.0),
+            "norm_pos_z": np.clip(state.get("pos_z", 0.0) / MAX_POS, -1.0, 1.0),
+
+            "norm_vel_x": np.clip(state.get("vel_x", 0.0) / MAX_VEL, -1.0, 1.0),
+            "norm_vel_y": np.clip(state.get("vel_y", 0.0) / MAX_VEL, -1.0, 1.0),
+            "norm_vel_z": np.clip(state.get("vel_z", 0.0) / MAX_VEL, -1.0, 1.0),
+
+            "norm_pitch": np.clip(state.get("pitch", 0.0) / MAX_ANGLE, -1.0, 1.0),
+            "norm_roll": np.clip(state.get("roll", 0.0) / MAX_ANGLE, -1.0, 1.0),
+            "norm_yaw": np.clip(state.get("yaw", 0.0) / MAX_ANGLE, -1.0, 1.0),
+
+
+            "norm_yaw_speed": np.clip(state.get("yaw_speed", 0.0) / MAX_YAW_speed, -1.0, 1.0),
+            "norm_roll_speed": np.clip(state.get("roll_speed", 0.0) / MAX_YAW_speed, -1.0, 1.0),
+            "norm_pitch_speed": np.clip(state.get("pitch_speed", 0.0) / MAX_YAW_speed, -1.0, 1.0)
+
+        })
+
         return state
 
+    def random_orientation_quat(max_angle_deg=15):
+        max_angle_rad = math.radians(max_angle_deg)
+        roll = random.uniform(-max_angle_rad, max_angle_rad)
+        pitch = random.uniform(-max_angle_rad, max_angle_rad)
+        yaw = random.uniform(-math.pi, math.pi) 
+
+        cy = math.cos(yaw * 0.5)
+        sy = math.sin(yaw * 0.5)
+        cp = math.cos(pitch * 0.5)
+        sp = math.sin(pitch * 0.5)
+        cr = math.cos(roll * 0.5)
+        sr = math.sin(roll * 0.5)
+
+        return {
+            "x": sr * cp * cy - cr * sp * sy,
+            "y": cr * sp * cy + sr * cp * sy,
+            "z": cr * cp * sy - sr * sp * cy,
+            "w": cr * cp * cy + sr * sp * sy,
+        }
+
     def reset(self):
-        # appeler le script reset
-        subprocess.run(["./reset_rov.sh"])
+        # Random small variation in spawn position 
+        px = round(random.uniform(-1.0, 1.0), 2)
+        py = round(random.uniform(49.0, 51.0), 2)
+        pz = round(random.uniform(9.5, 10.5), 2)
+
+        # Random orientation
+        quat = random_orientation_quat(max_angle_deg=15)
+        qx, qy, qz, qw = quat["x"], quat["y"], quat["z"], quat["w"]
+
+        cmd = [
+            "ros2", "service", "call",
+            "/stonefish_ros2/respawn_robot",
+            "stonefish_ros2/srv/Respawn",
+            f"""{{name: 'bluerov',
+            origin: {{
+                position: {{x: {px}, y: {py}, z: {pz}}},
+                orientation: {{x: {qx:.6f}, y: {qy:.6f}, z: {qz:.6f}, w: {qw:.6f}}}
+            }}}}"""
+        ]
+
+        print(f"[RESET] Respawning ROV at pos=({px:.2f}, {py:.2f}, {pz:.2f}) with random orientation. : x: {qx:.6f}, y: {qy:.6f}, z: {qz:.6f}, w: {qw:.6f}")
+        subprocess.run(cmd)
+
+        self.no_progress_steps = 0
+        self.prev_distance = float("inf")
+
         return self.get_state()
+
 
 
     def stop_motors(self, connection):
@@ -113,53 +187,53 @@ class ROVEnvironment:
         return abs(x)
 
 
-
-
     def compute_reward(self, state):
-        # Update target velocity from joystick
-        self.target_velocity = self.joystick.get_target()
+        self.goal = self.joystick.get_target()
 
-        # Actual state
+        # Actual velocities
         vx = state.get("vel_x", 0.0)
         vy = state.get("vel_y", 0.0)
         vz = state.get("vel_z", 0.0)
-        z = state.get("pos_z", 0.0)
-        yaw_rate = state.get("yaw_rate", 0.0)  # add this to your state if not yet
-        yaw = state.get("yaw", 0.0)
 
-        # Target state
-        vx_tgt = self.target_velocity["vx"]
-        vy_tgt = self.target_velocity["vy"]
-        vz_tgt = self.target_velocity["vz"]
-        depth_tgt = self.target_velocity["depth"]
-        yaw_rate_tgt = self.target_velocity["yaw_rate"]
+        # Angular velocities
+        yaw_rate = state.get("yawspeed", 0.0)
+        pitch_rate = state.get("pitchspeed", 0.0)
+        roll_rate = state.get("rollspeed", 0.0)
 
-        # Errors
-        vel_error = ((vx - vx_tgt) ** 2 + (vy - vy_tgt) ** 2 + (vz - vz_tgt) ** 2)
-        depth_error = abs(z - depth_tgt)
-        yaw_rate_error = abs(yaw_rate - yaw_rate_tgt)
+        # Target velocity
+        vx_target = self.goal.get("vx", 0.0)
+        vy_target = self.goal.get("vy", 0.0)
+        vz_target = self.goal.get("vz", 0.0)
 
-        # Reward terms
-        forward_reward = max(vx, 0) * 5.0                   # strongly encourage forward motion
-        vel_penalty = - vel_error * 3.0                     # punish deviation from target velocity
-        depth_penalty = - min(depth_error, 5.0) * 2.0       # punish deviation from target depth
-        yaw_spin_penalty = - abs(yaw_rate) * 2.0            # discourage spinning
-        yaw_error_penalty = - abs(yaw) * 0.1                # penalize yaw drift (optional)
+        # --- Velocity error
+        err_vx = abs(vx - vx_target)
+        err_vy = abs(vy - vy_target)
+        err_vz = abs(vz - vz_target)
 
-        # Bonus if agent is close to ideal behavior
-        bonus = 0.0
-        if vel_error < 0.01 and depth_error < 0.2 and abs(yaw_rate) < 0.1:
-            bonus += 2.0
+        # === Dynamic blending weight ===
+        # More instability = more weight on stabilization
+        angular_energy = abs(yaw_rate) + abs(pitch_rate) + abs(roll_rate)
+        stab_weight = min(1.0, angular_energy / 1.5)  # blend up to full at ~1.5 rad/s total
 
-        # Total reward
-        reward = (
-            forward_reward
-            + vel_penalty
-            + depth_penalty
-            + yaw_spin_penalty
-            + yaw_error_penalty
-            + bonus
+        # === Velocity reward (encourage forward motion)
+        vel_reward = (
+            max(1.0 - err_vx / 0.3, 0.0) * 5.0 +
+            max(1.0 - err_vy / 0.3, 0.0) * 2.0 +
+            max(1.0 - err_vz / 0.3, 0.0) * 2.0
         )
+
+        # === Stability reward (encourage zero angular velocity)
+        stab_reward = - min(abs(yaw_rate), 2.0) * 1.0 - min(abs(pitch_rate), 2.0) * 1.0 - min(abs(roll_rate), 2.0) * 1.0
+
+        # === Combined
+        reward = (
+            (1.0 - stab_weight) * vel_reward +
+            stab_weight * stab_reward
+        )
+
+        # === Bonus if stable and accurate
+        if err_vx < 0.05 and err_vy < 0.05 and err_vz < 0.05 and angular_energy < 0.1:
+            reward += 3.0
 
         return reward
 
@@ -169,12 +243,17 @@ class ROVEnvironment:
 
 
 
-
     def state_to_index(self, state):
-        keys = ["pitch", "roll", "vibration", "vel_x", "vel_y", "vel_z", "pos_x"]
-        return tuple(round(state.get(k, 0.0), 0) for k in keys)
+        keys = ["norm_pitch_speed", "norm_roll_speed", "norm_yaw_speed", "norm_vel_x", "norm_vel_y", "norm_vel_z"]
+        return tuple(round(state.get(k, 0.0), 2) for k in keys)
+
 
 
 
     def is_terminal(self, state):
-        return abs(state.get("pitch", 0.0)) > 1.0 or abs(state.get("roll", 0.0)) > 1.0
+        
+        if abs(state.get("pitch", 0.0)) > 1.0 or abs(state.get("roll", 0.0)) > 1.0:
+            return True
+        
+        return False
+
