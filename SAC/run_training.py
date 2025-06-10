@@ -89,16 +89,33 @@ def load_checkpoint(agent, filename="sac_checkpoint.pt"):
     agent.replay_buffer = checkpoint['replay_buffer']
     return checkpoint['step'], checkpoint['rewards']
 
+
+def prefill_replay_buffer(env, agent, steps=50000, reward_scale=1.0):
+    obs = env.reset()
+    for _ in range(steps):
+        action = env.action_space.sample()
+        next_obs, _, done, _ = env.step(action)
+        current_state = env.rov.get_state()
+        reward_components = env.rov.compute_reward(current_state)
+        reward = reward_components["total"]
+        agent.replay_buffer.push(obs, action, reward * reward_scale, next_obs, done)
+        obs = next_obs
+        if done:
+            obs = env.reset()
+
+
+
+
 # -----------------------------------------------------------------------------
 # Main train() callable
 # -----------------------------------------------------------------------------
 
 def train(
     *,
-    episodes: int = 500,
-    max_steps: int = 1000,
+    episodes: int = 5000,
+    max_steps: int = 10,
     batch_size: int = 256,
-    start_steps: int = 1500,
+    start_steps: int = 3000,
     update_every: int = 1,
     reward_scale: float = 1.0,
     learning_rate: float = 1e-4,
@@ -108,20 +125,10 @@ def train(
     device: Optional[str] = None,
     progress_callback: Optional[Callable[[int, int, float], None]] = None,
     resume: bool = False,
-    checkpoint_every: int = 10000,
+    checkpoint_every: int = 1000,
 ) -> Dict[str, Any]:
 
-    """Train SAC on the ROV and return a stats dictionary."""
-    
-    if resume:
-        total_steps, episode_rewards = load_checkpoint(agent)
-        start_ep = len(episode_rewards) + 1
-    else:
-        episode_rewards = []
-        total_steps = 0
-        start_ep = 1
-
-
+    # Setup
     conn = mavutil.mavlink_connection(mavlink_endpoint)
     wait_for_heartbeat(conn)
 
@@ -148,10 +155,29 @@ def train(
         for param_group in opt.param_groups:
             param_group["lr"] = learning_rate
 
-    episode_rewards: list[float] = []
-    total_steps = 0
+    # Load or prefill replay buffer
+    buffer_path = "replay_buffer.pkl"
+    prefill_steps = 50_000
 
-    for ep in range(1, episodes + 1):
+    if os.path.exists(buffer_path):
+        agent.replay_buffer.load(buffer_path)
+    else:
+        print(f"[INFO] Prefilling replay buffer with {prefill_steps} random steps...")
+        prefill_replay_buffer(env, agent, steps=prefill_steps, reward_scale=reward_scale)
+        agent.replay_buffer.save(buffer_path)
+
+    # Load checkpoint if resuming
+    if resume:
+        total_steps, episode_rewards = load_checkpoint(agent)
+        start_ep = len(episode_rewards) + 1
+    else:
+        episode_rewards = []
+        total_steps = 0
+        start_ep = 1
+
+    env.episode_states = []
+
+    for ep in range(start_ep, episodes + 1):
         obs = env.reset()
         ep_reward = 0.0
 
@@ -161,7 +187,11 @@ def train(
             else:
                 action = agent.select_action(obs)
 
-            next_obs, reward, done, _ = env.step(action)
+            next_obs, _, done, _ = env.step(action)
+            current_state = env.rov.get_state()
+            reward_components = env.rov.compute_reward(current_state)
+            reward = reward_components["total"]
+
             agent.replay_buffer.push(obs, action, reward * reward_scale, next_obs, done)
 
             obs = next_obs
@@ -173,28 +203,48 @@ def train(
 
             if done:
                 break
-            
+
             if total_steps > 0 and total_steps % checkpoint_every == 0:
                 save_checkpoint(agent, total_steps, episode_rewards)
-            
+
             time.sleep(0.1)
 
-
         episode_rewards.append(ep_reward)
-
         env.rov.stop_motors(conn)
+        env.episode_states.append(env.__getstate__())
 
         if ep % 10 == 0:
             avg = np.mean(episode_rewards[-10:])
             print(f"[INFO] Episode {ep}, 10-ep avg reward = {avg:.2f}")
 
-        if progress_callback is not None:
-            progress_callback(ep, episodes, ep_reward)
-    
-    save_checkpoint(agent, total_steps, episode_rewards)
-    torch.save(agent.actor.state_dict(), "sac_actor.pth")
+        if progress_callback is not None and step % 5 == 0:
+            target = env.rov.joystick.get_target()
+            metrics = {
+                "vx": float(current_state.get("vel_x", 0.0)),
+                "vx_target": float(target.get("vx", 0.0)),
+                "yaw_rate": float(current_state.get("yaw_speed", 0.0)),
+                "yaw_target": float(target.get("yaw_rate", 0.0)),
+                "forward": reward_components["forward"],
+                "sideways": reward_components["sideways"],
+                "upward": reward_components["upward"],
+                "stability": reward_components["stability"],
+                "bonus": reward_components["bonus"],
+            }
+            progress_callback(ep, episodes, float(ep_reward), metrics)
 
+        # Save model every 10 episodes
+        if ep % 10 == 0:
+            torch.save({
+                'actor': agent.actor.state_dict(),
+                'critic': agent.critic.state_dict(),
+                'actor_opt': agent.actor_opt.state_dict(),
+                'critic_opt': agent.critic_opt.state_dict(),
+                'replay_buffer': agent.replay_buffer,
+                'step': total_steps,
+                'rewards': episode_rewards,
+            }, f"sac_actor_ep{ep:04d}_step{total_steps}.pth")
 
+    # Final save
     torch.save(agent.actor.state_dict(), "sac_actor.pth")
     print("[SAVE] Actor network saved to sac_actor.pth")
 
@@ -213,6 +263,7 @@ def train(
         "model_path": "sac_actor.pth",
         "plot_path": "sac_training_rewards.pdf",
     }
+
 
 
 # -----------------------------------------------------------------------------

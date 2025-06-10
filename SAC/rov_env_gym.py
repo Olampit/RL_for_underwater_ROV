@@ -23,6 +23,7 @@ class ROVEnvGymWrapper(gym.Env):
         obs = self._state_to_obs(next_state_dict)
         return obs, reward, done, {}
 
+    
     def _apply_action_continuous(self, action):
         for i in range(8):
             thrust = float(np.clip(action[i], -1.0, 1.0))

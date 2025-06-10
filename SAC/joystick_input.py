@@ -1,28 +1,31 @@
-# joystick_input.py
-
-import numpy as np
-
 class FakeJoystick:
     def __init__(self):
-        self.t = 0.0
-        self.dt = 0.1
+        self.episode = 0
+        self.goal = self._generate_goal()
+
+    def _generate_goal(self):
+        """Generate a target velocity based on the current episode number."""
+        # Simple curriculum: every 100 episodes increases complexity
+        if self.episode < 100:
+            return {"vx": 0.3, "vy": 0.0, "vz": 0.0, "yaw_rate": 0.0, "pitch_rate": 0.0, "roll_rate": 0.0}
+        elif self.episode < 200:
+            return {"vx": 0.3, "vy": 0.0, "vz": 0.0, "yaw_rate": 0.0, "pitch_rate": 0.0, "roll_rate": 0.0}
+        else:
+            return {"vx": 0.3, "vy": 0.0, "vz": 0.0, "yaw_rate": 0.0, "pitch_rate": 0.0, "roll_rate": 0.0}
+        #else:
+        #    # Randomized 3D command (bounded)
+        #    return {
+        #        "vx": np.random.uniform(0.1, 0.3),
+        #        "vy": np.random.uniform(-0.1, 0.1),
+        #        "vz": np.random.uniform(-0.1, 0.1),
+        #        "yaw_rate": np.random.uniform(-0.2, 0.2),
+        #        "pitch_rate": 0.0,
+        #        "roll_rate": 0.0
+        #    }
+
+    def next_episode(self):
+        self.episode += 1
+        self.goal = self._generate_goal()
 
     def get_target(self):
-        # Simple sinusoidal depth oscillation and constant forward velocity
-        vx = 0.3  # constant forward movement
-        vy = 0.0
-        vz = 0.0
-        yaw_rate = 0.0  
-        pitch_rate = 0.0
-        roll_rate = 0.0
-
-        self.t += self.dt
-        return {
-            "vx": vx,
-            "vy": vy,
-            "vz": vz,
-            "yaw_rate": yaw_rate,
-            "pitch_rate": pitch_rate,
-            "roll_rate": roll_rate
-
-        }
+        return self.goal

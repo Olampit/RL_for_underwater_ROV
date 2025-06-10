@@ -53,11 +53,11 @@ class ROVEnvironment:
             a = imu["ATTITUDE"]
             state.update({
                 "pitch" : a.get("pitch", 0.0),
-                "pitchspeed" :a.get("pitchspeed",0.0),
+                "pitch_speed" :a.get("pitchspeed",0.0),
                 "yaw" : a.get("yaw", 0.0),
-                "yawspeed" : a.get("yawspeed", 0.0),
+                "yaw_speed" : a.get("yawspeed", 0.0),
                 "roll" : a.get("roll", 0.0),
-                "rollspeed" : a.get("rollspeed",0.0)
+                "roll_speed" : a.get("rollspeed",0.0)
             })
 
 
@@ -118,7 +118,7 @@ class ROVEnvironment:
 
         return state
 
-    def random_orientation_quat(max_angle_deg=15):
+    def random_orientation_quat(self, max_angle_deg=15):
         max_angle_rad = math.radians(max_angle_deg)
         roll = random.uniform(-max_angle_rad, max_angle_rad)
         pitch = random.uniform(-max_angle_rad, max_angle_rad)
@@ -143,9 +143,11 @@ class ROVEnvironment:
         px = round(random.uniform(-1.0, 1.0), 2)
         py = round(random.uniform(49.0, 51.0), 2)
         pz = round(random.uniform(9.5, 10.5), 2)
+        
+        
 
         # Random orientation
-        quat = random_orientation_quat(max_angle_deg=15)
+        quat = self.random_orientation_quat(max_angle_deg=15)
         qx, qy, qz, qw = quat["x"], quat["y"], quat["z"], quat["w"]
 
         cmd = [
@@ -162,8 +164,8 @@ class ROVEnvironment:
         print(f"[RESET] Respawning ROV at pos=({px:.2f}, {py:.2f}, {pz:.2f}) with random orientation. : x: {qx:.6f}, y: {qy:.6f}, z: {qz:.6f}, w: {qw:.6f}")
         subprocess.run(cmd)
 
-        self.no_progress_steps = 0
-        self.prev_distance = float("inf")
+        
+        self.joystick.next_episode()
 
         return self.get_state()
 
@@ -184,59 +186,49 @@ class ROVEnvironment:
     
     def total_distance(self, state):
         x = state.get("pos_x", 0.0)
-        return abs(x)
+        return x**2
 
 
     def compute_reward(self, state):
         self.goal = self.joystick.get_target()
 
-        # Actual velocities
-        vx = state.get("vel_x", 0.0)
-        vy = state.get("vel_y", 0.0)
-        vz = state.get("vel_z", 0.0)
+        # Normalized state
+        vx = state.get("norm_vel_x", 0.0)
+        vy = state.get("norm_vel_y", 0.0)
+        vz = state.get("norm_vel_z", 0.0)
+        yaw_rate = state.get("norm_yaw_speed", 0.0)
+        pitch_rate = state.get("norm_pitch_speed", 0.0)
+        roll_rate = state.get("norm_roll_speed", 0.0)
 
-        # Angular velocities
-        yaw_rate = state.get("yawspeed", 0.0)
-        pitch_rate = state.get("pitchspeed", 0.0)
-        roll_rate = state.get("rollspeed", 0.0)
+        # Normalize target velocity
+        MAX_VEL = 1.0
+        vx_target = np.clip(self.goal.get("vx", 0.0) / MAX_VEL, -1.0, 1.0)
+        vy_target = np.clip(self.goal.get("vy", 0.0) / MAX_VEL, -1.0, 1.0)
+        vz_target = np.clip(self.goal.get("vz", 0.0) / MAX_VEL, -1.0, 1.0)
 
-        # Target velocity
-        vx_target = self.goal.get("vx", 0.0)
-        vy_target = self.goal.get("vy", 0.0)
-        vz_target = self.goal.get("vz", 0.0)
+        # Errors
+        err_vx = (vx - vx_target) ** 2
+        err_vy = (vy - vy_target) ** 2
+        err_vz = (vz - vz_target) ** 2
+        angular_energy = yaw_rate**2 + pitch_rate**2 + roll_rate**2
 
-        # --- Velocity error
-        err_vx = abs(vx - vx_target)
-        err_vy = abs(vy - vy_target)
-        err_vz = abs(vz - vz_target)
+        # Components
+        forward = max(1 - err_vx, 0.0) * 1.0
+        sideways = -err_vy * 100.0
+        upward = -err_vz * 100.0
+        stability = -angular_energy * 10.0
+        bonus = 0.0 if err_vx < 0.001 and err_vy < 0.001 and err_vz < 0.001 and angular_energy < 0.005 else 0.0
 
-        # === Dynamic blending weight ===
-        # More instability = more weight on stabilization
-        angular_energy = abs(yaw_rate) + abs(pitch_rate) + abs(roll_rate)
-        stab_weight = min(1.0, angular_energy / 1.5)  # blend up to full at ~1.5 rad/s total
+        total = forward + sideways + upward + stability + bonus
 
-        # === Velocity reward (encourage forward motion)
-        vel_reward = (
-            max(1.0 - err_vx / 0.3, 0.0) * 5.0 +
-            max(1.0 - err_vy / 0.3, 0.0) * 2.0 +
-            max(1.0 - err_vz / 0.3, 0.0) * 2.0
-        )
-
-        # === Stability reward (encourage zero angular velocity)
-        stab_reward = - min(abs(yaw_rate), 2.0) * 1.0 - min(abs(pitch_rate), 2.0) * 1.0 - min(abs(roll_rate), 2.0) * 1.0
-
-        # === Combined
-        reward = (
-            (1.0 - stab_weight) * vel_reward +
-            stab_weight * stab_reward
-        )
-
-        # === Bonus if stable and accurate
-        if err_vx < 0.05 and err_vy < 0.05 and err_vz < 0.05 and angular_energy < 0.1:
-            reward += 3.0
-
-        return reward
-
+        return {
+            "total": total,
+            "forward": forward,
+            "sideways": sideways,
+            "upward": upward,
+            "stability": stability,
+            "bonus": bonus
+        }
 
 
 

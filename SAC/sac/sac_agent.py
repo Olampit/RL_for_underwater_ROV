@@ -20,7 +20,7 @@ class SACAgent:
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=3e-4)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=3e-4)
 
-        self.replay_buffer = ReplayBuffer()
+        self.replay_buffer = ReplayBuffer(5000)
 
     def select_action(self, state, deterministic=False):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
