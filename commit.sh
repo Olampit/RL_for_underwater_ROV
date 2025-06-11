@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "working version they said, it will be fun they said (issue with motors that are NOT receiving commands) : $count"
+git commit --author="Olampit <olampit@gmail.com>" -m "working version with correct GUI and layers: $count"
 git push -u origin main
 
 # Increment and save back

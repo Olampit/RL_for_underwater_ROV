@@ -35,7 +35,6 @@ def run():
     for step in range(1000):  # One test episode
         action = agent.select_action(obs, deterministic=True)
         obs, reward, done, _ = env.step(action)
-        print(f"[STEP {step}] Reward: {reward:.2f}")
         time.sleep(0.1)
         if done:
             break
