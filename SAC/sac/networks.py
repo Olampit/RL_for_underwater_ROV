@@ -40,13 +40,6 @@ class Actor(nn.Module):
         log_prob -= torch.log(1 - action.pow(2) + 1e-6).sum(-1, keepdim=True)
         return action, log_prob
 
-
-
-
-
-
-
-
 class Critic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()

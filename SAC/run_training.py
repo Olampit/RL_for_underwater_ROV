@@ -40,6 +40,8 @@ import matplotlib.pyplot as plt
 from pymavlink import mavutil
 import os
 import pickle
+import threading
+
 
 # Local imports
 from imu_reader import start_imu_listener
@@ -76,7 +78,7 @@ def save_checkpoint(agent, total_steps, episode_rewards, filename="sac_checkpoin
     }, filename)
     
     
-def load_checkpoint(agent, filename="sac_checkpoint.pt"):
+def load_checkpoint(agent, filename="save/sac_checkpoint.pt"):
     if not os.path.exists(filename):
         return 0, []
 
@@ -90,7 +92,7 @@ def load_checkpoint(agent, filename="sac_checkpoint.pt"):
     return checkpoint['step'], checkpoint['rewards']
 
 
-def prefill_replay_buffer(env, agent, steps=50000, reward_scale=1.0):
+def prefill_replay_buffer(env, agent, steps=50000, reward_scale=0.01):
     obs = env.reset()
     for _ in range(steps):
         action = env.action_space.sample()
@@ -115,10 +117,10 @@ def train(
     episodes: int = 5000,
     max_steps: int = 10,
     batch_size: int = 256,
-    start_steps: int = 3000,
+    start_steps: int = 0,
     update_every: int = 1,
-    reward_scale: float = 1.0,
-    learning_rate: float = 1e-4,
+    reward_scale: float = 1,
+    learning_rate: float = 3e-4,
     gamma: float = 0.99,
     tau: float = 0.005,
     mavlink_endpoint: str = "udp:127.0.0.1:14550",
@@ -126,18 +128,25 @@ def train(
     progress_callback: Optional[Callable[[int, int, float], None]] = None,
     resume: bool = False,
     checkpoint_every: int = 1000,
+    pause_flag: Optional[threading.Event] = None,
+    restart_flag: Optional[threading.Event] = None,
 ) -> Dict[str, Any]:
 
-    # Setup
+
+    critic_losses = []
+    actor_losses = []
+    entropies = []
+
+
     conn = mavutil.mavlink_connection(mavlink_endpoint)
     wait_for_heartbeat(conn)
-
     latest_imu: Dict[str, Any] = {}
     start_imu_listener(conn, latest_imu)
     print("[INIT] Waiting 2 s for IMU/Odometry data …")
     time.sleep(2)
 
     env = make_env(conn, latest_imu)
+    env.episode_states = []
 
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -155,9 +164,8 @@ def train(
         for param_group in opt.param_groups:
             param_group["lr"] = learning_rate
 
-    # Load or prefill replay buffer
     buffer_path = "replay_buffer.pkl"
-    prefill_steps = 50_000
+    prefill_steps = 250
 
     if os.path.exists(buffer_path):
         agent.replay_buffer.load(buffer_path)
@@ -166,7 +174,6 @@ def train(
         prefill_replay_buffer(env, agent, steps=prefill_steps, reward_scale=reward_scale)
         agent.replay_buffer.save(buffer_path)
 
-    # Load checkpoint if resuming
     if resume:
         total_steps, episode_rewards = load_checkpoint(agent)
         start_ep = len(episode_rewards) + 1
@@ -175,9 +182,20 @@ def train(
         total_steps = 0
         start_ep = 1
 
-    env.episode_states = []
+    ep = start_ep
+    while ep <= episodes:
+        if restart_flag and restart_flag.is_set():
+            print("[INFO] Restart flag set. Resetting episode counter.")
+            episode_rewards = []
+            total_steps = 0
+            ep = 1
+            restart_flag.clear()
 
-    for ep in range(start_ep, episodes + 1):
+        if pause_flag and pause_flag.is_set():
+            print("[PAUSED] Waiting to resume...")
+            while pause_flag.is_set():
+                time.sleep(0.5)
+
         obs = env.reset()
         ep_reward = 0.0
 
@@ -186,6 +204,8 @@ def train(
                 action = env.action_space.sample()
             else:
                 action = agent.select_action(obs)
+                print(f"[DEBUG] selected action: {action}")
+
 
             next_obs, _, done, _ = env.step(action)
             current_state = env.rov.get_state()
@@ -199,7 +219,11 @@ def train(
             total_steps += 1
 
             if total_steps >= start_steps and total_steps % update_every == 0:
-                agent.update(batch_size=batch_size)
+                critic_loss, actor_loss, entropy = agent.update(batch_size=batch_size)
+                critic_losses.append(critic_loss)
+                actor_losses.append(actor_loss)
+                entropies.append(entropy)
+
 
             if done:
                 break
@@ -211,7 +235,7 @@ def train(
 
         episode_rewards.append(ep_reward)
         env.rov.stop_motors(conn)
-        env.episode_states.append(env.__getstate__())
+        env.episode_states.append(env.rov.get_state())
 
         if ep % 10 == 0:
             avg = np.mean(episode_rewards[-10:])
@@ -222,17 +246,18 @@ def train(
             metrics = {
                 "vx": float(current_state.get("vel_x", 0.0)),
                 "vx_target": float(target.get("vx", 0.0)),
-                "yaw_rate": float(current_state.get("yaw_speed", 0.0)),
-                "yaw_target": float(target.get("yaw_rate", 0.0)),
-                "forward": reward_components["forward"],
-                "sideways": reward_components["sideways"],
-                "upward": reward_components["upward"],
-                "stability": reward_components["stability"],
+                "progress_reward": reward_components["progress_reward"],
+                "yaw_rate": reward_components["yaw_rate"],
+                "pitch_rate": reward_components["pitch_rate"],
+                "roll_rate": reward_components["roll_rate"],
                 "bonus": reward_components["bonus"],
+                "stability": reward_components["stability"],
+                "critic_loss" : critic_loss,
+                "actor_loss" : actor_loss,
+                "entropy" : entropy,
             }
             progress_callback(ep, episodes, float(ep_reward), metrics)
 
-        # Save model every 10 episodes
         if ep % 10 == 0:
             torch.save({
                 'actor': agent.actor.state_dict(),
@@ -242,9 +267,10 @@ def train(
                 'replay_buffer': agent.replay_buffer,
                 'step': total_steps,
                 'rewards': episode_rewards,
-            }, f"sac_actor_ep{ep:04d}_step{total_steps}.pth")
+            }, f"save/sac_actor_ep{ep:04d}_step{total_steps}.pth")
 
-    # Final save
+        ep += 1
+
     torch.save(agent.actor.state_dict(), "sac_actor.pth")
     print("[SAVE] Actor network saved to sac_actor.pth")
 

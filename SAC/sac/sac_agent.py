@@ -20,7 +20,7 @@ class SACAgent:
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=3e-4)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=3e-4)
 
-        self.replay_buffer = ReplayBuffer(5000)
+        self.replay_buffer = ReplayBuffer(100000)
 
     def select_action(self, state, deterministic=False):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
@@ -41,6 +41,9 @@ class SACAgent:
         reward = torch.FloatTensor(reward).to(self.device)
         next_state = torch.FloatTensor(next_state).to(self.device)
         done = torch.FloatTensor(done).to(self.device)
+        
+        reward = reward.unsqueeze(1)
+        done = done.unsqueeze(1)
 
         with torch.no_grad():
             next_action, next_log_prob = self.actor.sample(next_state)
@@ -63,3 +66,21 @@ class SACAgent:
 
         for target_param, param in zip(self.target_critic.parameters(), self.critic.parameters()):
             target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
+        
+        
+        entropy = -log_prob.mean().item()
+        critic_loss_value = critic_loss.item()
+        actor_loss_value = actor_loss.item()
+
+        return critic_loss_value, actor_loss_value, entropy
+    
+    
+    def sample(self, state):
+        mean, std = self(state)
+        normal = torch.distributions.Normal(mean, std)
+        x_t = normal.rsample()  # reparameterization trick
+        action = torch.tanh(x_t)
+        log_prob = normal.log_prob(x_t).sum(-1, keepdim=True)
+        # Correction for Tanh squashing
+        log_prob -= torch.log(1 - action.pow(2) + 1e-6).sum(-1, keepdim=True)
+        return action, log_prob
