@@ -8,7 +8,7 @@ from joystick_input import FakeJoystick
 import math
 import random
 
-from imu_reader import imu_history  # Assuming it's declared there
+from imu_reader import attitude_buffer, velocity_buffer
 
 
 SERVO_MIN = 1100
@@ -93,7 +93,7 @@ class ROVEnvironment:
                 "pos_z": pos.get("z", 0.0)
             })
 
-        att_seq = imu_history.get_all()
+        att_seq = attitude_buffer.get_all()
         if att_seq:
             yaw_rates = [abs(d["yawspeed"]) for _, d in att_seq if "yawspeed" in d]
             pitch_rates = [abs(d["pitchspeed"]) for _, d in att_seq if "pitchspeed" in d]
@@ -106,6 +106,24 @@ class ROVEnvironment:
             state["yaw_mean"] = np.mean(yaw_rates)
             state["pitch_mean"] = np.mean(pitch_rates)
             state["roll_mean"] = np.mean(roll_rates)
+
+        vel_seq = velocity_buffer.get_all()
+        if vel_seq:
+            vxs = [v["vx"] for _, v in vel_seq]
+            vys = [v["vy"] for _, v in vel_seq]
+            vzs = [v["vz"] for _, v in vel_seq]
+            mags = [v["mag"] for _, v in vel_seq]
+
+            state["vx_mean"] = np.mean(vxs)
+            state["vy_mean"] = np.mean(vys)
+            state["vz_mean"] = np.mean(vzs)
+
+            state["vx_var"] = np.var(vxs)
+            state["vy_var"] = np.var(vys)
+            state["vz_var"] = np.var(vzs)
+
+            state["vel_mag_avg"] = np.mean(mags)
+            state["vel_mag_var"] = np.var(mags)
 
 
         return state
@@ -155,6 +173,8 @@ class ROVEnvironment:
 
         print(f"[RESET] Respawning ROV at pos=({px:.2f}, {py:.2f}, {pz:.2f}) with random orientation. : x: {qx:.6f}, y: {qy:.6f}, z: {qz:.6f}, w: {qw:.6f}")
         subprocess.run(cmd)
+        
+        time.sleep(0.001)
 
         
         self.joystick.next_episode()
@@ -181,60 +201,62 @@ class ROVEnvironment:
         return x
 
 
-
     def compute_reward(self, state):
-        self.goal = self.joystick.get_target()
+        goal = self.joystick.get_target()
 
-        # Raw velocity
-        vx = state.get("vel_x", 0.0)
-        vy = state.get("vel_y", 0.0)
-        vz = state.get("vel_z", 0.0)
+        total_vel_error = 0.0
+        total_std_error = 0.0
 
-        # Target velocity
-        vx_target = self.goal.get("vx", 0.0)
-        vy_target = self.goal.get("vy", 0.0)
-        vz_target = self.goal.get("vz", 0.0)
+        # Linear velocities
+        for axis in ["vx", "vy", "vz"]:
+            mean_target = goal[axis]["mean"]
+            std_target = goal[axis]["std"]
 
-        # Error (L1 distance)
-        vel_error = abs(vx - vx_target) + abs(vy - vy_target) + abs(vz - vz_target)
+            mean = state.get(f"{axis}_mean", 0.0)
+            var = state.get(f"{axis}_var", 0.0)
+            std = np.sqrt(var)
 
-        # Angular stability 
-        yaw_rate = abs(state.get("yaw_speed", 0.0))
-        pitch_rate = abs(state.get("pitch_speed", 0.0))
-        roll_rate = abs(state.get("roll_speed", 0.0))
-        angular_energy = yaw_rate + pitch_rate + roll_rate
-        
-        roll_var = state.get("roll_var", 0.0)
-        pitch_var = state.get("pitch_var", 0.0)
+            total_vel_error += abs(mean - mean_target)
+            total_std_error += abs(std - std_target)
+
+        # Angular rates
+        yaw_mean = abs(state.get("yaw_mean", 0.0))
+        pitch_mean = abs(state.get("pitch_mean", 0.0))
+        roll_mean = abs(state.get("roll_mean", 0.0))
+
         yaw_var = state.get("yaw_var", 0.0)
-        angular_energy_var = yaw_var + pitch_var + roll_var
-        
-        roll_mean = state.get("roll_mean", 0.0)
-        pitch_mean = state.get("pitch_mean", 0.0)
-        yaw_mean = state.get("yaw_mean", 0.0)
-        angular_energy_mean = yaw_mean + pitch_mean + roll_mean
+        pitch_var = state.get("pitch_var", 0.0)
+        roll_var = state.get("roll_var", 0.0)
 
-        # Reward shaping
-        progress_reward = -vel_error                # lower error = better
-        stability_penalty = - angular_energy_var
-        bonus = 5.0 if vel_error < 0.02 and angular_energy_var < 0.02 else 0.0
-        
-        
+        for axis, mean, var in [
+            ("yaw_rate", yaw_mean, yaw_var),
+            ("pitch_rate", pitch_mean, pitch_var),
+            ("roll_rate", roll_mean, roll_var),
+        ]:
+            mean_target = goal[axis]["mean"]
+            std_target = goal[axis]["std"]
+            std = np.sqrt(var)
 
+            total_vel_error += abs(mean - mean_target)
+            total_std_error += abs(std - std_target)
 
+        # Final reward terms
+        progress_reward = -total_vel_error
+        stability_reward = -total_std_error
 
-        # Total reward
-        total = 2.0 * progress_reward + 8.0 * stability_penalty + bonus  # weights here
+        bonus = 5.0 if total_vel_error < 0.05 and total_std_error < 0.05 else 0.0
+
+        total = 3.0 * progress_reward + 5.0 * stability_reward + bonus
 
         return {
             "total": total,
             "progress_reward": progress_reward,
-            "stability": stability_penalty,
+            "stability": stability_reward,  # same key as before
             "bonus": bonus,
-            "vel_error" : vel_error,
-            "yaw_rate" : yaw_rate,
-            "pitch_rate" : pitch_rate,
-            "roll_rate" : roll_rate
+            "vel_error": total_vel_error,
+            "yaw_rate": yaw_mean,
+            "pitch_rate": pitch_mean,
+            "roll_rate": roll_mean,
         }
 
 

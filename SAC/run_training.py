@@ -53,6 +53,8 @@ from sac.sac_agent import SACAgent
 # Utility
 # -----------------------------------------------------------------------------
 
+SPEED_UP=5
+
 def wait_for_heartbeat(conn, timeout: int = 30):
     print("[WAIT] Waiting for MAVLink heartbeat…")
     conn.wait_heartbeat(timeout=timeout)
@@ -92,8 +94,8 @@ def load_checkpoint(agent, filename="save/sac_checkpoint.pt"):
     return checkpoint['step'], checkpoint['rewards']
 
 
-def prefill_replay_buffer(env, agent, steps=50000, reward_scale=0.01):
-    obs = env.reset()
+def prefill_replay_buffer(env, agent, conn, steps=50000, reward_scale=0.01):
+    obs = env.reset(conn)
     for _ in range(steps):
         action = env.action_space.sample()
         next_obs, _, done, _ = env.step(action)
@@ -117,7 +119,7 @@ def train(
     episodes: int = 5000,
     max_steps: int = 10,
     batch_size: int = 256,
-    start_steps: int = 10000,
+    start_steps: int = 50000,
     update_every: int = 1,
     reward_scale: float = 1,
     learning_rate: float = 3e-4,
@@ -175,7 +177,7 @@ def train(
         agent.replay_buffer.load(buffer_path)
     else:
         print(f"[INFO] Prefilling replay buffer with {prefill_steps} random steps...")
-        prefill_replay_buffer(env, agent, steps=prefill_steps, reward_scale=reward_scale)
+        prefill_replay_buffer(env, agent, conn, steps=prefill_steps, reward_scale=reward_scale)
         agent.replay_buffer.save(buffer_path)
 
     if resume:
@@ -192,7 +194,7 @@ def train(
             print("[INFO] Restart flag set. Resetting episode counter.")
             episode_rewards = []
             total_steps = 0
-            ep = 1
+            ep = 0 #!1 ?
             restart_flag.clear()
 
         if pause_flag and pause_flag.is_set():
@@ -200,7 +202,7 @@ def train(
             while pause_flag.is_set():
                 time.sleep(0.5)
 
-        obs = env.reset()
+        obs = env.reset(conn)
         ep_reward = 0.0
 
         for step in range(1, max_steps + 1):
@@ -235,7 +237,7 @@ def train(
             if total_steps > 0 and total_steps % checkpoint_every == 0:
                 save_checkpoint(agent, total_steps, episode_rewards)
 
-            time.sleep(0.1)
+            time.sleep(0.01/SPEED_UP)####################################################
 
         episode_rewards.append(ep_reward)
         env.rov.stop_motors(conn)
@@ -247,20 +249,22 @@ def train(
 
         if progress_callback is not None and step % 5 == 0:
             target = env.rov.joystick.get_target()
+            
             metrics = {
                 "vx": float(current_state.get("vel_x", 0.0)),
-                "vx_target": float(target.get("vx", 0.0)),
+                "vx_target": float(target.get("vx", {}).get("mean", 0.0)),
                 "progress_reward": reward_components["progress_reward"],
                 "yaw_rate": reward_components["yaw_rate"],
                 "pitch_rate": reward_components["pitch_rate"],
                 "roll_rate": reward_components["roll_rate"],
                 "bonus": reward_components["bonus"],
                 "stability": reward_components["stability"],
-                "critic_loss" : critic_loss,
-                "actor_loss" : actor_loss,
-                "entropy" : entropy,
+                "critic_loss": critic_loss,
+                "actor_loss": actor_loss,
+                "entropy": entropy * 10,
             }
             progress_callback(ep, episodes, float(ep_reward), metrics)
+
 
         if ep % 10 == 0:
             torch.save({

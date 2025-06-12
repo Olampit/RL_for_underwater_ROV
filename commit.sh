@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "working version with imu_buffer (not tested): $count"
+git commit --author="Olampit <olampit@gmail.com>" -m "WITH STONEFISH ACCELERATED, WORKING: $count"
 git push -u origin main
 
 # Increment and save back

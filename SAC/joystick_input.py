@@ -1,27 +1,28 @@
+#joystick_input.py
+
+import numpy as np
+
 class FakeJoystick:
     def __init__(self):
         self.episode = 0
         self.goal = self._generate_goal()
 
     def _generate_goal(self):
-        """Generate a target velocity based on the current episode number."""
-        # Simple curriculum: every 100 episodes increases complexity
-        if self.episode < 100:
-            return {"vx": 0.3, "vy": 0.0, "vz": 0.0, "yaw_rate": 0.0, "pitch_rate": 0.0, "roll_rate": 0.0}
-        elif self.episode < 200:
-            return {"vx": 0.3, "vy": 0.0, "vz": 0.0, "yaw_rate": 0.0, "pitch_rate": 0.0, "roll_rate": 0.0}
-        else:
-            return {"vx": 0.3, "vy": 0.0, "vz": 0.0, "yaw_rate": 0.0, "pitch_rate": 0.0, "roll_rate": 0.0}
-        #else:
-        #    # Randomized 3D command (bounded)
-        #    return {
-        #        "vx": np.random.uniform(0.1, 0.3),
-        #        "vy": np.random.uniform(-0.1, 0.1),
-        #        "vz": np.random.uniform(-0.1, 0.1),
-        #        "yaw_rate": np.random.uniform(-0.2, 0.2),
-        #        "pitch_rate": 0.0,
-        #        "roll_rate": 0.0
-        #    }
+        base = {
+            "vx": {"mean": 0.3, "std": 0.02},
+            "vy": {"mean": 0.0, "std": 0.01},
+            "vz": {"mean": 0.0, "std": 0.01},
+            "yaw_rate": {"mean": 0.0, "std": 0.01},
+            "pitch_rate": {"mean": 0.0, "std": 0.01},
+            "roll_rate": {"mean": 0.0, "std": 0.01}
+        }
+
+        # Add mild goal jitter (~5% noise)
+        for key in base:
+            jitter = np.random.normal(0, base[key]["std"])
+            base[key]["mean"] += jitter
+
+        return base
 
     def next_episode(self):
         self.episode += 1

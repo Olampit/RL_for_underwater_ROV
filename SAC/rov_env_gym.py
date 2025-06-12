@@ -3,6 +3,7 @@ import numpy as np
 import gym
 from gym import spaces
 from environment import ROVEnvironment
+import time
 
 class ROVEnvGymWrapper(gym.Env):
     def __init__(self, rov_env: ROVEnvironment):
@@ -11,7 +12,8 @@ class ROVEnvGymWrapper(gym.Env):
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(8,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(7,), dtype=np.float32)
 
-    def reset(self):
+    def reset(self, connection):
+        self.rov.stop_motors(connection)
         state_dict = self.rov.reset()
         return self._state_to_obs(state_dict)
 

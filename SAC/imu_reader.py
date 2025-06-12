@@ -12,7 +12,10 @@ import numpy as np
 
 from imu_buffer import IMUBuffer
 
-imu_history = IMUBuffer(max_seconds=1.0, frequency=400)  # stores ~400 recent samples
+
+attitude_buffer = IMUBuffer(max_seconds=1.0, frequency=400)
+velocity_buffer = IMUBuffer(max_seconds=1.0, frequency=400)
+
 
 # Messages we are interested in from MAVLink
 imu_types = ['ATTITUDE', 'VIBRATION']
@@ -49,7 +52,7 @@ def start_imu_listener(connection, latest_imu):
                             "yawspeed": getattr(msg, 'yawspeed', 0.0),
                         }
                         latest_imu["ATTITUDE"] = imu_data
-                        imu_history.add(time.time(), imu_data)
+                        attitude_buffer.add(time.time(), imu_data)
 
 
                     elif msg_type == 'VIBRATION':
@@ -119,6 +122,15 @@ def start_imu_listener(connection, latest_imu):
                             "average": average_velocity
                         }
                     }
+                    velocity_data = {
+                        "vx": velocity_x,
+                        "vy": velocity_y,
+                        "vz": velocity_z,
+                        "mag": velocity_mag,
+                        "avg": average_velocity
+                    }
+                    velocity_buffer.add(time.time(), velocity_data)
+
 
                     # Print every Nth callback
                     #self.odom_count += 1
