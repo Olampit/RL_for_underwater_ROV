@@ -27,6 +27,9 @@ The script can still be run directly:
 
 from __future__ import annotations
 
+import cProfile
+
+
 import argparse
 import time
 from typing import Callable, Optional, Dict, Any
@@ -118,9 +121,9 @@ def train(
     *,
     episodes: int = 5000,
     max_steps: int = 10,
-    batch_size: int = 256,
-    start_steps: int = 50000,
-    update_every: int = 1,
+    batch_size: int = 256,#TODO FIX FUCKING BATCH SIZE
+    start_steps: int = 0, #!
+    update_every: int = 50,
     reward_scale: float = 1,
     learning_rate: float = 3e-4,
     gamma: float = 0.99,
@@ -208,7 +211,9 @@ def train(
         obs = env.reset(conn)
         ep_reward = 0.0
 
+        delta3 = 0
         for step in range(1, max_steps + 1):
+            delta3 = time.time()
             if total_steps < start_steps:
                 action = env.action_space.sample()
             else:
@@ -216,6 +221,10 @@ def train(
 
 
             next_obs, _, done, _ = env.step(action)
+            
+            time.sleep(0.0/SPEED_UP)####################################################
+            
+
             current_state = env.rov.get_state()
             reward_components = env.rov.compute_reward(current_state)
             reward = reward_components["total"]
@@ -225,12 +234,15 @@ def train(
             obs = next_obs
             ep_reward += reward
             total_steps += 1
-
+            
+            delta2 = 0
             if total_steps >= start_steps and total_steps % update_every == 0:
+                delta2 = time.time()
                 critic_loss, actor_loss, entropy = agent.update(batch_size=batch_size)
                 critic_losses.append(critic_loss)
                 actor_losses.append(actor_loss)
                 entropies.append(entropy)
+                print(f"temps de calcul de l'update {time.time()-delta2} ")
 
 
             if done:
@@ -238,18 +250,19 @@ def train(
 
             if total_steps > 0 and total_steps % checkpoint_every == 0:
                 save_checkpoint(agent, total_steps, episode_rewards)
+                
+            print(f"[UN STEP EN TEMPS] {time.time()-delta3} ")
 
-            time.sleep(0.01/SPEED_UP)####################################################
+        
+        
+        env.rov.stop_motors(conn)
+
 
         episode_rewards.append(ep_reward)
-        env.rov.stop_motors(conn)
         env.episode_states.append(env.rov.get_state())
 
-        if ep % 10 == 0:
-            avg = np.mean(episode_rewards[-10:])
-            print(f"[INFO] Episode {ep}, 10-ep avg reward = {avg:.2f}")
 
-        if progress_callback is not None and step % 5 == 0:
+        if progress_callback is not None and step % 50 == 0:
             target = env.rov.joystick.get_target()
             
             metrics = {
@@ -268,7 +281,7 @@ def train(
             progress_callback(ep, episodes, float(ep_reward), metrics)
 
 
-        if ep % 10 == 0:
+        if ep % 10000 == 0:
             torch.save({
                 'actor': agent.actor.state_dict(),
                 'critic': agent.critic.state_dict(),
@@ -308,8 +321,8 @@ def train(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train SAC for ROV control")
-    parser.add_argument("--episodes", type=int, default=1000)
-    parser.add_argument("--max_steps", type=int, default=300)
+    parser.add_argument("--episodes", type=int, default=10)
+    parser.add_argument("--max_steps", type=int, default=10)
     parser.add_argument("--learning_rate", type=float, default=3e-4)
     parser.add_argument("--mavlink", type=str, default="udp:127.0.0.1:14550")
     args = parser.parse_args()
@@ -318,9 +331,17 @@ if __name__ == "__main__":
     np.random.seed(0)
     torch.manual_seed(0)
 
-    train(
-        episodes=args.episodes,
-        max_steps=args.max_steps,
-        learning_rate=args.learning_rate,
-        mavlink_endpoint=args.mavlink,
+        #
+        # train(
+        # episodes=args.episodes,
+        # max_steps=args.max_steps,
+        # learning_rate=args.learning_rate,
+        # mavlink_endpoint=args.mavlink,
+        # )
+
+    # Profile the call to train with your args
+    cProfile.runctx(
+        'train(episodes=args.episodes, max_steps=args.max_steps, learning_rate=args.learning_rate, mavlink_endpoint=args.mavlink)',
+        globals(), locals(),
+        'profile_output.prof'
     )

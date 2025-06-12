@@ -49,81 +49,46 @@ class ROVEnvironment:
         print(f"[ACTION] Sent: {action}")
 
     def get_state(self):
-        imu = self.latest_imu
         state = {}
 
-
-        # ATTITUDE
-        if "ATTITUDE" in imu:
-            a = imu["ATTITUDE"]
-            state.update({
-                "pitch" : a.get("pitch", 0.0),
-                "pitch_speed" :a.get("pitchspeed",0.0),
-                "yaw" : a.get("yaw", 0.0),
-                "yaw_speed" : a.get("yawspeed", 0.0),
-                "roll" : a.get("roll", 0.0),
-                "roll_speed" : a.get("rollspeed",0.0)
-            })
-
-
-        # Vibration
-        if "VIBRATION" in imu:
-            v = imu["VIBRATION"]
-            state["vibration"] = np.linalg.norm([
-                v.get("vibration_x", 0.0),
-                v.get("vibration_y", 0.0),
-                v.get("vibration_z", 0.0)
-            ])
-
-
-        # Velocity from Odometry
-        if "ODOMETRY" in imu and "velocity" in imu["ODOMETRY"]:
-            vel = imu["ODOMETRY"]["velocity"]
-            state.update({
-                "vel_x": vel.get("x", 0.0),
-                "vel_y": vel.get("y", 0.0),
-                "vel_z": vel.get("z", 0.0)
-            })
-            
-        if "ODOMETRY" in imu and "position" in imu["ODOMETRY"]:
-            pos = imu["ODOMETRY"]["position"]
-            state.update({
-                "pos_x": pos.get("x", 0.0),
-                "pos_y": pos.get("y", 0.0),
-                "pos_z": pos.get("z", 0.0)
-            })
-
         att_seq = attitude_buffer.get_all()
+        
         if att_seq:
-            yaw_rates = [abs(d["yawspeed"]) for _, d in att_seq if "yawspeed" in d]
-            pitch_rates = [abs(d["pitchspeed"]) for _, d in att_seq if "pitchspeed" in d]
-            roll_rates = [abs(d["rollspeed"]) for _, d in att_seq if "rollspeed" in d]
+            # Extract arrays for yawspeed, pitchspeed, rollspeed only if key exists
+            yaws = np.array([abs(d["yawspeed"]) for _, d in att_seq if "yawspeed" in d])
+            pitchs = np.array([abs(d["pitchspeed"]) for _, d in att_seq if "pitchspeed" in d])
+            rolls = np.array([abs(d["rollspeed"]) for _, d in att_seq if "rollspeed" in d])
 
-            state["yaw_var"] = np.var(yaw_rates)
-            state["pitch_var"] = np.var(pitch_rates)
-            state["roll_var"] = np.var(roll_rates)
+            if yaws.size > 0:
+                state["yaw_var"] = yaws.var()
+                state["yaw_mean"] = yaws.mean()
+            if pitchs.size > 0:
+                state["pitch_var"] = pitchs.var()
+                state["pitch_mean"] = pitchs.mean()
+            if rolls.size > 0:
+                state["roll_var"] = rolls.var()
+                state["roll_mean"] = rolls.mean()
 
-            state["yaw_mean"] = np.mean(yaw_rates)
-            state["pitch_mean"] = np.mean(pitch_rates)
-            state["roll_mean"] = np.mean(roll_rates)
 
         vel_seq = velocity_buffer.get_all()
+        
         if vel_seq:
-            vxs = [v["vx"] for _, v in vel_seq]
-            vys = [v["vy"] for _, v in vel_seq]
-            vzs = [v["vz"] for _, v in vel_seq]
-            mags = [v["mag"] for _, v in vel_seq]
+            # Build structured numpy arrays for velocity components
+            vxs = np.array([v["vx"] for _, v in vel_seq])
+            vys = np.array([v["vy"] for _, v in vel_seq])
+            vzs = np.array([v["vz"] for _, v in vel_seq])
+            mags = np.array([v["mag"] for _, v in vel_seq])
 
-            state["vx_mean"] = np.mean(vxs)
-            state["vy_mean"] = np.mean(vys)
-            state["vz_mean"] = np.mean(vzs)
+            state["vx_mean"] = vxs.mean()
+            state["vy_mean"] = vys.mean()
+            state["vz_mean"] = vzs.mean()
 
-            state["vx_var"] = np.var(vxs)
-            state["vy_var"] = np.var(vys)
-            state["vz_var"] = np.var(vzs)
+            state["vx_var"] = vxs.var()
+            state["vy_var"] = vys.var()
+            state["vz_var"] = vzs.var()
 
-            state["vel_mag_avg"] = np.mean(mags)
-            state["vel_mag_var"] = np.var(mags)
+            state["vel_mag_avg"] = mags.mean()
+            state["vel_mag_var"] = mags.var()
 
 
         return state
@@ -194,13 +159,26 @@ class ROVEnvironment:
                 0, 0, 0, 0, 0
             )
 
-    
+    def stop_motors2(self, connection):
+        for servo in range(1, 9):
+            connection.mav.command_long_send(
+                connection.target_system,
+                connection.target_component,
+                mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
+                0,
+                servo,
+                1100,
+                0, 0, 0, 0, 0
+            )
+            
+            
     def total_distance(self, state):
         x = state.get("pos_x", 0.0)
         return x
 
 
     def compute_reward(self, state):
+        
         goal = self.joystick.get_target()
 
         total_vel_error = 0.0

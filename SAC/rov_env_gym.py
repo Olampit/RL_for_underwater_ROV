@@ -16,6 +16,9 @@ class ROVEnvGymWrapper(gym.Env):
         self.rov.stop_motors(connection)
         state_dict = self.rov.reset()
         return self._state_to_obs(state_dict)
+    
+    def stop_motors(self, connection):
+        self.rov.stop_motors(connection)
 
     def step(self, action):
         self._apply_action_continuous(action)

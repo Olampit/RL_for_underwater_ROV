@@ -34,15 +34,6 @@ def start_imu_listener(connection, latest_imu):
                 msg_type = msg.get_type()
                 try:
                     if msg_type == 'ATTITUDE': 
-                        latest_imu["ATTITUDE"] = {
-                            "pitch": getattr(msg, 'pitch', 0.0),
-                            "pitchspeed": getattr(msg, 'pitchspeed', 0.0),
-                            "roll": getattr(msg, 'roll', 0.0),
-                            "rollspeed": getattr(msg, 'rollspeed', 0.0),
-                            "yaw": getattr(msg, 'yaw', 0.0),
-                            "yawspeed": getattr(msg, 'yawspeed', 0.0),
-                        }
-                        
                         imu_data = {
                             "pitch": getattr(msg, 'pitch', 0.0),
                             "pitchspeed": getattr(msg, 'pitchspeed', 0.0),
@@ -51,16 +42,7 @@ def start_imu_listener(connection, latest_imu):
                             "yaw": getattr(msg, 'yaw', 0.0),
                             "yawspeed": getattr(msg, 'yawspeed', 0.0),
                         }
-                        latest_imu["ATTITUDE"] = imu_data
                         attitude_buffer.add(time.time(), imu_data)
-
-
-                    elif msg_type == 'VIBRATION':
-                        latest_imu["VIBRATION"] = {
-                            "vibration_x": getattr(msg, 'vibration_x', 0.0),
-                            "vibration_y": getattr(msg, 'vibration_y', 0.0),
-                            "vibration_z": getattr(msg, 'vibration_z', 0.0),
-                        }
 
                 except AttributeError as e:
                     print(f"[IMU] Missing attribute: {e}")
@@ -107,21 +89,6 @@ def start_imu_listener(connection, latest_imu):
 
                     average_velocity = np.mean(self.velocity_history)
 
-                    # Store in latest_imu
-                    latest_imu["ODOMETRY"] = {
-                        "position": {
-                            "x": msg.pose.pose.position.x,
-                            "y": msg.pose.pose.position.y,
-                            "z": msg.pose.pose.position.z,
-                        },
-                        "velocity": {
-                            "x": velocity_x,
-                            "y": velocity_y,
-                            "z": velocity_z,
-                            "magnitude": velocity_mag,
-                            "average": average_velocity
-                        }
-                    }
                     velocity_data = {
                         "vx": velocity_x,
                         "vy": velocity_y,
@@ -132,11 +99,7 @@ def start_imu_listener(connection, latest_imu):
                     velocity_buffer.add(time.time(), velocity_data)
 
 
-                    # Print every Nth callback
-                    #self.odom_count += 1
-                    #if self.odom_count % self.print_every == 0:
-                    #    print(f"[ODOM] Velocity: {velocity_mag:.2f} m/s | Avg: {average_velocity:.2f} m/s")
-
+                    
             node = OdomListener()
             #print("test2")
             rclpy.spin(node)
