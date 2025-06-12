@@ -6,11 +6,11 @@ from sac.networks import Actor, Critic
 from sac.replay_buffer import ReplayBuffer
 
 class SACAgent:
-    def __init__(self, state_dim, action_dim, device="cpu", gamma=0.99, tau=0.005, alpha=0.2):
+    def __init__(self, state_dim, action_dim, device="cpu", gamma=0.99, tau=0.005, alpha=0.2, automatic_entropy_tuning=True):
         self.device = device
         self.gamma = gamma
         self.tau = tau
-        self.alpha = alpha
+        self.automatic_entropy_tuning = automatic_entropy_tuning
 
         self.actor = Actor(state_dim, action_dim).to(device)
         self.critic = Critic(state_dim, action_dim).to(device)
@@ -21,6 +21,16 @@ class SACAgent:
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=3e-4)
 
         self.replay_buffer = ReplayBuffer(100000)
+
+        if self.automatic_entropy_tuning:
+            self.target_entropy = -np.prod(action_dim).item()
+            self.log_alpha = torch.tensor(np.log(alpha), requires_grad=True, device=device)
+            self.alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=3e-4)
+            self.alpha = self.log_alpha.exp().detach()
+        else:
+            self.alpha = torch.tensor(alpha).to(device)
+            self.log_alpha = None
+            self.alpha_optimizer = None
 
     def select_action(self, state, deterministic=False):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
@@ -33,17 +43,15 @@ class SACAgent:
 
     def update(self, batch_size=256):
         if len(self.replay_buffer) < batch_size:
-            return
+            # Ensure consistent return type
+            return 0.0, 0.0, 0.0, self.alpha.item()
 
         state, action, reward, next_state, done = self.replay_buffer.sample(batch_size)
         state = torch.FloatTensor(state).to(self.device)
         action = torch.FloatTensor(action).to(self.device)
-        reward = torch.FloatTensor(reward).to(self.device)
+        reward = torch.FloatTensor(reward).to(self.device).unsqueeze(1)
         next_state = torch.FloatTensor(next_state).to(self.device)
-        done = torch.FloatTensor(done).to(self.device)
-        
-        reward = reward.unsqueeze(1)
-        done = done.unsqueeze(1)
+        done = torch.FloatTensor(done).to(self.device).unsqueeze(1)
 
         with torch.no_grad():
             next_action, next_log_prob = self.actor.sample(next_state)
@@ -62,25 +70,29 @@ class SACAgent:
         actor_loss = (self.alpha * log_prob - torch.min(q1_pi, q2_pi)).mean()
         self.actor_opt.zero_grad()
         actor_loss.backward()
+
+        if self.automatic_entropy_tuning:
+            alpha_loss = -(self.log_alpha * (log_prob + self.target_entropy).detach()).mean()
+            self.alpha_optimizer.zero_grad()
+            alpha_loss.backward()
+            self.alpha_optimizer.step()
+            self.alpha = self.log_alpha.exp().detach()
+        else:
+            alpha_loss = torch.tensor(0.0)
+
         self.actor_opt.step()
 
         for target_param, param in zip(self.target_critic.parameters(), self.critic.parameters()):
             target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
-        
-        
-        entropy = -log_prob.mean().item()
-        critic_loss_value = critic_loss.item()
-        actor_loss_value = actor_loss.item()
 
-        return critic_loss_value, actor_loss_value, entropy
-    
-    
+        entropy = -log_prob.mean().item()
+        return critic_loss.item(), actor_loss.item(), entropy
+
     def sample(self, state):
         mean, std = self(state)
         normal = torch.distributions.Normal(mean, std)
-        x_t = normal.rsample()  # reparameterization trick
+        x_t = normal.rsample()
         action = torch.tanh(x_t)
         log_prob = normal.log_prob(x_t).sum(-1, keepdim=True)
-        # Correction for Tanh squashing
         log_prob -= torch.log(1 - action.pow(2) + 1e-6).sum(-1, keepdim=True)
         return action, log_prob

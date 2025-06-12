@@ -25,11 +25,9 @@ class ROVEnvGymWrapper(gym.Env):
 
     
     def _apply_action_continuous(self, action):
-        print(f"[DEBUG] apply_action called with index ")
         for i in range(8):
             thrust = float(np.clip(action[i], -1.0, 1.0))
             pwm = int(1500 + thrust * 400)
-            print(f"[PWM] Motor {i+1}: thrust={thrust:.2f} → PWM={pwm}")
             self.rov.connection.mav.command_long_send(
                 self.rov.connection.target_system,
                 self.rov.connection.target_component,

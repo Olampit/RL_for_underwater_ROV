@@ -117,7 +117,7 @@ def train(
     episodes: int = 5000,
     max_steps: int = 10,
     batch_size: int = 256,
-    start_steps: int = 0,
+    start_steps: int = 10000,
     update_every: int = 1,
     reward_scale: float = 1,
     learning_rate: float = 3e-4,
@@ -136,6 +136,10 @@ def train(
     critic_losses = []
     actor_losses = []
     entropies = []
+    critic_loss = 0.0
+    actor_loss = 0.0
+    entropy = 0.0
+
 
 
     conn = mavutil.mavlink_connection(mavlink_endpoint)

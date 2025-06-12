@@ -2,12 +2,17 @@
 from pymavlink import mavutil
 import threading
 import traceback
+import time
 
 # ROS 2 imports
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 import numpy as np
+
+from imu_buffer import IMUBuffer
+
+imu_history = IMUBuffer(max_seconds=1.0, frequency=400)  # stores ~400 recent samples
 
 # Messages we are interested in from MAVLink
 imu_types = ['ATTITUDE', 'VIBRATION']
@@ -34,7 +39,18 @@ def start_imu_listener(connection, latest_imu):
                             "yaw": getattr(msg, 'yaw', 0.0),
                             "yawspeed": getattr(msg, 'yawspeed', 0.0),
                         }
-                                                
+                        
+                        imu_data = {
+                            "pitch": getattr(msg, 'pitch', 0.0),
+                            "pitchspeed": getattr(msg, 'pitchspeed', 0.0),
+                            "roll": getattr(msg, 'roll', 0.0),
+                            "rollspeed": getattr(msg, 'rollspeed', 0.0),
+                            "yaw": getattr(msg, 'yaw', 0.0),
+                            "yawspeed": getattr(msg, 'yawspeed', 0.0),
+                        }
+                        latest_imu["ATTITUDE"] = imu_data
+                        imu_history.add(time.time(), imu_data)
+
 
                     elif msg_type == 'VIBRATION':
                         latest_imu["VIBRATION"] = {

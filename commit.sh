@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "working version with correct GUI and layers: $count"
+git commit --author="Olampit <olampit@gmail.com>" -m "working version with imu_buffer (not tested): $count"
 git push -u origin main
 
 # Increment and save back

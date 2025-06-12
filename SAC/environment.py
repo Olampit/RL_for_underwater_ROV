@@ -8,9 +8,14 @@ from joystick_input import FakeJoystick
 import math
 import random
 
+from imu_reader import imu_history  # Assuming it's declared there
+
+
 SERVO_MIN = 1100
 SERVO_MAX = 1900
 SERVO_IDLE = 1500
+
+
 
 def input_to_pwm(value):
     if abs(value) < 0.05:
@@ -27,7 +32,6 @@ class ROVEnvironment:
         self.target_velocity = self.joystick.get_target()
 
     def apply_action(self, action_idx):
-        print(f"[DEBUG] apply_action called with index {action_idx}")
         action = self.action_map[action_idx]
         for i in range(8):
             motor_label = f"motor{i+1}"
@@ -89,6 +93,19 @@ class ROVEnvironment:
                 "pos_z": pos.get("z", 0.0)
             })
 
+        att_seq = imu_history.get_all()
+        if att_seq:
+            yaw_rates = [abs(d["yawspeed"]) for _, d in att_seq if "yawspeed" in d]
+            pitch_rates = [abs(d["pitchspeed"]) for _, d in att_seq if "pitchspeed" in d]
+            roll_rates = [abs(d["rollspeed"]) for _, d in att_seq if "rollspeed" in d]
+
+            state["yaw_var"] = np.var(yaw_rates)
+            state["pitch_var"] = np.var(pitch_rates)
+            state["roll_var"] = np.var(roll_rates)
+
+            state["yaw_mean"] = np.mean(yaw_rates)
+            state["pitch_mean"] = np.mean(pitch_rates)
+            state["roll_mean"] = np.mean(roll_rates)
 
 
         return state
@@ -186,14 +203,28 @@ class ROVEnvironment:
         pitch_rate = abs(state.get("pitch_speed", 0.0))
         roll_rate = abs(state.get("roll_speed", 0.0))
         angular_energy = yaw_rate + pitch_rate + roll_rate
+        
+        roll_var = state.get("roll_var", 0.0)
+        pitch_var = state.get("pitch_var", 0.0)
+        yaw_var = state.get("yaw_var", 0.0)
+        angular_energy_var = yaw_var + pitch_var + roll_var
+        
+        roll_mean = state.get("roll_mean", 0.0)
+        pitch_mean = state.get("pitch_mean", 0.0)
+        yaw_mean = state.get("yaw_mean", 0.0)
+        angular_energy_mean = yaw_mean + pitch_mean + roll_mean
 
         # Reward shaping
         progress_reward = -vel_error                # lower error = better
-        stability_penalty = -angular_energy         # lower spin = better
-        bonus = 5.0 if vel_error < 0.02 and angular_energy < 0.02 else 0.0
+        stability_penalty = - angular_energy_var
+        bonus = 5.0 if vel_error < 0.02 and angular_energy_var < 0.02 else 0.0
+        
+        
+
+
 
         # Total reward
-        total = 2.0 * progress_reward + 1.0 * stability_penalty + bonus  # weights here
+        total = 2.0 * progress_reward + 8.0 * stability_penalty + bonus  # weights here
 
         return {
             "total": total,
