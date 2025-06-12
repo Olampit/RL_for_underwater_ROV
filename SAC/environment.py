@@ -171,7 +171,6 @@ class ROVEnvironment:
             }}}}"""
         ]
 
-        print(f"[RESET] Respawning ROV at pos=({px:.2f}, {py:.2f}, {pz:.2f}) with random orientation. : x: {qx:.6f}, y: {qy:.6f}, z: {qz:.6f}, w: {qw:.6f}")
         subprocess.run(cmd)
         
         time.sleep(0.001)

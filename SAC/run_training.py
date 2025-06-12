@@ -189,7 +189,10 @@ def train(
         start_ep = 1
 
     ep = start_ep
+    delta = 0 
     while ep <= episodes:
+        print(time.time() - delta)
+        delta = time.time()
         if restart_flag and restart_flag.is_set():
             print("[INFO] Restart flag set. Resetting episode counter.")
             episode_rewards = []
@@ -210,7 +213,6 @@ def train(
                 action = env.action_space.sample()
             else:
                 action = agent.select_action(obs)
-                print(f"[DEBUG] selected action: {action}")
 
 
             next_obs, _, done, _ = env.step(action)

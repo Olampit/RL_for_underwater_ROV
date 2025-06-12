@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "WITH STONEFISH ACCELERATED, WORKING: $count"
+git commit --author="Olampit <olampit@gmail.com>" -m "can't accelerate faster than 0.8s: $count"
 git push -u origin main
 
 # Increment and save back
