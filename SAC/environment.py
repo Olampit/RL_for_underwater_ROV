@@ -244,8 +244,17 @@ class ROVEnvironment:
 
 
     def state_to_index(self, state):
-        keys = ["pitch_speed", "roll_speed", "yaw_speed", "vel_x", "vel_y", "vel_z"]
-        return tuple(round(state.get(k, 0.0), 2) for k in keys)
+        keys = [
+            "yaw_var", "yaw_mean",
+            "pitch_var", "pitch_mean",
+            "roll_var", "roll_mean",
+            "vx_mean", "vy_mean", "vz_mean",
+            "vx_var", "vy_var", "vz_var",
+            "vel_mag_avg", "vel_mag_var"
+        ]
+        
+        return tuple(round(state.get(k, 0.0), 3) for k in keys)
+
 
 
 

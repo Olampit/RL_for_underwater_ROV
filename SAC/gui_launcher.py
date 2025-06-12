@@ -25,6 +25,7 @@ class RLGui:
         self.critic_loss_data = []
         self.actor_loss_data = []
         self.entropy_data = []
+        self.mean_step_time_data = []
 
         self.fig2, (self.ax2, self.ax3) = plt.subplots(2, 1, figsize=(6, 2.5))
         self.canvas2 = FigureCanvasTkAgg(self.fig2, master=root)
@@ -38,6 +39,9 @@ class RLGui:
         self.canvas5 = FigureCanvasTkAgg(self.fig5, master=root)
         self.canvas5.get_tk_widget().grid(row=9, column=1, columnspan=2, sticky="nsew")
 
+        self.fig6, self.ax7 = plt.subplots(figsize=(6, 2.5))
+        self.canvas6 = FigureCanvasTkAgg(self.fig6, master=root)
+        self.canvas6.get_tk_widget().grid(row=10, column=0, columnspan=3, sticky="nsew")
 
         self.agent_type = tk.StringVar(value="sac")
         ttk.Label(root, text="Agent Type:").grid(row=0, column=0, sticky="w")
@@ -146,6 +150,17 @@ class RLGui:
             self.ax6.plot(self.entropy_data, label="Entropy", color="green")
             self.ax6.legend()
             self.canvas5.draw()
+            
+            
+            self.mean_step_time_data.append(metrics.get("mean_step_time"))
+            self.ax7.cla()
+            self.ax7.set_title("Mean Step Time")
+            self.ax7.set_ylabel("Time")
+            self.ax7.set_xlabel("Episode")
+            self.ax7.plot(self.mean_step_time_data, label="Mean Step Time", color="orange")
+            self.ax7.legend()
+            self.canvas6.draw()
+
 
 
     def log(self, text):

@@ -31,15 +31,24 @@ class SACAgent:
             self.alpha = torch.tensor(alpha).to(device)
             self.log_alpha = None
             self.alpha_optimizer = None
+            
+        self.raw_actor = Actor(state_dim, action_dim).to(device)
+
+        # JIT compile for fast inference
+        dummy_input = torch.zeros(1, state_dim, dtype=torch.float32).to(device)
+        self.actor = torch.jit.trace(self.raw_actor, dummy_input)
+
 
     def select_action(self, state, deterministic=False):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-        mean, std = self.actor(state)
+        mean, std = self.actor(state)  # use JIT-traced model for fast inference
         if deterministic:
             action = torch.tanh(mean)
         else:
-            action, _ = self.actor.sample(state)
+            # Use raw model for sampling (has .sample())
+            action, _ = self.raw_actor.sample(state)
         return action.detach().cpu().numpy()[0]
+
 
     def update(self, batch_size=256):
         if len(self.replay_buffer) < batch_size:
@@ -54,7 +63,7 @@ class SACAgent:
         done = torch.FloatTensor(done).to(self.device).unsqueeze(1)
 
         with torch.no_grad():
-            next_action, next_log_prob = self.actor.sample(next_state)
+            next_action, next_log_prob = self.raw_actor.sample(next_state)
             q1_next, q2_next = self.target_critic(next_state, next_action)
             q_next = torch.min(q1_next, q2_next) - self.alpha * next_log_prob
             q_target = reward + (1 - done) * self.gamma * q_next
@@ -65,7 +74,7 @@ class SACAgent:
         critic_loss.backward()
         self.critic_opt.step()
 
-        action_sampled, log_prob = self.actor.sample(state)
+        action_sampled, log_prob = self.raw_actor.sample(state)
         q1_pi, q2_pi = self.critic(state, action_sampled)
         actor_loss = (self.alpha * log_prob - torch.min(q1_pi, q2_pi)).mean()
         self.actor_opt.zero_grad()

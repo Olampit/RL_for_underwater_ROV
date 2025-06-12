@@ -7,7 +7,7 @@ LOG_STD_MIN = -20
 LOG_STD_MAX = 2
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dims=(256, 256)):
+    def __init__(self, input_dim, output_dim, hidden_dims=(14, 14)):
         super().__init__()
         layers = []
         dims = [input_dim] + list(hidden_dims)

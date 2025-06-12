@@ -101,8 +101,8 @@ def prefill_replay_buffer(env, agent, conn, steps=50000, reward_scale=0.01):
     obs = env.reset(conn)
     for _ in range(steps):
         action = env.action_space.sample()
-        next_obs, _, done, _ = env.step(action)
         current_state = env.rov.get_state()
+        next_obs, _, done, _ = env.step(action, current_state)
         reward_components = env.rov.compute_reward(current_state)
         reward = reward_components["total"]
         agent.replay_buffer.push(obs, action, reward * reward_scale, next_obs, done)
@@ -121,7 +121,7 @@ def train(
     *,
     episodes: int = 5000,
     max_steps: int = 10,
-    batch_size: int = 256,#TODO FIX FUCKING BATCH SIZE
+    batch_size: int = 50,#TODO FIX FUCKING BATCH SIZE
     start_steps: int = 0, #!
     update_every: int = 50,
     reward_scale: float = 1,
@@ -168,6 +168,8 @@ def train(
         tau=tau,
         alpha=0.2,
     )
+    
+
 
     for opt in (agent.actor_opt, agent.critic_opt):
         for param_group in opt.param_groups:
@@ -192,10 +194,8 @@ def train(
         start_ep = 1
 
     ep = start_ep
-    delta = 0 
+    
     while ep <= episodes:
-        print(time.time() - delta)
-        delta = time.time()
         if restart_flag and restart_flag.is_set():
             print("[INFO] Restart flag set. Resetting episode counter.")
             episode_rewards = []
@@ -210,22 +210,32 @@ def train(
 
         obs = env.reset(conn)
         ep_reward = 0.0
-
-        delta3 = 0
+        
+        
+        
+        step_time = 0 
+        total_step_time = 0
         for step in range(1, max_steps + 1):
-            delta3 = time.time()
+            
+            step_time = time.time()
+            
+            
             if total_steps < start_steps:
                 action = env.action_space.sample()
             else:
                 action = agent.select_action(obs)
 
 
-            next_obs, _, done, _ = env.step(action)
-            
-            time.sleep(0.0/SPEED_UP)####################################################
-            
-
             current_state = env.rov.get_state()
+
+            next_obs, _, done, _ = env.step(action, current_state)
+            
+            x = max((0.025/SPEED_UP)-(time.time()-step_time), 0)
+            time.sleep(x)####################################################
+            
+            total_step_time += time.time()-step_time
+
+            
             reward_components = env.rov.compute_reward(current_state)
             reward = reward_components["total"]
 
@@ -235,14 +245,11 @@ def train(
             ep_reward += reward
             total_steps += 1
             
-            delta2 = 0
             if total_steps >= start_steps and total_steps % update_every == 0:
-                delta2 = time.time()
                 critic_loss, actor_loss, entropy = agent.update(batch_size=batch_size)
                 critic_losses.append(critic_loss)
                 actor_losses.append(actor_loss)
                 entropies.append(entropy)
-                print(f"temps de calcul de l'update {time.time()-delta2} ")
 
 
             if done:
@@ -250,8 +257,8 @@ def train(
 
             if total_steps > 0 and total_steps % checkpoint_every == 0:
                 save_checkpoint(agent, total_steps, episode_rewards)
+            
                 
-            print(f"[UN STEP EN TEMPS] {time.time()-delta3} ")
 
         
         
@@ -259,7 +266,7 @@ def train(
 
 
         episode_rewards.append(ep_reward)
-        env.episode_states.append(env.rov.get_state())
+        env.episode_states.append(current_state)
 
 
         if progress_callback is not None and step % 50 == 0:
@@ -277,6 +284,7 @@ def train(
                 "critic_loss": critic_loss,
                 "actor_loss": actor_loss,
                 "entropy": entropy * 10,
+                "mean_step_time": (total_step_time/max_steps),
             }
             progress_callback(ep, episodes, float(ep_reward), metrics)
 

@@ -4,13 +4,15 @@ import gym
 from gym import spaces
 from environment import ROVEnvironment
 import time
+from operator import itemgetter
+
 
 class ROVEnvGymWrapper(gym.Env):
     def __init__(self, rov_env: ROVEnvironment):
         super().__init__()
         self.rov = rov_env
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(8,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(7,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(14,), dtype=np.float32)
 
     def reset(self, connection):
         self.rov.stop_motors(connection)
@@ -20,12 +22,11 @@ class ROVEnvGymWrapper(gym.Env):
     def stop_motors(self, connection):
         self.rov.stop_motors(connection)
 
-    def step(self, action):
+    def step(self, action, state):
         self._apply_action_continuous(action)
-        next_state_dict = self.rov.get_state()
-        reward = self.rov.compute_reward(next_state_dict)
-        done = self.rov.is_terminal(next_state_dict)
-        obs = self._state_to_obs(next_state_dict)
+        reward = self.rov.compute_reward(state)
+        done = self.rov.is_terminal(state)
+        obs = self._state_to_obs(state)
         return obs, reward, done, {}
 
     
@@ -40,13 +41,20 @@ class ROVEnvGymWrapper(gym.Env):
                 i + 1, pwm, 0, 0, 0, 0, 0
             )
 
+
     def _state_to_obs(self, state):
-        return np.array([
-            state.get("pitch", 0.0),
-            state.get("roll", 0.0),
-            state.get("vibration", 0.0),
-            state.get("vel_x", 0.0),
-            state.get("vel_y", 0.0),
-            state.get("vel_z", 0.0),
-            state.get("pos_x", 0.0),
-        ], dtype=np.float32)
+        keys = [
+            "yaw_mean", "yaw_var",
+            "pitch_mean", "pitch_var",
+            "roll_mean", "roll_var",
+            "vx_mean", "vy_mean", "vz_mean",
+            "vx_var", "vy_var", "vz_var",
+            "vel_mag_avg", "vel_mag_var"
+        ]
+        
+        # Faster than repeated state.get(...)
+        getter = itemgetter(*keys)
+        values = getter({k: state.get(k, 0.0) for k in keys})  # Ensure all keys exist
+
+        return np.array(values, dtype=np.float32)
+
