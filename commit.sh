@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "Commit with ALL the documentation DONE and REVIEWED. But the reward function still has a bad shape."
+git commit --author="Olampit <olampit@gmail.com>" -m "With a better reward, before a better exploration"
 git push -u origin main
 
 # Increment and save back

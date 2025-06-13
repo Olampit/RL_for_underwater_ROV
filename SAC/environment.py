@@ -230,77 +230,95 @@ class ROVEnvironment:
                 0, 0, 0, 0, 0
             )
             
+            
+    
+
 
 
     def compute_reward(self, state):
         """
-        Computes the reward based on the velocity and angular rate errors relative to the target.
-
-        Parameters:
-            state (dict): Current state including velocity and rate statistics.
+        Computes the reward based on how well the observed mean and std match the target,
+        using smooth Gaussian-shaped rewards and a gradual bonus.
 
         Returns:
-            dict: Dictionary with reward components: total, progress_reward, stability, bonus, errors.
-
-        Called in:
-            When doing a step. 
+            dict: Contains reward components (total, shaped terms, errors, rates).
         """
         goal = self.joystick.get_target()
 
-        total_vel_error = 0.0
-        total_std_error = 0.0
+        total_vel_score = 0.0
+        total_std_score = 0.0
 
+        def gaussian_score(x, target, sigma=0.05):
+            """Reward is highest when x == target, falls off smoothly."""
+            return np.exp(-((x - target)**2) / (2 * sigma**2))
+
+        def smooth_bonus(score, scale, threshold=0.85):
+            """
+            Returns a bonus scaled between 0 and `scale` if `score` > threshold.
+            """
+            if score < threshold:
+                return 0.0
+            return scale * (score - threshold) / (1.0 - threshold)
         # Linear velocities
         for axis in ["vx", "vy", "vz"]:
-            mean_target = goal[axis]["mean"]
-            std_target = goal[axis]["std"]
+            target_mean = goal[axis]["mean"]
+            target_std = goal[axis]["std"]
 
-            mean = state.get(f"{axis}_mean", 0.0)
-            var = state.get(f"{axis}_var", 0.0)
-            std = np.sqrt(var)
+            observed_mean = state.get(f"{axis}_mean", 0.0)
+            observed_var = state.get(f"{axis}_var", 0.0)
+            observed_std = np.sqrt(observed_var)
 
-            total_vel_error += abs(mean - mean_target)
-            total_std_error += abs(std - std_target)
+            mean_score = gaussian_score(observed_mean, target_mean, sigma=0.1)
+            std_score = gaussian_score(observed_std, target_std, sigma=0.05)
+
+            total_vel_score += mean_score
+            total_std_score += std_score
 
         # Angular rates
-        yaw_mean = abs(state.get("yaw_mean", 0.0))
-        pitch_mean = abs(state.get("pitch_mean", 0.0))
-        roll_mean = abs(state.get("roll_mean", 0.0))
+        angular_means = {
+            "yaw_rate": abs(state.get("yaw_mean", 0.0)),
+            "pitch_rate": abs(state.get("pitch_mean", 0.0)),
+            "roll_rate": abs(state.get("roll_mean", 0.0)),
+        }
 
-        yaw_var = state.get("yaw_var", 0.0)
-        pitch_var = state.get("pitch_var", 0.0)
-        roll_var = state.get("roll_var", 0.0)
+        angular_vars = {
+            "yaw_rate": state.get("yaw_var", 0.0),
+            "pitch_rate": state.get("pitch_var", 0.0),
+            "roll_rate": state.get("roll_var", 0.0),
+        }
 
-        for axis, mean, var in [
-            ("yaw_rate", yaw_mean, yaw_var),
-            ("pitch_rate", pitch_mean, pitch_var),
-            ("roll_rate", roll_mean, roll_var),
-        ]:
-            mean_target = goal[axis]["mean"]
-            std_target = goal[axis]["std"]
-            std = np.sqrt(var)
+        for axis in ["yaw_rate", "pitch_rate", "roll_rate"]:
+            target_mean = goal[axis]["mean"]
+            target_std = goal[axis]["std"]
 
-            total_vel_error += abs(mean - mean_target)
-            total_std_error += abs(std - std_target)
+            observed_mean = angular_means[axis]
+            observed_std = np.sqrt(angular_vars[axis])
 
-        # Final reward terms
-        progress_reward = -total_vel_error
-        stability_reward = -total_std_error
+            mean_score = gaussian_score(observed_mean, target_mean, sigma=0.005)
+            std_score = gaussian_score(observed_std, target_std, sigma=0.002)
 
-        bonus = 5.0 if total_vel_error < 0.05 and total_std_error < 0.05 else 0.0
+            total_vel_score += mean_score
+            total_std_score += std_score
 
-        total = 3.0 * progress_reward + 5.0 * stability_reward + bonus
+        # Bonus: gradually increases when both scores are close to ideal (6.0 max)
+        vel_bonus = smooth_bonus(total_vel_score / 6.0, scale=3.0)
+        std_bonus = smooth_bonus(total_std_score / 6.0, scale=2.0)
+        bonus = vel_bonus + std_bonus
+
+
+        # Final shaped reward
+        total_reward = 3.0 * total_vel_score + 5.0 * total_std_score + bonus
 
         return {
-            "total": total,
-            "progress_reward": progress_reward,
-            "stability": stability_reward,  # same key as before
+            "total": total_reward,
+            "velocity_score": total_vel_score,
+            "std_score": total_std_score,
             "bonus": bonus,
-            "vel_error": total_vel_error,
-            "yaw_rate": yaw_mean,
-            "pitch_rate": pitch_mean,
-            "roll_rate": roll_mean,
+            "yaw_rate": angular_means["yaw_rate"],
+            "pitch_rate": angular_means["pitch_rate"],
+            "roll_rate": angular_means["roll_rate"],
         }
+
 
 
 

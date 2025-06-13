@@ -19,8 +19,8 @@ class RLGui:
         self.yaw_data = []
         self.pitch_rate_data = []
         self.roll_rate_data = []
-        self.progress_data = []
-        self.stability_data = []
+        self.velocity_data = []
+        self.std_data = []
         self.bonus_data = []
         self.critic_loss_data = []
         self.actor_loss_data = []
@@ -128,16 +128,16 @@ class RLGui:
             self.ax3.legend()
             self.canvas2.draw()
 
-            self.progress_data.append(metrics.get("progress_reward", 0.0))
-            self.stability_data.append(metrics.get("stability", 0.0))
+            self.velocity_data.append(metrics.get("velocity_score", 0.0))
+            self.std_data.append(metrics.get("std_score", 0.0))
             self.bonus_data.append(metrics.get("bonus", 0.0))
 
             self.ax4.cla()
             self.ax4.set_title("Reward Components")
             self.ax4.set_ylabel("Value")
             self.ax4.set_xlabel("Episode")
-            self.ax4.plot(self.progress_data, label="progress_reward", color="blue")
-            self.ax4.plot(self.stability_data, label="stability", color="gray")
+            self.ax4.plot(self.velocity_data, label="velocity_score", color="blue")
+            self.ax4.plot(self.std_data, label="std_score", color="gray")
             self.ax4.plot(self.bonus_data, label="bonus", color="magenta")
             self.ax4.legend()
             self.canvas3.draw()
@@ -201,9 +201,10 @@ class RLGui:
         self.yaw_data.clear()
         self.pitch_rate_data.clear()
         self.roll_rate_data.clear()
-        self.progress_data.clear()
-        self.stability_data.clear()
+        self.velocity_data.clear()
+        self.std_data.clear()
         self.bonus_data.clear()
+        self.q_value_data.clear()
 
         self.ax.cla()
         self.ax.set_title("Episode Rewards")

@@ -162,6 +162,8 @@ class SACAgent:
         Returns:
             float: Estimated Q-value.
         """
+        if isinstance(state, dict):
+            raise TypeError("get_q_value() expected an array, not a dict. Use env._state_to_obs(state) first.")
         self.critic.eval()
         self.raw_actor.eval()  # not the JIT one — it has sampling
 

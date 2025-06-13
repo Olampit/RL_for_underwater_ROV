@@ -157,7 +157,7 @@ def train(
     episodes: int = 5000,
     max_steps: int = 10,
     batch_size: int = 256,#TODO FIX FUCKING BATCH SIZE
-    start_steps: int = 100000, #!
+    start_steps: int = 0, #!
     update_every: int = 50,
     reward_scale: float = 1,
     learning_rate: float = 3e-4,
@@ -349,18 +349,19 @@ def train(
         if progress_callback is not None and step % 50 == 0:
             target = env.rov.joystick.get_target()
             
-            q_val = agent.get_q_value(current_state)
+            obs = env._state_to_obs(current_state)  # or env.state_to_obs if public
+            q_val = agent.get_q_value(obs)
             
             
             metrics = {
                 "vx": float(current_state.get("vx_mean", 0.0)),
                 "vx_target": float(target.get("vx", {}).get("mean", 0.0)),
-                "progress_reward": reward_components["progress_reward"],
+                "velocity_score": reward_components["velocity_score"],
                 "yaw_rate": reward_components["yaw_rate"],
                 "pitch_rate": reward_components["pitch_rate"],
                 "roll_rate": reward_components["roll_rate"],
                 "bonus": reward_components["bonus"],
-                "stability": reward_components["stability"],
+                "std_score": reward_components["std_score"],
                 "critic_loss": critic_loss,
                 "actor_loss": actor_loss,
                 "entropy": entropy * 10,
