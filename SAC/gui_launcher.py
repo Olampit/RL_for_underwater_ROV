@@ -26,6 +26,7 @@ class RLGui:
         self.actor_loss_data = []
         self.entropy_data = []
         self.mean_step_time_data = []
+        self.q_value_data = []
 
         self.fig2, (self.ax2, self.ax3) = plt.subplots(2, 1, figsize=(6, 2.5))
         self.canvas2 = FigureCanvasTkAgg(self.fig2, master=root)
@@ -42,6 +43,10 @@ class RLGui:
         self.fig6, self.ax7 = plt.subplots(figsize=(6, 2.5))
         self.canvas6 = FigureCanvasTkAgg(self.fig6, master=root)
         self.canvas6.get_tk_widget().grid(row=10, column=0, columnspan=3, sticky="nsew")
+        
+        self.fig7, self.ax8 = plt.subplots(figsize=(6, 2.5))
+        self.canvas8 = FigureCanvasTkAgg(self.fig6, master=root)
+        self.canvas8.get_tk_widget().grid(row=10, column=0, columnspan=3, sticky="nsew")
 
         self.agent_type = tk.StringVar(value="sac")
         ttk.Label(root, text="Agent Type:").grid(row=0, column=0, sticky="w")
@@ -160,6 +165,17 @@ class RLGui:
             self.ax7.plot(self.mean_step_time_data, label="Mean Step Time", color="orange")
             self.ax7.legend()
             self.canvas6.draw()
+            
+            
+            self.q_value_data.append(metrics.get("mean_q_value"))
+            self.ax8.cla()
+            self.ax8.set_title("Mean Q-Value")
+            self.ax8.set_ylabel("Q(s, a)")
+            self.ax8.set_xlabel("Episode")
+            self.ax8.plot(self.q_value_data, label="Q-Value", color="blue")
+            self.ax8.legend()
+            self.canvas8.draw()
+
 
 
 

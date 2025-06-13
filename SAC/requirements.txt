@@ -4,3 +4,5 @@ pymavlink
 pickle
 torch
 gym
+rclpy
+matplotlib

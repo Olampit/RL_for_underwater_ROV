@@ -8,6 +8,18 @@ import time
 import torch
 
 def prefill_replay_buffer(env, agent, steps=50000, reward_scale=1.0):
+    """
+    Populates the replay buffer by running the environment with random actions.
+
+    Parameters:
+        env (ROVEnvGymWrapper): Gym environment for the ROV.
+        agent (SACAgent): Agent with a replay buffer to populate.
+        steps (int): Number of steps to fill.
+        reward_scale (float): Multiplier applied to each reward before storing.
+
+    Called in:
+        Standalone, should be deprecated since there is a copy in run_training.py.
+    """
     obs = env.reset()
     for _ in range(steps):
         action = env.action_space.sample()

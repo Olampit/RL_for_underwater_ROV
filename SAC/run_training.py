@@ -1,29 +1,4 @@
-# run_training_sac.py
-"""Soft Actor-Critic training loop for the 8-motor ROV (GUI-ready).
-
-This version exposes **train(**kwargs) so it can be called from a tkinter GUI or
-from the CLI. All hyper-parameters are configurable through keyword arguments
-and sensible defaults are provided.
-
-Key kwargs (all optional):
-    episodes            (int)   - number of training episodes (default 1000)
-    max_steps           (int)   - max steps per episode (default 300)
-    batch_size          (int)   - mini-batch size for the SAC update (256)
-    start_steps         (int)   - purely random steps before updates (5000)
-    update_every        (int)   - update frequency in env steps (1)
-    reward_scale        (float) - multiplier applied before storing in buffer
-    learning_rate       (float) - Adam LR for both actor & critic (3e-4)
-    gamma               (float) - discount factor (0.99)
-    tau                 (float) - target-net soft update (0.005)
-    mavlink_endpoint    (str)   - MAVLink URL ("udp:127.0.0.1:14550")
-    device              (str)   - "cpu", "cuda" or None to auto-select
-    progress_callback   (callable | None)
-                                A function called after every episode with
-                                signature cb(episode_idx:int, total:int, reward:float)
-
-The script can still be run directly:
-    python run_training_sac.py --episodes 300 --max_steps 200
-"""
+# run_training.py
 
 from __future__ import annotations
 
@@ -59,18 +34,52 @@ from sac.sac_agent import SACAgent
 SPEED_UP=5 #####! ALSO DEFINED IN rov_env_gym, BEWARE
 
 def wait_for_heartbeat(conn, timeout: int = 30):
+    """
+    Waits for a MAVLink heartbeat to confirm connection to the ROV.
+
+    Parameters:
+        conn: MAVLink connection object.
+        timeout (int): Timeout in seconds.
+
+    Called in:
+        train().
+    """
     print("[WAIT] Waiting for MAVLink heartbeat…")
     conn.wait_heartbeat(timeout=timeout)
     print(f"[INFO] Connected: system={conn.target_system}, component={conn.target_component}")
 
 
 def make_env(connection, latest_imu):
-    """Instantiate low-level ROVEnvironment and wrap it with Gym adapter."""
+    """
+    Instantiates a low-level ROVEnvironment and wraps it with a Gym-compatible adapter.
+
+    Parameters:
+        connection: MAVLink connection.
+        latest_imu: Dictionary passed to the ROVEnvironment (unused internally).
+
+    Returns:
+        ROVEnvGymWrapper: The wrapped environment ready for training.
+
+    Called in:
+        train().
+    """
     rov_env = ROVEnvironment(action_map=[], connection=connection, latest_imu=latest_imu)
     return ROVEnvGymWrapper(rov_env)
 
 
 def save_checkpoint(agent, total_steps, episode_rewards, filename="sac_checkpoint.pt"):
+    """
+    Saves the current agent and replay buffer state to disk.
+
+    Parameters:
+        agent (SACAgent): The SAC agent.
+        total_steps (int): Total steps completed.
+        episode_rewards (List[float]): Reward history.
+        filename (str): Output checkpoint file.
+
+    Called in:
+        train().
+    """
     print(f"[SAVE] Saving checkpoint at step {total_steps}...")
     torch.save({
         'actor': agent.actor.state_dict(),
@@ -84,6 +93,19 @@ def save_checkpoint(agent, total_steps, episode_rewards, filename="sac_checkpoin
     
     
 def load_checkpoint(agent, filename="save/sac_checkpoint.pt"):
+    """
+    Loads a previously saved agent checkpoint.
+
+    Parameters:
+        agent (SACAgent): The SAC agent to update.
+        filename (str): Checkpoint file path.
+
+    Returns:
+        Tuple[int, List[float]]: Total steps and episode reward history.
+
+    Called in:
+        train().
+    """
     if not os.path.exists(filename):
         return 0, []
 
@@ -98,6 +120,19 @@ def load_checkpoint(agent, filename="save/sac_checkpoint.pt"):
 
 
 def prefill_replay_buffer(env, agent, conn, steps=50000, reward_scale=0.01):
+    """
+    Alternative version of prefill used within run_training_sac for compatibility with Gym wrapper.
+
+    Parameters:
+        env (ROVEnvGymWrapper): The Gym environment.
+        agent (SACAgent): The SAC agent.
+        conn: MAVLink connection.
+        steps (int): Number of prefill steps.
+        reward_scale (float): Reward scaling factor.
+
+    Called in:
+        train().
+    """
     obs = env.reset(conn)
     for _ in range(steps):
         action = env.action_space.sample()
@@ -137,6 +172,36 @@ def train(
     restart_flag: Optional[threading.Event] = None,
 ) -> Dict[str, Any]:
 
+    """
+    Main training loop for the Soft Actor-Critic agent controlling the ROV.
+
+    Keyword Args:
+        episodes (int): Number of training episodes.
+        max_steps (int): Steps per episode.
+        batch_size (int): Mini-batch size for updates.
+        start_steps (int): Warmup steps with random policy.
+        update_every (int): Update frequency (in steps).
+        reward_scale (float): Reward scaling before storage.
+        learning_rate (float): Learning rate for optimizers.
+        gamma (float): Discount factor.
+        tau (float): Soft update factor.
+        mavlink_endpoint (str): MAVLink connection string.
+        device (str): "cuda", "cpu" or None.
+        progress_callback (Callable): Called every 50 episodes with training stats.
+        resume (bool): Load from checkpoint if available.
+        checkpoint_every (int): Save frequency in steps.
+        pause_flag (threading.Event): Optional pause signal for GUI.
+        restart_flag (threading.Event): Optional restart signal.
+
+    Returns:
+        dict: Final training stats and paths to model and plot.
+
+    Called in:
+        main() and GUI systems.
+        
+    This version can still be called directly : 
+        python3 run_training.py 
+    """
 
     critic_losses = []
     actor_losses = []
@@ -284,12 +349,9 @@ def train(
         if progress_callback is not None and step % 50 == 0:
             target = env.rov.joystick.get_target()
             
-            with torch.no_grad():
-                obs_tensor = torch.tensor(current_state_as_array).unsqueeze(0).to(device)
-                act_tensor = policy(obs_tensor)  # Or sample from policy
-                q_value = critic(obs_tensor, act_tensor)
-                mean_q = q_value.mean().item()
-
+            q_val = agent.get_q_value(current_state)
+            
+            
             metrics = {
                 "vx": float(current_state.get("vx_mean", 0.0)),
                 "vx_target": float(target.get("vx", {}).get("mean", 0.0)),
@@ -303,6 +365,7 @@ def train(
                 "actor_loss": actor_loss,
                 "entropy": entropy * 10,
                 "mean_step_time": (total_step_time/max_steps),
+                "mean_q_value": q_val,
             }
             progress_callback(ep, episodes, float(ep_reward), metrics)
 

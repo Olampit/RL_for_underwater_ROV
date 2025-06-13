@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "fast version for *5 with correct timestamp: $count"
+git commit --author="Olampit <olampit@gmail.com>" -m "Commit with ALL the documentation DONE and REVIEWED. But the reward function still has a bad shape."
 git push -u origin main
 
 # Increment and save back

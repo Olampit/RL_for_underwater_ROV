@@ -6,7 +6,22 @@ from sac.networks import Actor, Critic
 from sac.replay_buffer import ReplayBuffer
 
 class SACAgent:
+    """
+    Soft Actor-Critic agent implementing actor-critic updates with entropy regularization.
+    """
     def __init__(self, state_dim, action_dim, device="cpu", gamma=0.99, tau=0.005, alpha=0.2, automatic_entropy_tuning=True):
+        """
+        Initializes the SAC agent with actor, critics, replay buffer and optimizers.
+
+        Parameters:
+            state_dim (int): Dimension of input state.
+            action_dim (int): Dimension of action.
+            device (str): Device to run the model on ("cpu" or "cuda").
+            gamma (float): Discount factor.
+            tau (float): Soft update factor for target critic.
+            alpha (float): Initial entropy coefficient.
+            automatic_entropy_tuning (bool): Whether to learn alpha automatically.
+        """
         self.device = device
         self.gamma = gamma
         self.tau = tau
@@ -40,6 +55,16 @@ class SACAgent:
 
 
     def select_action(self, state, deterministic=False):
+        """
+        Selects an action given a state using the actor network.
+
+        Parameters:
+            state (np.ndarray): Current state.
+            deterministic (bool): Whether to use mean or sample from distribution.
+
+        Returns:
+            np.ndarray: Action in [-1, 1] per dimension.
+        """
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
         mean, std = self.actor(state)  # use JIT-traced model for fast inference
         if deterministic:
@@ -51,6 +76,15 @@ class SACAgent:
 
 
     def update(self, batch_size=256):
+        """
+        Performs a SAC update step on actor, critic, and entropy coefficient (if enabled).
+
+        Parameters:
+            batch_size (int): Mini-batch size for training.
+
+        Returns:
+            Tuple[float, float, float]: critic loss, actor loss, and entropy.
+        """
         if len(self.replay_buffer) < batch_size:
             # Ensure consistent return type
             return 0.0, 0.0, 0.0, self.alpha.item()
@@ -98,6 +132,15 @@ class SACAgent:
         return critic_loss.item(), actor_loss.item(), entropy
 
     def sample(self, state):
+        """
+        Samples an action and log-prob from a normal distribution and applies tanh squashing.
+
+        Parameters:
+            state (torch.Tensor): Input state tensor.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: action, log-probability.
+        """
         mean, std = self(state)
         normal = torch.distributions.Normal(mean, std)
         x_t = normal.rsample()
@@ -105,3 +148,34 @@ class SACAgent:
         log_prob = normal.log_prob(x_t).sum(-1, keepdim=True)
         log_prob -= torch.log(1 - action.pow(2) + 1e-6).sum(-1, keepdim=True)
         return action, log_prob
+
+
+    @torch.no_grad()
+    def get_q_value(self, state, action=None):
+        """
+        Estimates the Q-value of a (state, action) pair using the critic network.
+
+        Parameters:
+            state (np.ndarray): Environment state.
+            action (np.ndarray or None): Action to evaluate. If None, sample from actor.
+
+        Returns:
+            float: Estimated Q-value.
+        """
+        self.critic.eval()
+        self.raw_actor.eval()  # not the JIT one — it has sampling
+
+        # Convert state to tensor
+        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+
+        if action is None:
+            # Sample an action from the actor
+            action_tensor, _ = self.raw_actor.sample(state_tensor)
+        else:
+            action_tensor = torch.FloatTensor(action).unsqueeze(0).to(self.device)
+
+        # Evaluate both critics
+        q1, q2 = self.critic(state_tensor, action_tensor)
+        mean_q = (q1 + q2) / 2.0
+
+        return mean_q.cpu().item()

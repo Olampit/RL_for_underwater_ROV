@@ -21,7 +21,31 @@ velocity_buffer = IMUBuffer(max_seconds=1.0, frequency=400)
 imu_types = ['ATTITUDE', 'VIBRATION']
 
 def start_imu_listener(connection, latest_imu):
+    """
+    Starts MAVLink attitude listener and ROS 2 odometry subscriber in separate threads.
+
+    Parameters:
+        connection: MAVLink connection object.
+        latest_imu: Unused argument (possibly reserved for future use).
+
+    Threads:
+        - imu_loop(): listens for MAVLink ATTITUDE messages and populates attitude_buffer.
+        - ros_spin(): runs a ROS 2 node subscribing to /bluerov/navigator/odometry and fills velocity_buffer.
+
+    Called in:
+        when training (run_training.py).
+    """
     def imu_loop():
+        """
+        Thread function that listens for MAVLink ATTITUDE messages and stores them in attitude_buffer.
+
+        Handles:
+            - pitch, pitchspeed, roll, rollspeed, yaw, yawspeed from MAVLink messages.
+            - Exceptions gracefully.
+
+        Called in:
+            start_imu_listener (internal thread).
+        """
         try:
             print("[IMU] Starting MAVLink listener thread...")
 
@@ -59,9 +83,27 @@ def start_imu_listener(connection, latest_imu):
 
     # Start ROS2 Odometry listener
     def ros_spin():
+        """
+        Thread function that starts a ROS 2 node subscribing to /bluerov/navigator/odometry.
+
+        Stores computed velocity magnitude and averages into velocity_buffer.
+
+        Called in:
+            start_imu_listener (internal thread).
+        """
         try:
             rclpy.init()
             class OdomListener(Node):
+                """
+                ROS 2 node that subscribes to the odometry topic and stores velocity information.
+
+                Fields:
+                    - velocity_history: deque of recent velocity magnitudes.
+                    - odom_callback: stores vx, vy, vz and computed average velocity.
+
+                Called in:
+                    ros_spin().
+                """
                 def __init__(self):
                     super().__init__('odom_listener')
                     self.subscription = self.create_subscription(

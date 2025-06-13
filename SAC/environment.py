@@ -18,13 +18,39 @@ SERVO_IDLE = 1500
 
 
 def input_to_pwm(value):
+    """
+    Converts a normalized thrust value (-1 to 1) to a servo PWM value.
+
+    Parameters:
+        value (float): Thrust value between -1.0 and 1.0.
+
+    Returns:
+        int: PWM signal between SERVO_MIN (1100) and SERVO_MAX (1900), idle at 1500.
+
+    Called in:
+        ROVEnvironment.apply_action().
+    """
     if abs(value) < 0.05:
         return SERVO_IDLE
     pwm = SERVO_IDLE + (value * 400)
     return int(max(SERVO_MIN, min(SERVO_MAX, pwm)))
 
 class ROVEnvironment:
+    """
+    Environment for controlling a ROV, collecting IMU/velocity data, and computing RL rewards.
+    """
     def __init__(self, action_map, connection, latest_imu):
+        """
+        Initialize the environment with action mapping, MAVLink connection, and joystick.
+
+        Parameters:
+            action_map (List[dict]): List of thrust configurations for 8 motors.
+            connection: MAVLink connection object.
+            latest_imu: Not used (reserved).
+
+        Called in:
+            train script.
+        """
         self.action_map = action_map
         self.connection = connection
         self.latest_imu = latest_imu
@@ -32,6 +58,15 @@ class ROVEnvironment:
         self.target_velocity = self.joystick.get_target()
 
     def apply_action(self, action_idx):
+        """
+        Sends motor commands based on the selected action index.
+
+        Parameters:
+            action_idx (int): Index in the action map.
+
+        Called in:
+            I think never, since we have a better "duplicate" of this function in the env wrapper. 
+        """
         action = self.action_map[action_idx]
         for i in range(8):
             motor_label = f"motor{i+1}"
@@ -49,6 +84,15 @@ class ROVEnvironment:
         print(f"[ACTION] Sent: {action}")
 
     def get_state(self):
+        """
+        Computes and returns current state from attitude and velocity buffers.
+
+        Returns:
+            dict: Dictionary containing means and variances of velocities and angular rates.
+
+        Called in:
+            reset(), compute_reward(), state_to_index().
+        """
         state = {}
 
         att_seq = attitude_buffer.get_all()
@@ -94,6 +138,18 @@ class ROVEnvironment:
         return state
 
     def random_orientation_quat(self, max_angle_deg=15):
+        """
+        Generates a small random orientation as a quaternion.
+
+        Parameters:
+            max_angle_deg (float): Maximum angle deviation in degrees.
+
+        Returns:
+            dict: Quaternion with keys x, y, z, w.
+
+        Called in:
+            reset().
+        """
         max_angle_rad = math.radians(max_angle_deg)
         roll = random.uniform(-max_angle_rad, max_angle_rad)
         pitch = random.uniform(-max_angle_rad, max_angle_rad)
@@ -114,6 +170,15 @@ class ROVEnvironment:
         }
 
     def reset(self):
+        """
+        Respawns the robot at a random pose and resets joystick goal.
+
+        Returns:
+            dict: Initial state after reset.
+
+        Called in:
+            RL training loop, before every episode.
+        """
         # Random small variation in spawn position 
         px = round(random.uniform(-1.0, 1.0), 2)
         py = round(random.uniform(4.0, 6), 2)
@@ -138,9 +203,6 @@ class ROVEnvironment:
 
         subprocess.run(cmd)
         
-        time.sleep(0.001)
-
-        
         self.joystick.next_episode()
 
         return self.get_state()
@@ -148,6 +210,15 @@ class ROVEnvironment:
 
 
     def stop_motors(self, connection):
+        """
+        Sends 1500 PWM (idle) to all motors to stop them.
+
+        Parameters:
+            connection: MAVLink connection object.
+
+        Called in:
+            Whenever we do a reset, this function is called (in train)
+        """
         for servo in range(1, 9):
             connection.mav.command_long_send(
                 connection.target_system,
@@ -158,27 +229,22 @@ class ROVEnvironment:
                 1500,
                 0, 0, 0, 0, 0
             )
-
-    def stop_motors2(self, connection):
-        for servo in range(1, 9):
-            connection.mav.command_long_send(
-                connection.target_system,
-                connection.target_component,
-                mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
-                0,
-                servo,
-                1100,
-                0, 0, 0, 0, 0
-            )
             
-            
-    def total_distance(self, state):
-        x = state.get("pos_x", 0.0)
-        return x
 
 
     def compute_reward(self, state):
-        
+        """
+        Computes the reward based on the velocity and angular rate errors relative to the target.
+
+        Parameters:
+            state (dict): Current state including velocity and rate statistics.
+
+        Returns:
+            dict: Dictionary with reward components: total, progress_reward, stability, bonus, errors.
+
+        Called in:
+            When doing a step. 
+        """
         goal = self.joystick.get_target()
 
         total_vel_error = 0.0
@@ -244,6 +310,18 @@ class ROVEnvironment:
 
 
     def state_to_index(self, state):
+        """
+        Converts a state into a discretized tuple index based on key rounding.
+
+        Parameters:
+            state (dict): Current state.
+
+        Returns:
+            tuple: Rounded values of 15 selected state features.
+
+        Called in:
+            used for tabular Q-learning or state mapping.
+        """
         keys = [
             "yaw_var", "yaw_mean",
             "pitch_var", "pitch_mean",
@@ -260,6 +338,17 @@ class ROVEnvironment:
 
 
     def is_terminal(self, state):
-        
+        """
+        Determines if the current state is terminal (always False here).
+
+        Parameters:
+            state (dict): Current state.
+
+        Returns:
+            bool: False.
+
+        Called in:
+            RL loop condition.
+        """
         return False
 
