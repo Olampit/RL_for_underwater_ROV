@@ -7,6 +7,8 @@ import time
 from operator import itemgetter
 
 
+SPEED_UP = 5#####! ALSO DEFINED IN run_training, BEWARE
+
 class ROVEnvGymWrapper(gym.Env):
     def __init__(self, rov_env: ROVEnvironment):
         super().__init__()
@@ -24,6 +26,7 @@ class ROVEnvGymWrapper(gym.Env):
 
     def step(self, action, state):
         self._apply_action_continuous(action)
+        time.sleep(0.1/SPEED_UP)
         reward = self.rov.compute_reward(state)
         done = self.rov.is_terminal(state)
         obs = self._state_to_obs(state)

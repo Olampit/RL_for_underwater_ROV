@@ -56,7 +56,7 @@ from sac.sac_agent import SACAgent
 # Utility
 # -----------------------------------------------------------------------------
 
-SPEED_UP=5
+SPEED_UP=5 #####! ALSO DEFINED IN rov_env_gym, BEWARE
 
 def wait_for_heartbeat(conn, timeout: int = 30):
     print("[WAIT] Waiting for MAVLink heartbeat…")
@@ -121,8 +121,8 @@ def train(
     *,
     episodes: int = 5000,
     max_steps: int = 10,
-    batch_size: int = 50,#TODO FIX FUCKING BATCH SIZE
-    start_steps: int = 0, #!
+    batch_size: int = 256,#TODO FIX FUCKING BATCH SIZE
+    start_steps: int = 100000, #!
     update_every: int = 50,
     reward_scale: float = 1,
     learning_rate: float = 3e-4,
@@ -167,6 +167,7 @@ def train(
         gamma=gamma,
         tau=tau,
         alpha=0.2,
+        automatic_entropy_tuning=True,
     )
     
 
@@ -224,19 +225,30 @@ def train(
                 action = env.action_space.sample()
             else:
                 action = agent.select_action(obs)
-
+            
+            
+            #!THIS MAKES IT SYNCHRO SINCE THE MOTORS ARE NOT STOPPED WITHING STEPS. WE SHOULD/
+            #!AIM AT HAVING A VERY STABLE TIME FOR EVERY STEP!
+            x = max((0.025/SPEED_UP)-(time.time()-step_time), 0)
+            ####################################################
+            #!DO NOT TOUCH ! This is to make the time taken to choose an action uniform. 
+            #! the time during which the action is performed is situated in rov_env_gym.py / step 
+            time.sleep(x)
+            ####################################################
 
             current_state = env.rov.get_state()
-
-            next_obs, _, done, _ = env.step(action, current_state)
             
-            x = max((0.025/SPEED_UP)-(time.time()-step_time), 0)
-            time.sleep(x)####################################################
+            
+            ####################################################
+            #!The time to sleep for each action is already integrated within the step function
+            next_obs, reward_components, done, _ = env.step(action, current_state)
+            
+            
             
             total_step_time += time.time()-step_time
 
             
-            reward_components = env.rov.compute_reward(current_state)
+            
             reward = reward_components["total"]
 
             agent.replay_buffer.push(obs, action, reward * reward_scale, next_obs, done)
@@ -245,24 +257,24 @@ def train(
             ep_reward += reward
             total_steps += 1
             
-            if total_steps >= start_steps and total_steps % update_every == 0:
-                critic_loss, actor_loss, entropy = agent.update(batch_size=batch_size)
-                critic_losses.append(critic_loss)
-                actor_losses.append(actor_loss)
-                entropies.append(entropy)
+            # if done:
+            #     break
 
-
-            if done:
-                break
-
-            if total_steps > 0 and total_steps % checkpoint_every == 0:
-                save_checkpoint(agent, total_steps, episode_rewards)
             
                 
-
-        
-        
+                
         env.rov.stop_motors(conn)
+
+            
+        if total_steps >= start_steps and total_steps % update_every == 0:
+            critic_loss, actor_loss, entropy = agent.update(batch_size=batch_size)
+            critic_losses.append(critic_loss)
+            actor_losses.append(actor_loss)
+            entropies.append(entropy)
+        
+        if total_steps > 0 and total_steps % checkpoint_every == 0:
+                save_checkpoint(agent, total_steps, episode_rewards)
+        
 
 
         episode_rewards.append(ep_reward)
@@ -272,8 +284,14 @@ def train(
         if progress_callback is not None and step % 50 == 0:
             target = env.rov.joystick.get_target()
             
+            with torch.no_grad():
+                obs_tensor = torch.tensor(current_state_as_array).unsqueeze(0).to(device)
+                act_tensor = policy(obs_tensor)  # Or sample from policy
+                q_value = critic(obs_tensor, act_tensor)
+                mean_q = q_value.mean().item()
+
             metrics = {
-                "vx": float(current_state.get("vel_x", 0.0)),
+                "vx": float(current_state.get("vx_mean", 0.0)),
                 "vx_target": float(target.get("vx", {}).get("mean", 0.0)),
                 "progress_reward": reward_components["progress_reward"],
                 "yaw_rate": reward_components["yaw_rate"],

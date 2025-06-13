@@ -25,7 +25,7 @@ class SACAgent:
         if self.automatic_entropy_tuning:
             self.target_entropy = -np.prod(action_dim).item()
             self.log_alpha = torch.tensor(np.log(alpha), requires_grad=True, device=device)
-            self.alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=3e-4)
+            self.alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=3e-2)
             self.alpha = self.log_alpha.exp().detach()
         else:
             self.alpha = torch.tensor(alpha).to(device)

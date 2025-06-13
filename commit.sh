@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "fast version for *5: $count"
+git commit --author="Olampit <olampit@gmail.com>" -m "fast version for *5 with correct timestamp: $count"
 git push -u origin main
 
 # Increment and save back
