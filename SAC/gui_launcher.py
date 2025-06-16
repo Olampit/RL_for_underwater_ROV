@@ -20,13 +20,15 @@ class RLGui:
         self.pitch_rate_data = []
         self.roll_rate_data = []
         self.velocity_data = []
-        self.std_data = []
+        self.stability_data = []
         self.bonus_data = []
         self.critic_loss_data = []
         self.actor_loss_data = []
         self.entropy_data = []
         self.mean_step_time_data = []
         self.q_value_data = []
+        self.angular_penalty_data = []
+        
 
         self.fig2, (self.ax2, self.ax3) = plt.subplots(2, 1, figsize=(6, 2.5))
         self.canvas2 = FigureCanvasTkAgg(self.fig2, master=root)
@@ -129,7 +131,8 @@ class RLGui:
             self.canvas2.draw()
 
             self.velocity_data.append(metrics.get("velocity_score", 0.0))
-            self.std_data.append(metrics.get("std_score", 0.0))
+            self.stability_data.append(metrics.get("stability_score", 0.0))
+            self.angular_penalty_data.append(metrics.get("angular_penalty", 0.0))
             self.bonus_data.append(metrics.get("bonus", 0.0))
 
             self.ax4.cla()
@@ -137,7 +140,8 @@ class RLGui:
             self.ax4.set_ylabel("Value")
             self.ax4.set_xlabel("Episode")
             self.ax4.plot(self.velocity_data, label="velocity_score", color="blue")
-            self.ax4.plot(self.std_data, label="std_score", color="gray")
+            self.ax4.plot(self.stability_data, label="stability_score", color="gray")
+            self.ax4.plot(self.angular_penalty_data, label="angular_penalty", color="black")
             self.ax4.plot(self.bonus_data, label="bonus", color="magenta")
             self.ax4.legend()
             self.canvas3.draw()
@@ -202,9 +206,11 @@ class RLGui:
         self.pitch_rate_data.clear()
         self.roll_rate_data.clear()
         self.velocity_data.clear()
-        self.std_data.clear()
+        self.stability_data.clear()
         self.bonus_data.clear()
         self.q_value_data.clear()
+        self.angular_penalty_data.clear()
+
 
         self.ax.cla()
         self.ax.set_title("Episode Rewards")

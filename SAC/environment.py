@@ -243,80 +243,65 @@ class ROVEnvironment:
         Returns:
             dict: Contains reward components (total, shaped terms, errors, rates).
         """
+        
         goal = self.joystick.get_target()
+        linear_score = 0.0
+        angular_penalty = 0.0
+        stability_score = 0.0
 
-        total_vel_score = 0.0
-        total_std_score = 0.0
-
-        def gaussian_score(x, target, sigma=0.05):
+        def gaussian_score(x, target, sigma):
             """Reward is highest when x == target, falls off smoothly."""
             return np.exp(-((x - target)**2) / (2 * sigma**2))
-
+        
         def smooth_bonus(score, scale, threshold=0.85):
             """
-            Returns a bonus scaled between 0 and `scale` if `score` > threshold.
+            Returns a bonus scaled between 0 and scale if score > threshold.
             """
             if score < threshold:
                 return 0.0
             return scale * (score - threshold) / (1.0 - threshold)
-        # Linear velocities
+
         for axis in ["vx", "vy", "vz"]:
-            target_mean = goal[axis]["mean"]
-            target_std = goal[axis]["std"]
+            mean = state.get(f"{axis}_mean", 0.0)
+            var  = state.get(f"{axis}_var", 0.0)
+            std  = np.sqrt(var)
 
-            observed_mean = state.get(f"{axis}_mean", 0.0)
-            observed_var = state.get(f"{axis}_var", 0.0)
-            observed_std = np.sqrt(observed_var)
+            linear_score += gaussian_score(mean, goal[axis]["mean"], sigma=0.0015)
+            stability_score += gaussian_score(std, goal[axis]["std"], sigma=0.001)
 
-            mean_score = gaussian_score(observed_mean, target_mean, sigma=0.1)
-            std_score = gaussian_score(observed_std, target_std, sigma=0.05)
-
-            total_vel_score += mean_score
-            total_std_score += std_score
-
-        # Angular rates
-        angular_means = {
+        for axis, obs_mean in {
             "yaw_rate": abs(state.get("yaw_mean", 0.0)),
             "pitch_rate": abs(state.get("pitch_mean", 0.0)),
             "roll_rate": abs(state.get("roll_mean", 0.0)),
-        }
+        }.items():
+            angular_penalty += obs_mean  
 
-        angular_vars = {
-            "yaw_rate": state.get("yaw_var", 0.0),
-            "pitch_rate": state.get("pitch_var", 0.0),
-            "roll_rate": state.get("roll_var", 0.0),
-        }
+        bonus = smooth_bonus(linear_score / 3.0, scale=2.0)
 
-        for axis in ["yaw_rate", "pitch_rate", "roll_rate"]:
-            target_mean = goal[axis]["mean"]
-            target_std = goal[axis]["std"]
+        print("x")
+        print(state.get("vx_mean"))
+        print("y")
+        print(state.get("vy_mean"))
+        print("z")
+        print(state.get("vz_mean"))
 
-            observed_mean = angular_means[axis]
-            observed_std = np.sqrt(angular_vars[axis])
-
-            mean_score = gaussian_score(observed_mean, target_mean, sigma=0.005)
-            std_score = gaussian_score(observed_std, target_std, sigma=0.002)
-
-            total_vel_score += mean_score
-            total_std_score += std_score
-
-        # Bonus: gradually increases when both scores are close to ideal (6.0 max)
-        vel_bonus = smooth_bonus(total_vel_score / 6.0, scale=3.0)
-        std_bonus = smooth_bonus(total_std_score / 6.0, scale=2.0)
-        bonus = vel_bonus + std_bonus
-
-
-        # Final shaped reward
-        total_reward = 3.0 * total_vel_score + 5.0 * total_std_score + bonus
+        
+        total_reward = (
+            5.0 * linear_score +
+            2.0 * stability_score -
+            3.0 * angular_penalty +
+            bonus
+        )
 
         return {
             "total": total_reward,
-            "velocity_score": total_vel_score,
-            "std_score": total_std_score,
+            "velocity_score": linear_score,
+            "stability_score": stability_score,
+            "angular_penalty": angular_penalty,
             "bonus": bonus,
-            "yaw_rate": angular_means["yaw_rate"],
-            "pitch_rate": angular_means["pitch_rate"],
-            "roll_rate": angular_means["roll_rate"],
+            "yaw_rate": state.get("yaw_mean", 0.0),
+            "pitch_rate": state.get("pitch_mean", 0.0),
+            "roll_rate": state.get("roll_mean", 0.0),
         }
 
 

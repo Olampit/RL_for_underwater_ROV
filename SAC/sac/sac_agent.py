@@ -131,23 +131,51 @@ class SACAgent:
         entropy = -log_prob.mean().item()
         return critic_loss.item(), actor_loss.item(), entropy
 
-    def sample(self, state):
+    def sample(self, state, structured=False):
         """
-        Samples an action and log-prob from a normal distribution and applies tanh squashing.
+        Samples an action and log-prob from the policy. If `structured` is True,
+        biases the sample toward physically meaningful symmetry:
+        - Left (1 & 3) and right (2 & 4) pairs: same thrust
+        - Vertical motors (5–8): symmetric up/down thrust
 
         Parameters:
             state (torch.Tensor): Input state tensor.
+            structured (bool): Whether to use structured exploration.
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: action, log-probability.
         """
-        mean, std = self(state)
+        mean, std = self.actor(state)
         normal = torch.distributions.Normal(mean, std)
         x_t = normal.rsample()
+
+        if structured:
+            base = x_t.clone()
+
+            # Lateral thrust (left and right side symmetry)
+            left_thrust = torch.tanh(torch.randn_like(base[:, :1]) * 0.5)
+            right_thrust = torch.tanh(torch.randn_like(base[:, :1]) * 0.5)
+
+            base[:, 0] = left_thrust[:, 0]   # motor 1 (front left)
+            base[:, 2] = left_thrust[:, 0]   # motor 3 (rear left)
+            base[:, 1] = right_thrust[:, 0]  # motor 2 (front right)
+            base[:, 3] = right_thrust[:, 0]  # motor 4 (rear right)
+
+            # Vertical symmetric thrust (up/down)
+            up_thrust = torch.tanh(torch.randn_like(base[:, :1]) * 0.5)
+            for i in range(4, 8):
+                base[:, i] = up_thrust[:, 0]  # motors 5–8
+
+            x_t = base
+
         action = torch.tanh(x_t)
+
         log_prob = normal.log_prob(x_t).sum(-1, keepdim=True)
         log_prob -= torch.log(1 - action.pow(2) + 1e-6).sum(-1, keepdim=True)
+
         return action, log_prob
+
+
 
 
     @torch.no_grad()

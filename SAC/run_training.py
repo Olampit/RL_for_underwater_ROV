@@ -31,7 +31,6 @@ from sac.sac_agent import SACAgent
 # Utility
 # -----------------------------------------------------------------------------
 
-SPEED_UP=5 #####! ALSO DEFINED IN rov_env_gym, BEWARE
 
 def wait_for_heartbeat(conn, timeout: int = 30):
     """
@@ -157,7 +156,7 @@ def train(
     episodes: int = 5000,
     max_steps: int = 10,
     batch_size: int = 256,#TODO FIX FUCKING BATCH SIZE
-    start_steps: int = 0, #!
+    start_steps: int = 50000, #!
     update_every: int = 50,
     reward_scale: float = 1,
     learning_rate: float = 3e-4,
@@ -242,7 +241,7 @@ def train(
             param_group["lr"] = learning_rate
 
     buffer_path = "replay_buffer.pkl"
-    prefill_steps = 250
+    prefill_steps = start_steps
 
     if os.path.exists(buffer_path):
         agent.replay_buffer.load(buffer_path)
@@ -285,16 +284,17 @@ def train(
             
             step_time = time.time()
             
-            
+            obs_tensor = torch.FloatTensor(obs).unsqueeze(0).to(agent.device)
+
             if total_steps < start_steps:
-                action = env.action_space.sample()
+                action = agent.sample(obs_tensor, structured=True)[0].detach().cpu().numpy()[0]
             else:
                 action = agent.select_action(obs)
             
             
             #!THIS MAKES IT SYNCHRO SINCE THE MOTORS ARE NOT STOPPED WITHING STEPS. WE SHOULD/
             #!AIM AT HAVING A VERY STABLE TIME FOR EVERY STEP!
-            x = max((0.025/SPEED_UP)-(time.time()-step_time), 0)
+            x = max((0.005)-(time.time()-step_time), 0)
             ####################################################
             #!DO NOT TOUCH ! This is to make the time taken to choose an action uniform. 
             #! the time during which the action is performed is situated in rov_env_gym.py / step 
@@ -361,7 +361,8 @@ def train(
                 "pitch_rate": reward_components["pitch_rate"],
                 "roll_rate": reward_components["roll_rate"],
                 "bonus": reward_components["bonus"],
-                "std_score": reward_components["std_score"],
+                "stability_score": reward_components["stability_score"],
+                "angular_penalty" : reward_components["angular_penalty"],
                 "critic_loss": critic_loss,
                 "actor_loss": actor_loss,
                 "entropy": entropy * 10,
