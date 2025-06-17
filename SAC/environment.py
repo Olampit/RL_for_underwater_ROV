@@ -201,8 +201,8 @@ class ROVEnvironment:
             }}}}"""
         ]
 
-        subprocess.run(cmd)
-        
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)   
+             
         self.joystick.next_episode()
 
         return self.get_state()
