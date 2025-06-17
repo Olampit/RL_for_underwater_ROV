@@ -181,7 +181,7 @@ class ROVEnvironment:
         """
         # Random small variation in spawn position 
         px = round(random.uniform(-1.0, 1.0), 2)
-        py = round(random.uniform(4.0, 6), 2)
+        py = round(random.uniform(49.0, 51.0), 2)
         pz = round(random.uniform(9.5, 10.5), 2)
         
         
@@ -237,61 +237,78 @@ class ROVEnvironment:
 
     def compute_reward(self, state):
         """
-        Computes the reward based on how well the observed mean and std match the target,
-        using smooth Gaussian-shaped rewards and a gradual bonus.
+        Computes a shaped reward for the ROV to go forward, stay stable, and avoid tipping.
 
         Returns:
-            dict: Contains reward components (total, shaped terms, errors, rates).
+            dict: reward components
         """
-        
         goal = self.joystick.get_target()
+
         linear_score = 0.0
-        angular_penalty = 0.0
         stability_score = 0.0
+        angular_penalty = 0.0
 
         def gaussian_score(x, target, sigma):
-            """Reward is highest when x == target, falls off smoothly."""
-            return np.exp(-((x - target)**2) / (2 * sigma**2))
-        
-        def smooth_bonus(score, scale, threshold=0.85):
-            """
-            Returns a bonus scaled between 0 and scale if score > threshold.
-            """
-            if score < threshold:
-                return 0.0
-            return scale * (score - threshold) / (1.0 - threshold)
+            return np.exp(-((x - target) ** 2) / (2 * sigma ** 2))
 
-        for axis in ["vx", "vy", "vz"]:
+        def smooth_bonus(score, scale=2.0, threshold=0.85):
+            return scale * max(0.0, (score - threshold) / (1.0 - threshold))
+
+        def sharp_score(x, target, min_val=0.0, sigma=0.03):
+            """
+            Returns a strong reward near target and punishes backward motion.
+            """
+            if x < min_val:
+                return -1.0  # penalize negative movement
+            err = abs(x - target)
+            return np.exp(-(err ** 2) / (2 * sigma ** 2))
+
+        # --- Linear motion reward (vx = forward only) ---
+        vx = state.get("vx_mean", 0.0)
+        vx_var = state.get("vx_var", 0.0)
+        vx_std = np.sqrt(vx_var)
+
+        vx_score = sharp_score(vx, goal["vx"]["mean"], min_val=0.0, sigma=0.03)
+        linear_score += vx_score
+        stability_score += gaussian_score(vx_std, goal["vx"]["std"], sigma=0.015)
+
+        # --- Penalize vy and vz drift (we want 0 movement here) ---
+        for axis in ["vy", "vz"]:
             mean = state.get(f"{axis}_mean", 0.0)
-            var  = state.get(f"{axis}_var", 0.0)
-            std  = np.sqrt(var)
+            var = state.get(f"{axis}_var", 0.0)
+            std = np.sqrt(var)
 
-            linear_score += gaussian_score(mean, goal[axis]["mean"], sigma=0.0015)
-            stability_score += gaussian_score(std, goal[axis]["std"], sigma=0.001)
+            stability_score += gaussian_score(std, goal[axis]["std"], sigma=0.01)
+            linear_score += gaussian_score(mean, goal[axis]["mean"], sigma=0.015)
 
-        for axis, obs_mean in {
-            "yaw_rate": abs(state.get("yaw_mean", 0.0)),
-            "pitch_rate": abs(state.get("pitch_mean", 0.0)),
-            "roll_rate": abs(state.get("roll_mean", 0.0)),
-        }.items():
-            angular_penalty += obs_mean  
+        # --- Angular penalty (yaw tolerance, pitch/roll punished) ---
+        yaw = abs(state.get("yaw_mean", 0.0))
+        pitch = abs(state.get("pitch_mean", 0.0))
+        roll = abs(state.get("roll_mean", 0.0))
+
+        def angular_gaussian(x, sigma): return 1.0 - np.exp(-x**2 / (2 * sigma**2))
+
+        angular_penalty = (
+            1.5 * angular_gaussian(yaw, sigma=0.2) +
+            1.5 * angular_gaussian(pitch, sigma=0.2) +
+            1.5 * angular_gaussian(roll, sigma=0.2)
+        )
+
+        # --- Reward only stability if moving forward ---
+        if abs(vx) < 0.1:
+            stability_score = 0.0
 
         bonus = smooth_bonus(linear_score / 3.0, scale=2.0)
 
-        print("x")
-        print(state.get("vx_mean"))
-        print("y")
-        print(state.get("vy_mean"))
-        print("z")
-        print(state.get("vz_mean"))
-
-        
         total_reward = (
-            5.0 * linear_score +
-            2.0 * stability_score -
-            3.0 * angular_penalty +
+            7.0 * linear_score +       
+            3.0 * stability_score -
+            5.0 * angular_penalty +
             bonus
         )
+
+        # Clip to prevent Q explosion
+        total_reward = np.clip(total_reward, -10.0, 10.0)
 
         return {
             "total": total_reward,
@@ -299,10 +316,12 @@ class ROVEnvironment:
             "stability_score": stability_score,
             "angular_penalty": angular_penalty,
             "bonus": bonus,
-            "yaw_rate": state.get("yaw_mean", 0.0),
-            "pitch_rate": state.get("pitch_mean", 0.0),
-            "roll_rate": state.get("roll_mean", 0.0),
+            "yaw_rate": yaw,
+            "pitch_rate": pitch,
+            "roll_rate": roll,
         }
+
+
 
 
 

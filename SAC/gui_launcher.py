@@ -42,19 +42,19 @@ class RLGui:
         self.canvas5 = FigureCanvasTkAgg(self.fig5, master=root)
         self.canvas5.get_tk_widget().grid(row=9, column=1, columnspan=2, sticky="nsew")
 
-        self.fig6, self.ax7 = plt.subplots(figsize=(6, 2.5))
+        self.fig6, self.ax7 = plt.subplots(figsize=(6, 2.5))  
         self.canvas6 = FigureCanvasTkAgg(self.fig6, master=root)
-        self.canvas6.get_tk_widget().grid(row=10, column=0, columnspan=3, sticky="nsew")
+        self.canvas6.get_tk_widget().grid(row=10, column=0, sticky="nsew")  
         
-        self.fig7, self.ax8 = plt.subplots(figsize=(6, 2.5))
-        self.canvas8 = FigureCanvasTkAgg(self.fig6, master=root)
-        self.canvas8.get_tk_widget().grid(row=10, column=0, columnspan=3, sticky="nsew")
+        self.fig7, self.ax8 = plt.subplots(figsize=(6, 2.5))  
+        self.canvas7 = FigureCanvasTkAgg(self.fig7, master=root)
+        self.canvas7.get_tk_widget().grid(row=10, column=1, sticky="nsew")  
 
         self.agent_type = tk.StringVar(value="sac")
         ttk.Label(root, text="Agent Type:").grid(row=0, column=0, sticky="w")
         ttk.Combobox(root, textvariable=self.agent_type, values=["sac"]).grid(row=0, column=1)
 
-        self.episodes_var = tk.IntVar(value=200000)
+        self.episodes_var = tk.IntVar(value=100000)
         self.max_steps_var = tk.IntVar(value=50)
         self.lr_var = tk.DoubleVar(value=3e-3)
 
@@ -169,8 +169,7 @@ class RLGui:
             self.ax7.plot(self.mean_step_time_data, label="Mean Step Time", color="orange")
             self.ax7.legend()
             self.canvas6.draw()
-            
-            
+
             self.q_value_data.append(metrics.get("mean_q_value"))
             self.ax8.cla()
             self.ax8.set_title("Mean Q-Value")
@@ -178,7 +177,8 @@ class RLGui:
             self.ax8.set_xlabel("Episode")
             self.ax8.plot(self.q_value_data, label="Q-Value", color="blue")
             self.ax8.legend()
-            self.canvas8.draw()
+            self.canvas7.draw()
+
 
 
 

@@ -118,32 +118,6 @@ def load_checkpoint(agent, filename="save/sac_checkpoint.pt"):
     return checkpoint['step'], checkpoint['rewards']
 
 
-def prefill_replay_buffer(env, agent, conn, steps=50000, reward_scale=0.01):
-    """
-    Alternative version of prefill used within run_training_sac for compatibility with Gym wrapper.
-
-    Parameters:
-        env (ROVEnvGymWrapper): The Gym environment.
-        agent (SACAgent): The SAC agent.
-        conn: MAVLink connection.
-        steps (int): Number of prefill steps.
-        reward_scale (float): Reward scaling factor.
-
-    Called in:
-        train().
-    """
-    obs = env.reset(conn)
-    for _ in range(steps):
-        action = env.action_space.sample()
-        current_state = env.rov.get_state()
-        next_obs, _, done, _ = env.step(action, current_state)
-        reward_components = env.rov.compute_reward(current_state)
-        reward = reward_components["total"]
-        agent.replay_buffer.push(obs, action, reward * reward_scale, next_obs, done)
-        obs = next_obs
-        if done:
-            obs = env.reset()
-
 
 
 
@@ -156,8 +130,8 @@ def train(
     episodes: int = 5000,
     max_steps: int = 10,
     batch_size: int = 256,#TODO FIX FUCKING BATCH SIZE
-    start_steps: int = 50000, #!
-    update_every: int = 50,
+    start_steps: int = 10000, #!
+    update_every: int = 5,
     reward_scale: float = 1,
     learning_rate: float = 3e-4,
     gamma: float = 0.99,
@@ -215,8 +189,8 @@ def train(
     wait_for_heartbeat(conn)
     latest_imu: Dict[str, Any] = {}
     start_imu_listener(conn, latest_imu)
-    print("[INIT] Waiting 2 s for IMU/Odometry data …")
-    time.sleep(2)
+    print("[INIT] Waiting 1 s for IMU/Odometry data …")
+    time.sleep(1)
 
     env = make_env(conn, latest_imu)
     env.episode_states = []
@@ -240,15 +214,7 @@ def train(
         for param_group in opt.param_groups:
             param_group["lr"] = learning_rate
 
-    buffer_path = "replay_buffer.pkl"
-    prefill_steps = start_steps
 
-    if os.path.exists(buffer_path):
-        agent.replay_buffer.load(buffer_path)
-    else:
-        print(f"[INFO] Prefilling replay buffer with {prefill_steps} random steps...")
-        prefill_replay_buffer(env, agent, conn, steps=prefill_steps, reward_scale=reward_scale)
-        agent.replay_buffer.save(buffer_path)
 
     if resume:
         total_steps, episode_rewards = load_checkpoint(agent)
@@ -260,14 +226,10 @@ def train(
 
     ep = start_ep
     
+    training_ended=False
+    
     while ep <= episodes:
-        if restart_flag and restart_flag.is_set():
-            print("[INFO] Restart flag set. Resetting episode counter.")
-            episode_rewards = []
-            total_steps = 0
-            ep = 0 #!1 ?
-            restart_flag.clear()
-
+        
         if pause_flag and pause_flag.is_set():
             print("[PAUSED] Waiting to resume...")
             while pause_flag.is_set():
@@ -324,18 +286,53 @@ def train(
             
             # if done:
             #     break
+            
+            if progress_callback is not None and step % 50 == 0: #plotting rate
+                target = env.rov.joystick.get_target()
+                
+                obs = env._state_to_obs(current_state)  # or env.state_to_obs if public
+                q_val = agent.get_q_value(obs)
+                
+                
+                metrics = {
+                    "vx": float(current_state.get("vx_mean", 0.0)),
+                    "vx_target": float(target.get("vx", {}).get("mean", 0.0)),
+                    "velocity_score": reward_components["velocity_score"],
+                    "yaw_rate": reward_components["yaw_rate"],
+                    "pitch_rate": reward_components["pitch_rate"],
+                    "roll_rate": reward_components["roll_rate"],
+                    "bonus": reward_components["bonus"],
+                    "stability_score": reward_components["stability_score"],
+                    "angular_penalty" : reward_components["angular_penalty"],
+                    "critic_loss": critic_loss,
+                    "actor_loss": actor_loss,
+                    "entropy": entropy * 10,
+                    "mean_step_time": (total_step_time/max_steps),
+                    "mean_q_value": q_val,
+                }
+                progress_callback(ep, episodes, float(ep_reward), metrics) #change reward to ep_reward here
+                
+            if total_steps % update_every == 0:
+                critic_loss, actor_loss, entropy = agent.update(batch_size=batch_size, allow_actor_update=training_ended)
+                critic_losses.append(critic_loss)
+                actor_losses.append(actor_loss)
+                entropies.append(entropy)
+            
+        if total_steps == start_steps:
+            rewards = [r for (_, _, r, _, _) in agent.replay_buffer.buffer]
+            print(f"[REPLAY BUFFER FILLED] mean={np.mean(rewards):.3f}, std={np.std(rewards):.3f}, min={np.min(rewards):.3f}, max={np.max(rewards):.3f}")
+
 
             
                 
                 
         env.rov.stop_motors(conn)
-
+        
+        
+        if total_steps >= start_steps:
+            training_ended = True
             
-        if total_steps >= start_steps and total_steps % update_every == 0:
-            critic_loss, actor_loss, entropy = agent.update(batch_size=batch_size)
-            critic_losses.append(critic_loss)
-            actor_losses.append(actor_loss)
-            entropies.append(entropy)
+        
         
         if total_steps > 0 and total_steps % checkpoint_every == 0:
                 save_checkpoint(agent, total_steps, episode_rewards)
@@ -346,30 +343,7 @@ def train(
         env.episode_states.append(current_state)
 
 
-        if progress_callback is not None and step % 50 == 0:
-            target = env.rov.joystick.get_target()
-            
-            obs = env._state_to_obs(current_state)  # or env.state_to_obs if public
-            q_val = agent.get_q_value(obs)
-            
-            
-            metrics = {
-                "vx": float(current_state.get("vx_mean", 0.0)),
-                "vx_target": float(target.get("vx", {}).get("mean", 0.0)),
-                "velocity_score": reward_components["velocity_score"],
-                "yaw_rate": reward_components["yaw_rate"],
-                "pitch_rate": reward_components["pitch_rate"],
-                "roll_rate": reward_components["roll_rate"],
-                "bonus": reward_components["bonus"],
-                "stability_score": reward_components["stability_score"],
-                "angular_penalty" : reward_components["angular_penalty"],
-                "critic_loss": critic_loss,
-                "actor_loss": actor_loss,
-                "entropy": entropy * 10,
-                "mean_step_time": (total_step_time/max_steps),
-                "mean_q_value": q_val,
-            }
-            progress_callback(ep, episodes, float(ep_reward), metrics)
+        
 
 
         if ep % 10000 == 0:

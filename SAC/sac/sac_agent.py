@@ -75,20 +75,21 @@ class SACAgent:
         return action.detach().cpu().numpy()[0]
 
 
-    def update(self, batch_size=256):
+    def update(self, batch_size=256, allow_actor_update=True):
         """
-        Performs a SAC update step on actor, critic, and entropy coefficient (if enabled).
+        Performs one Soft Actor-Critic update step on the critic, actor (optional), and entropy coefficient (if enabled).
 
         Parameters:
-            batch_size (int): Mini-batch size for training.
+            batch_size (int): Number of transitions to sample from the replay buffer.
+            allow_actor_update (bool): Whether to perform the actor (policy) update. Set to False during warm-up.
 
         Returns:
-            Tuple[float, float, float]: critic loss, actor loss, and entropy.
+            Tuple[float, float, float]: Critic loss, actor loss, entropy (scalar values).
         """
         if len(self.replay_buffer) < batch_size:
-            # Ensure consistent return type
-            return 0.0, 0.0, 0.0, self.alpha.item()
+            return 0.0, 0.0, 0.0
 
+        # === Sample a batch ===
         state, action, reward, next_state, done = self.replay_buffer.sample(batch_size)
         state = torch.FloatTensor(state).to(self.device)
         action = torch.FloatTensor(action).to(self.device)
@@ -96,40 +97,54 @@ class SACAgent:
         next_state = torch.FloatTensor(next_state).to(self.device)
         done = torch.FloatTensor(done).to(self.device).unsqueeze(1)
 
+        # === Critic update ===
         with torch.no_grad():
             next_action, next_log_prob = self.raw_actor.sample(next_state)
             q1_next, q2_next = self.target_critic(next_state, next_action)
-            q_next = torch.min(q1_next, q2_next) - self.alpha * next_log_prob
-            q_target = reward + (1 - done) * self.gamma * q_next
+            min_q_next = torch.min(q1_next, q2_next)
+            entropy_term = self.alpha * next_log_prob
+            q_target = reward + (1 - done) * self.gamma * (min_q_next - entropy_term)
 
         q1, q2 = self.critic(state, action)
         critic_loss = F.mse_loss(q1, q_target) + F.mse_loss(q2, q_target)
+
         self.critic_opt.zero_grad()
         critic_loss.backward()
         self.critic_opt.step()
 
+        # === Entropy (alpha) update ===
         action_sampled, log_prob = self.raw_actor.sample(state)
-        q1_pi, q2_pi = self.critic(state, action_sampled)
-        actor_loss = (self.alpha * log_prob - torch.min(q1_pi, q2_pi)).mean()
-        self.actor_opt.zero_grad()
-        actor_loss.backward()
 
         if self.automatic_entropy_tuning:
             alpha_loss = -(self.log_alpha * (log_prob + self.target_entropy).detach()).mean()
             self.alpha_optimizer.zero_grad()
             alpha_loss.backward()
             self.alpha_optimizer.step()
-            self.alpha = self.log_alpha.exp().detach()
+            alpha = self.log_alpha.exp()
+            self.alpha = alpha.detach()
+            self.alpha = torch.clamp(self.log_alpha.exp(), min=1e-3).detach()
         else:
+            alpha = self.alpha  # fixed scalar
             alpha_loss = torch.tensor(0.0)
 
-        self.actor_opt.step()
+        # === Actor update (optional) ===
+        if allow_actor_update:
+            q1_pi, q2_pi = self.critic(state, action_sampled)
+            actor_loss = (alpha * log_prob - torch.min(q1_pi, q2_pi)).mean()
 
+            self.actor_opt.zero_grad()
+            actor_loss.backward()
+            self.actor_opt.step()
+        else:
+            actor_loss = torch.tensor(0.0)
+
+        # === Soft target update ===
         for target_param, param in zip(self.target_critic.parameters(), self.critic.parameters()):
             target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
         entropy = -log_prob.mean().item()
         return critic_loss.item(), actor_loss.item(), entropy
+
 
     def sample(self, state, structured=False):
         """
@@ -152,21 +167,24 @@ class SACAgent:
         if structured:
             base = x_t.clone()
 
-            # Lateral thrust (left and right side symmetry)
             left_thrust = torch.tanh(torch.randn_like(base[:, :1]) * 0.5)
             right_thrust = torch.tanh(torch.randn_like(base[:, :1]) * 0.5)
+            base[:, 0] = left_thrust[:, 0]
+            base[:, 2] = left_thrust[:, 0]
+            base[:, 1] = right_thrust[:, 0]
+            base[:, 3] = right_thrust[:, 0]
 
-            base[:, 0] = left_thrust[:, 0]   # motor 1 (front left)
-            base[:, 2] = left_thrust[:, 0]   # motor 3 (rear left)
-            base[:, 1] = right_thrust[:, 0]  # motor 2 (front right)
-            base[:, 3] = right_thrust[:, 0]  # motor 4 (rear right)
+            yaw_bias = torch.tanh(torch.randn_like(base[:, :1]) * 0.3)
+            base[:, 0] += yaw_bias[:, 0] * 0.2   # front left
+            base[:, 1] -= yaw_bias[:, 0] * 0.2   # front right
+            base[:, 2] += yaw_bias[:, 0] * 0.2   # rear left
+            base[:, 3] -= yaw_bias[:, 0] * 0.2   # rear right
 
-            # Vertical symmetric thrust (up/down)
-            up_thrust = torch.tanh(torch.randn_like(base[:, :1]) * 0.5)
             for i in range(4, 8):
-                base[:, i] = up_thrust[:, 0]  # motors 5–8
+                base[:, i] = torch.tanh(torch.randn_like(base[:, i:i+1]) * 0.5).squeeze()
 
             x_t = base
+
 
         action = torch.tanh(x_t)
 

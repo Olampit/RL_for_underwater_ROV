@@ -10,7 +10,7 @@ class MLP(nn.Module):
     """
     Simple feedforward neural network with configurable hidden layers and ReLU activations.
     """
-    def __init__(self, input_dim, output_dim, hidden_dims=(128, 128)):
+    def __init__(self, input_dim, output_dim, hidden_dims=(64, 64)):
         """
         Builds a multilayer perceptron with given input/output dimensions.
 
