@@ -48,11 +48,13 @@ def start_imu_listener(connection, latest_imu):
         """
         try:
             print("[IMU] Starting MAVLink listener thread...")
+            print(time.time())
 
             while True:
                 msg = connection.recv_match(type=imu_types, blocking=True, timeout=5)
                 if msg is None:
                     print("[IMU] No MAVLink message in 5 seconds.")
+                    print(time.time())
                     continue
 
                 msg_type = msg.get_type()
