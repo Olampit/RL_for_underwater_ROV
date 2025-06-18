@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "Save with SAC instead of Deterministic Actor Critic"
+git commit --author="Olampit <olampit@gmail.com>" -m "new branch test"
 git push -u origin main
 
 # Increment and save back
