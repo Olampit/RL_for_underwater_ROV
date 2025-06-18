@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "With prioritized replay buffer"
+git commit --author="Olampit <olampit@gmail.com>" -m "Save with SAC instead of Deterministic Actor Critic"
 git push -u origin main
 
 # Increment and save back

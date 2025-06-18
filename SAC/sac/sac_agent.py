@@ -114,8 +114,11 @@ class SACAgent:
         q1, q2 = self.critic(state, action)
         td_error = ((q1 - q_target).abs() + (q2 - q_target).abs()) / 2
 
-        critic_loss = ((q1 - q_target).pow(2) + (q2 - q_target).pow(2)) * weight
+        loss1 = F.smooth_l1_loss(q1, q_target.detach(), reduction='none')
+        loss2 = F.smooth_l1_loss(q2, q_target.detach(), reduction='none')
+        critic_loss = (loss1 + loss2) * weight
         critic_loss = critic_loss.mean()
+
 
         self.replay_buffer.update_priorities(indices, td_error.detach().cpu().numpy())
 

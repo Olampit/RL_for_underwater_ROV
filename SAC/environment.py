@@ -307,9 +307,9 @@ class ROVEnvironment:
         bonus = smooth_bonus(linear_score / 3.0, scale=2.0)
 
 
-        linear_score *= 10.0
-        stability_score *= 3.0
-        angular_score *= -7.0
+        linear_score *= 5.0
+        stability_score *= 1.5
+        angular_score *= -3.5
         
         # --- Final shaped reward ---
         total_reward = (
@@ -320,7 +320,8 @@ class ROVEnvironment:
         )
 
         # --- Clamp total reward ---
-        total_reward = np.clip(total_reward, -10.0, 10.0)
+        total_reward = 10 * np.tanh(total_reward / 10.0)
+
 
         return {
             "total": total_reward,
