@@ -130,8 +130,8 @@ def train(
     episodes: int = 5000,
     max_steps: int = 10,
     batch_size: int = 256,#TODO FIX FUCKING BATCH SIZE
-    start_steps: int = 10000, #!
-    update_every: int = 5,
+    start_steps: int = 50000, #!
+    update_every: int = 1,
     reward_scale: float = 1,
     learning_rate: float = 3e-4,
     gamma: float = 0.99,
@@ -140,7 +140,7 @@ def train(
     device: Optional[str] = None,
     progress_callback: Optional[Callable[[int, int, float], None]] = None,
     resume: bool = False,
-    checkpoint_every: int = 1000,
+    checkpoint_every: int = 10000,
     pause_flag: Optional[threading.Event] = None,
     restart_flag: Optional[threading.Event] = None,
 ) -> Dict[str, Any]:
@@ -303,7 +303,7 @@ def train(
                     "roll_rate": reward_components["roll_rate"],
                     "bonus": reward_components["bonus"],
                     "stability_score": reward_components["stability_score"],
-                    "angular_penalty" : reward_components["angular_penalty"],
+                    "angular_score" : reward_components["angular_score"],
                     "critic_loss": critic_loss,
                     "actor_loss": actor_loss,
                     "entropy": entropy * 10,
@@ -312,24 +312,19 @@ def train(
                 }
                 progress_callback(ep, episodes, float(ep_reward), metrics) #change reward to ep_reward here
                 
-            if total_steps % update_every == 0:
-                critic_loss, actor_loss, entropy = agent.update(batch_size=batch_size, allow_actor_update=training_ended)
-                critic_losses.append(critic_loss)
-                actor_losses.append(actor_loss)
-                entropies.append(entropy)
-            
-        if total_steps == start_steps:
-            rewards = [r for (_, _, r, _, _) in agent.replay_buffer.buffer]
-            print(f"[REPLAY BUFFER FILLED] mean={np.mean(rewards):.3f}, std={np.std(rewards):.3f}, min={np.min(rewards):.3f}, max={np.max(rewards):.3f}")
-
-
-            
                 
+            
+            #if total_steps % update_every == 0:
+            critic_loss, actor_loss, entropy = agent.update(batch_size=batch_size, allow_actor_update=training_ended)
+            critic_losses.append(critic_loss)
+            actor_losses.append(actor_loss)
+            entropies.append(entropy)
+
                 
         env.rov.stop_motors(conn)
         
         
-        if total_steps >= start_steps:
+        if total_steps >= (start_steps//2):
             training_ended = True
             
         

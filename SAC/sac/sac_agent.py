@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 from sac.networks import Actor, Critic
 from sac.replay_buffer import ReplayBuffer
+import random
 
 class SACAgent:
     """
@@ -35,7 +36,8 @@ class SACAgent:
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=3e-4)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=3e-4)
 
-        self.replay_buffer = ReplayBuffer(100000)
+        buffer_size = 100_000
+        self.replay_buffer = ReplayBuffer(buffer_size)
 
         if self.automatic_entropy_tuning:
             self.target_entropy = -np.prod(action_dim).item()
@@ -110,6 +112,7 @@ class SACAgent:
 
         self.critic_opt.zero_grad()
         critic_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0)
         self.critic_opt.step()
 
         # === Entropy (alpha) update ===
@@ -133,6 +136,7 @@ class SACAgent:
             actor_loss = (alpha * log_prob - torch.min(q1_pi, q2_pi)).mean()
 
             self.actor_opt.zero_grad()
+            torch.nn.utils.clip_grad_norm_(self.raw_actor.parameters(), max_norm=1.0)
             actor_loss.backward()
             self.actor_opt.step()
         else:
@@ -146,45 +150,51 @@ class SACAgent:
         return critic_loss.item(), actor_loss.item(), entropy
 
 
-    def sample(self, state, structured=False):
-        """
-        Samples an action and log-prob from the policy. If `structured` is True,
-        biases the sample toward physically meaningful symmetry:
-        - Left (1 & 3) and right (2 & 4) pairs: same thrust
-        - Vertical motors (5–8): symmetric up/down thrust
-
-        Parameters:
-            state (torch.Tensor): Input state tensor.
-            structured (bool): Whether to use structured exploration.
-
-        Returns:
-            Tuple[torch.Tensor, torch.Tensor]: action, log-probability.
-        """
+    @torch.no_grad()
+    def sample(self, state, structured=True):
+        if isinstance(state, np.ndarray):
+            state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+        
         mean, std = self.actor(state)
         normal = torch.distributions.Normal(mean, std)
-        x_t = normal.rsample()
+        x_t = normal.rsample()  # shape: (B, 8)
 
         if structured:
-            base = x_t.clone()
+            B = x_t.size(0)
+            device = x_t.device
+            base = torch.zeros_like(x_t)
 
-            left_thrust = torch.tanh(torch.randn_like(base[:, :1]) * 0.5)
-            right_thrust = torch.tanh(torch.randn_like(base[:, :1]) * 0.5)
-            base[:, 0] = left_thrust[:, 0]
-            base[:, 2] = left_thrust[:, 0]
-            base[:, 1] = right_thrust[:, 0]
-            base[:, 3] = right_thrust[:, 0]
+            def rand(minval, maxval, shape=(B, 1)):
+                return torch.FloatTensor(*shape).uniform_(minval, maxval).to(device)
 
-            yaw_bias = torch.tanh(torch.randn_like(base[:, :1]) * 0.3)
-            base[:, 0] += yaw_bias[:, 0] * 0.2   # front left
-            base[:, 1] -= yaw_bias[:, 0] * 0.2   # front right
-            base[:, 2] += yaw_bias[:, 0] * 0.2   # rear left
-            base[:, 3] -= yaw_bias[:, 0] * 0.2   # rear right
+            motor_signs = torch.tensor([+1, -1, +1, -1, +1, +1, +1, +1]).float().to(device)
 
-            for i in range(4, 8):
-                base[:, i] = torch.tanh(torch.randn_like(base[:, i:i+1]) * 0.5).squeeze()
+            # --- FORWARD + YAW: Front-biased ---
+            forward_cmd = rand(-1.0, 1.0)
+            yaw_cmd = rand(-0.5, 0.5)
 
-            x_t = base
+            # Use only front thrusters (M1, M2) for forward motion
+            base[:, 0] = forward_cmd[:, 0] + yaw_cmd[:, 0]  # M1 (Front-left)
+            base[:, 1] = forward_cmd[:, 0] - yaw_cmd[:, 0]  # M2 (Front-right)
+            base[:, 2] = yaw_cmd[:, 0]                      # M3 (Back-left, yaw only)
+            base[:, 3] = -yaw_cmd[:, 0]                     # M4 (Back-right, yaw only)
 
+            # --- VERTICAL THRUST: Lift + Pitch + Roll ---
+            lift_cmd = rand(-0.8, 0.8)
+            pitch_cmd = rand(-0.4, 0.4)
+            roll_cmd = rand(-0.4, 0.4)
+
+            # M5 (front-left), M6 (front-right), M7 (rear-left), M8 (rear-right)
+            base[:, 4] = lift_cmd[:, 0] + pitch_cmd[:, 0] + roll_cmd[:, 0]  # M5
+            base[:, 5] = lift_cmd[:, 0] + pitch_cmd[:, 0] - roll_cmd[:, 0]  # M6
+            base[:, 6] = lift_cmd[:, 0] - pitch_cmd[:, 0] + roll_cmd[:, 0]  # M7
+            base[:, 7] = lift_cmd[:, 0] - pitch_cmd[:, 0] - roll_cmd[:, 0]  # M8
+
+            # Add noise for exploration
+            base += torch.randn_like(base) * 0.03
+
+            # Correct for reversed thrusters
+            x_t = base * motor_signs
 
         action = torch.tanh(x_t)
 
@@ -192,6 +202,11 @@ class SACAgent:
         log_prob -= torch.log(1 - action.pow(2) + 1e-6).sum(-1, keepdim=True)
 
         return action, log_prob
+
+
+
+
+
 
 
 

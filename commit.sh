@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "Correct libraries"
+git commit --author="Olampit <olampit@gmail.com>" -m "With gradient clipping, early actor update"
 git push -u origin main
 
 # Increment and save back
