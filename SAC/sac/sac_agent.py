@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from sac.networks import Actor, Critic
-from sac.replay_buffer import ReplayBuffer
+from sac.replay_buffer import PrioritizedReplayBuffer
 import random
 
 class SACAgent:
@@ -27,6 +27,8 @@ class SACAgent:
         self.gamma = gamma
         self.tau = tau
         self.automatic_entropy_tuning = automatic_entropy_tuning
+        self.beta = 0.4
+
 
         self.actor = Actor(state_dim, action_dim).to(device)
         self.critic = Critic(state_dim, action_dim).to(device)
@@ -37,7 +39,7 @@ class SACAgent:
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=3e-4)
 
         buffer_size = 100_000
-        self.replay_buffer = ReplayBuffer(buffer_size)
+        self.replay_buffer = PrioritizedReplayBuffer(buffer_size)
 
         if self.automatic_entropy_tuning:
             self.target_entropy = -np.prod(action_dim).item()
@@ -92,23 +94,30 @@ class SACAgent:
             return 0.0, 0.0, 0.0
 
         # === Sample a batch ===
-        state, action, reward, next_state, done = self.replay_buffer.sample(batch_size)
-        state = torch.FloatTensor(state).to(self.device)
-        action = torch.FloatTensor(action).to(self.device)
-        reward = torch.FloatTensor(reward).to(self.device).unsqueeze(1)
-        next_state = torch.FloatTensor(next_state).to(self.device)
-        done = torch.FloatTensor(done).to(self.device).unsqueeze(1)
+        self.beta = min(1.0, self.beta + 1e-4)
+
+        state, action, reward, next_state, done, weight, indices = self.replay_buffer.sample(batch_size, self.beta)
+        state = state.to(self.device)
+        action = action.to(self.device)
+        reward = reward.to(self.device)
+        next_state = next_state.to(self.device)
+        done = done.to(self.device)
+        weight = weight.to(self.device)
 
         # === Critic update ===
         with torch.no_grad():
-            next_action, next_log_prob = self.raw_actor.sample(next_state)
-            q1_next, q2_next = self.target_critic(next_state, next_action)
-            min_q_next = torch.min(q1_next, q2_next)
-            entropy_term = self.alpha * next_log_prob
-            q_target = reward + (1 - done) * self.gamma * (min_q_next - entropy_term)
+            next_actions, logp = self.raw_actor.sample(next_state)
+            target_q1, target_q2 = self.target_critic(next_state, next_actions)
+            target_q = torch.min(target_q1, target_q2)
+            q_target = reward + (1 - done) * self.gamma * (target_q - self.alpha * logp)
 
         q1, q2 = self.critic(state, action)
-        critic_loss = F.mse_loss(q1, q_target) + F.mse_loss(q2, q_target)
+        td_error = ((q1 - q_target).abs() + (q2 - q_target).abs()) / 2
+
+        critic_loss = ((q1 - q_target).pow(2) + (q2 - q_target).pow(2)) * weight
+        critic_loss = critic_loss.mean()
+
+        self.replay_buffer.update_priorities(indices, td_error.detach().cpu().numpy())
 
         self.critic_opt.zero_grad()
         critic_loss.backward()
@@ -133,7 +142,7 @@ class SACAgent:
         # === Actor update (optional) ===
         if allow_actor_update:
             q1_pi, q2_pi = self.critic(state, action_sampled)
-            actor_loss = (alpha * log_prob - torch.min(q1_pi, q2_pi)).mean()
+            actor_loss = (self.alpha * log_prob - torch.min(q1_pi, q2_pi)).mean()
 
             self.actor_opt.zero_grad()
             torch.nn.utils.clip_grad_norm_(self.raw_actor.parameters(), max_norm=1.0)

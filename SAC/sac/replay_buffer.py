@@ -1,86 +1,57 @@
-import pickle
-import random
+import torch
 import numpy as np
 
-class ReplayBuffer:
-    """
-    Replay buffer for storing transitions and sampling batches for training.
-    """
-    def __init__(self, capacity):
-        """
-        Initializes the circular buffer.
-
-        Parameters:
-            capacity (int): Maximum number of transitions stored.
-        """
+class PrioritizedReplayBuffer:
+    def __init__(self, capacity, alpha=0.6):
         self.capacity = capacity
         self.buffer = []
-        self.position = 0
+        self.priorities = []
+        self.alpha = alpha
+        self.pos = 0
 
     def push(self, state, action, reward, next_state, done):
-        """
-        Stores a transition in the buffer.
-
-        Parameters:
-            state (np.ndarray)
-            action (np.ndarray)
-            reward (float)
-            next_state (np.ndarray)
-            done (bool)
-        """
+        max_prio = max(self.priorities, default=1.0)
         data = (state, action, reward, next_state, done)
+
         if len(self.buffer) < self.capacity:
             self.buffer.append(data)
+            self.priorities.append(max_prio)
         else:
-            self.buffer[self.position] = data
-        self.position = (self.position + 1) % self.capacity
+            self.buffer[self.pos] = data
+            self.priorities[self.pos] = max_prio
+            self.pos = (self.pos + 1) % self.capacity
 
-    def save(self, path):
-        """
-        Serializes the buffer to disk using pickle.
+    def sample(self, batch_size, beta=0.4):
+        if len(self.buffer) == 0:
+            raise ValueError("Buffer is empty.")
 
-        Parameters:
-            path (str): File path to save.
-        """
-        with open(path, "wb") as f:
-            pickle.dump({
-                "capacity": self.capacity,
-                "buffer": self.buffer,
-                "position": self.position,
-            }, f)
-        print(f"[SAVE] Replay buffer saved to {path}")
+        prios = np.array(self.priorities)
+        probs = prios ** self.alpha
+        probs /= probs.sum()
 
-    def load(self, path):
-        """
-        Loads a buffer from a pickle file.
+        indices = np.random.choice(len(self.buffer), batch_size, p=probs)
+        samples = [self.buffer[i] for i in indices]
 
-        Parameters:
-            path (str): File path to load.
-        """
-        with open(path, "rb") as f:
-            data = pickle.load(f)
-            self.capacity = data["capacity"]
-            self.buffer = data["buffer"]
-            self.position = data["position"]
-        print(f"[LOAD] Replay buffer loaded from {path}")
-        
+        weights = (len(self.buffer) * probs[indices]) ** (-beta)
+        weights /= weights.max()
+
+        states, actions, rewards, next_states, dones = map(np.stack, zip(*samples))
+
+        return (
+            torch.FloatTensor(states),
+            torch.FloatTensor(actions),
+            torch.FloatTensor(rewards).unsqueeze(1),
+            torch.FloatTensor(next_states),
+            torch.FloatTensor(dones).unsqueeze(1),
+            torch.FloatTensor(weights).unsqueeze(1),
+            indices,
+        )
+
+    def update_priorities(self, indices, priorities):
+        for i, p in zip(indices, priorities):
+            self.priorities[i] = float(p + 1e-5)  # epsilon to avoid zero
+
+
     def __len__(self):
-        """
-        Returns:
-            int: Current number of stored transitions.
-        """
         return len(self.buffer)
-
-    def sample(self, batch_size):
-        """
-        Samples a batch of transitions.
-
-        Parameters:
-            batch_size (int)
-
-        Returns:
-            Tuple of np.ndarray: (states, actions, rewards, next_states, dones)
-        """
-        batch = random.sample(self.buffer, batch_size)
-        state, action, reward, next_state, done = map(np.stack, zip(*batch))
-        return state, action, reward, next_state, done
+    
