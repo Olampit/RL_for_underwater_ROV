@@ -8,7 +8,7 @@ import random
 
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dims=(128, 128)):
+    def __init__(self, input_dim, output_dim, hidden_dims=(256, 256)):
         super().__init__()
         layers = []
         dims = [input_dim] + list(hidden_dims)
@@ -39,7 +39,7 @@ class DeterministicCritic(nn.Module):
 
     def forward(self, state, goal, action):
         x = torch.cat([state, goal, action], dim=-1)
-        return self.q_net(x).squeeze(-1)
+        return self.q_net(x).view(-1)  # Replaces .squeeze(-1)
 
 
 class PrioritizedGCReplayBuffer:
@@ -91,7 +91,12 @@ class PrioritizedGCReplayBuffer:
 
     def update_priorities(self, indices, priorities):
         for i, p in zip(indices, priorities):
-            self.priorities[i] = float(p + 1e-5)
+            if isinstance(p, (np.ndarray, list)):
+                scalar = float(np.ravel(p)[0])
+            else:
+                scalar = float(p)
+            self.priorities[i] = scalar + 1e-5
+
 
     def __len__(self):
         return len(self.buffer)
@@ -125,10 +130,12 @@ class DeterministicGCAgent:
 
         with torch.no_grad():
             a2 = self.actor(s2, g)
-            q_target = r + self.gamma * (1 - d) * self.critic(s2, g, a2)
+            q_target = r + self.gamma * (1 - d) * self.critic(s2, g, a2).unsqueeze(1)
 
-        q_val = self.critic(s, g, a)
+
+        q_val = self.critic(s, g, a).unsqueeze(1)
         td_error = (q_val - q_target).abs().detach().cpu().numpy()
+        td_error = np.clip(td_error, 1e-6, 1e2)
 
         critic_loss = (F.mse_loss(q_val, q_target, reduction='none') * w).mean()
 

@@ -168,3 +168,7 @@ class ROVEnvironment:
             "pitch_rate": pitch,
             "roll_rate": roll
         }
+
+
+    def is_terminal(self, state):
+        return False

@@ -6,6 +6,9 @@ import os
 from run_training import train as sac_train
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import traceback
+import sys
+
 
 class RLGui:
     def __init__(self, root):
@@ -90,13 +93,35 @@ class RLGui:
 
         self.log_text = tk.Text(root, height=10, width=50, state="disabled")
         self.log_text.grid(row=7, column=0, columnspan=3, pady=10)
+        
+        
+        self.training_thread = None
+        self.shutdown_flag = threading.Event()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
 
     def update_progress(self, current, total, reward, metrics=None):
+        if self.shutdown_flag.is_set():
+            return
+        try:
+            self.root.after(0, self._update_progress_main_thread, current, total, reward, metrics)
+        except tk.TclError:
+            pass  # La fenêtre a été fermée
+
+
+    def _update_progress_main_thread(self, current, total, reward, metrics=None):
+        if self.shutdown_flag.is_set() or not self.root.winfo_exists():
+            return
         if self.pause_flag.is_set():
             return
 
+        
         pct = int((current / total) * 100)
-        self.progress["value"] = pct
+        try:
+            self.progress["value"] = pct
+        except tk.TclError:
+            pass
+    
         self.log(f"[EP {current}/{total}] Reward: {reward:.2f}")
 
         self.reward_values.append(reward)
@@ -184,10 +209,16 @@ class RLGui:
 
 
     def log(self, text):
-        self.log_text.config(state="normal")
-        self.log_text.insert("end", text + "\n")
-        self.log_text.see("end")
-        self.log_text.config(state="disabled")
+        if not self.root.winfo_exists():
+            return
+        try:
+            self.log_text.config(state="normal")
+            self.log_text.insert("end", text + "\n")
+            self.log_text.see("end")
+            self.log_text.config(state="disabled")
+        except tk.TclError:
+            pass  # Ignore si la fenêtre est fermée
+
 
     def toggle_pause(self):
         if self.pause_flag.is_set():
@@ -227,10 +258,14 @@ class RLGui:
             "learning_rate": self.lr_var.get(),
             "progress_callback": self.update_progress,
             "pause_flag": self.pause_flag,
+            "shutdown_flag": self.shutdown_flag,
         
         }
 
-        threading.Thread(target=self.run_training, args=(self.agent_type.get(), config), daemon=True).start()
+        self.shutdown_flag.clear()
+        self.training_thread = threading.Thread(target=self.run_training, args=(self.agent_type.get(), config))
+        self.training_thread.start()
+
 
     def run_training(self, agent_type, config):
         try:
@@ -239,9 +274,36 @@ class RLGui:
             else:
                 raise ValueError(f"Unknown agent type: {agent_type}")
         except Exception as e:
-            messagebox.showerror("Training Error", str(e))
+            error_details = "".join(traceback.format_exception(*sys.exc_info()))
+            self.log("Error occurred:\n" + error_details)
+            messagebox.showerror("Training Error", f"An error occurred:\n\n{str(e)}\n\nCheck log for full traceback.")
+
+
+    def on_closing(self):
+        self.shutdown_flag.set()
+        self.pause_flag.set()
+
+        if self.training_thread and self.training_thread.is_alive():
+            self.log("Stopping training thread...")
+            self.training_thread.join(timeout=5.0)  # Give a bit more time
+        
+        # Instead of destroying here, just quit the mainloop
+        self.root.quit()
+
+        
+    def notify_training_finished(self):
+        # Called from training thread at end or shutdown to stop the GUI mainloop
+        def stop_loop():
+            if self.root.winfo_exists():
+                self.log("Training finished or stopped. Closing GUI...")
+                self.root.quit()
+        self.root.after(0, stop_loop)
+
 
 if __name__ == "__main__":
     root = tk.Tk()
     app = RLGui(root)
     root.mainloop()
+    # After mainloop exits (e.g. after notify_training_finished called root.quit())
+    if root.winfo_exists():
+        root.destroy()

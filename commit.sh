@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "Initial Commit - DAC"
+git commit --author="Olampit <olampit@gmail.com>" -m "DAC compiling - No Results yet"
 git push -u origin deterministic
 
 # Increment and save back
