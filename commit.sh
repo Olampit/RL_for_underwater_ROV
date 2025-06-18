@@ -14,7 +14,7 @@ count=$(cat "$COUNTER_FILE")
 # Git commands
 git add .
 git commit --author="Olampit <olampit@gmail.com>" -m "new branch test 2"
-git push -u deterministic
+git push -u origin deterministic
 
 # Increment and save back
 echo $((count + 1)) > "$COUNTER_FILE"
