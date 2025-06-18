@@ -13,8 +13,8 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "new branch test"
-git push -u origin main
+git commit --author="Olampit <olampit@gmail.com>" -m "new branch test 2"
+git push -u deterministic
 
 # Increment and save back
 echo $((count + 1)) > "$COUNTER_FILE"
