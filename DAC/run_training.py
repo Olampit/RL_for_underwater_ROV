@@ -50,7 +50,7 @@ def train(
     episodes=500,
     max_steps=20,
     batch_size=1024,
-    start_steps=10000,
+    start_steps=1000,
     gamma=0.99,
     learning_rate=3e-4,
     device=None,
@@ -64,6 +64,9 @@ def train(
     latest_imu = {}
     start_imu_listener(conn, latest_imu)
     time.sleep(1)
+    
+    
+    update_every = 5
 
     env = make_env(conn, latest_imu)
     if device is None:
@@ -120,7 +123,10 @@ def train(
                 ep_reward += reward
                 total_steps += 1
 
-                critic_loss, actor_loss = agent.update(batch_size=batch_size)
+                if total_steps % update_every == 0 : 
+                    critic_loss, actor_loss = agent.update(batch_size=batch_size)
+                
+                
                 total_step_time += time.time() - t0
 
             episode_rewards.append(ep_reward)
@@ -143,18 +149,23 @@ def train(
                 metrics = {
                     "vx": safe_scalar(current_state.get("vx_mean", 0.0)),
                     "vx_target": safe_scalar(target.get("vx", {}).get("mean", 0.0)),
-
-                    "velocity_score": safe_scalar(reward_components.get("velocity_score", 0.0)),
+                    "vy": safe_scalar(current_state.get("vy_mean", 0.0)),
+                    "vz": safe_scalar(current_state.get("vz_mean", 0.0)),
+                    
                     "yaw_rate": safe_scalar(reward_components.get("yaw_rate", 0.0)),
                     "pitch_rate": safe_scalar(reward_components.get("pitch_rate", 0.0)),
                     "roll_rate": safe_scalar(reward_components.get("roll_rate", 0.0)),
-                    "bonus": safe_scalar(reward_components.get("bonus", 0.0)),
-                    "stability_score": safe_scalar(reward_components.get("stability_score", 0.0)),
-                    "angular_score": safe_scalar(reward_components.get("angular_score", 0.0)),
+                    
+                    "vx_score": safe_scalar(reward_components.get("vx_score", 0.0)),
+                    "vy_score": safe_scalar(reward_components.get("vy_score", 0.0)),
+                    "vz_score": safe_scalar(reward_components.get("vz_score", 0.0)),
+                    "roll_score": safe_scalar(reward_components.get("roll_score", 0.0)),
+                    "pitch_score": safe_scalar(reward_components.get("pitch_score", 0.0)),
+                    "yaw_score": safe_scalar(reward_components.get("yaw_score", 0.0)),
+
 
                     "critic_loss": safe_scalar(critic_loss),
                     "actor_loss": safe_scalar(actor_loss),
-                    "entropy": safe_scalar(0.0),
                     "mean_step_time": safe_scalar(total_step_time) / max_steps,
                     "mean_q_value": safe_scalar(q_val)
                 }

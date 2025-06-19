@@ -30,9 +30,9 @@ class FakeJoystick:
         }
 
         # Add mild goal jitter (~5% noise)
-        for key in base:
-            jitter = np.random.normal(0, base[key]["std"])
-            base[key]["mean"] += jitter
+        # for key in base:
+            # jitter = np.random.normal(0, base[key]["std"])
+            # base[key]["mean"] += jitter
 
         return base
 

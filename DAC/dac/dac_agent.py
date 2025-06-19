@@ -112,7 +112,7 @@ class DeterministicGCAgent:
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=lr)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=lr)
 
-        self.replay_buffer = PrioritizedGCReplayBuffer(capacity=100_000)
+        self.replay_buffer = PrioritizedGCReplayBuffer(capacity=10_000)
 
     def select_action(self, state, goal, noise_std=0.1):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
@@ -130,12 +130,15 @@ class DeterministicGCAgent:
 
         with torch.no_grad():
             a2 = self.actor(s2, g)
-            q_target = r + self.gamma * (1 - d) * self.critic(s2, g, a2).unsqueeze(1)
+            q_target = r + self.gamma * self.critic(s2, g, a2).unsqueeze(1)
 
 
         q_val = self.critic(s, g, a).unsqueeze(1)
+        
+        
         td_error = (q_val - q_target).abs().detach().cpu().numpy()
         td_error = np.clip(td_error, 1e-6, 1e2)
+        
 
         critic_loss = (F.mse_loss(q_val, q_target, reduction='none') * w).mean()
 

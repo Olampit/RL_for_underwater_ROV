@@ -17,20 +17,27 @@ class RLGui:
 
         self.pause_flag = threading.Event()
 
-        self.vx_actual_data = []
+        self.vx_score_data = []
+        self.vy_score_data = []
+        self.vz_score_data = []
+        self.roll_score_data = []
+        self.pitch_score_data = []
+        self.yaw_score_data = []
+
         self.vx_target_data = []
-        self.yaw_data = []
-        self.pitch_rate_data = []
+        
+        
+        self.vx_rate_data = []
+        self.vy_rate_data = []
+        self.vz_rate_data = []
         self.roll_rate_data = []
-        self.velocity_data = []
-        self.stability_data = []
-        self.bonus_data = []
+        self.pitch_rate_data = []
+        self.yaw_rate_data = []
+        
         self.critic_loss_data = []
         self.actor_loss_data = []
-        self.entropy_data = []
         self.mean_step_time_data = []
         self.q_value_data = []
-        self.angular_score_data = []
         
 
         self.fig2, (self.ax2, self.ax3) = plt.subplots(2, 1, figsize=(6, 2.5))
@@ -58,7 +65,7 @@ class RLGui:
         ttk.Combobox(root, textvariable=self.agent_type, values=["sac"]).grid(row=0, column=1)
 
         self.episodes_var = tk.IntVar(value=100000)
-        self.max_steps_var = tk.IntVar(value=50)
+        self.max_steps_var = tk.IntVar(value=10)
         self.lr_var = tk.DoubleVar(value=1e-4)
 
         ttk.Label(root, text="Episodes:").grid(row=1, column=0, sticky="w")
@@ -131,49 +138,86 @@ class RLGui:
         self.canvas.draw()
 
         if metrics:
-            self.vx_actual_data.append(metrics.get("vx", 0.0))
+            self.vx_rate_data.append(metrics.get("vx", 0.0))
+            self.vy_rate_data.append(metrics.get("vy", 0.0))
+            self.vz_rate_data.append(metrics.get("vz", 0.0))
+            self.roll_rate_data.append(metrics.get("roll_rate", 0.0))
+            self.pitch_rate_data.append(metrics.get("pitch_rate", 0.0))
+            self.yaw_rate_data.append(metrics.get("yaw_rate", 0.0))
+
             self.vx_target_data.append(metrics.get("vx_target", 0.3))
 
+            self.vx_score_data.append(metrics.get("vx_score", 0.0))
+            self.vy_score_data.append(metrics.get("vy_score", 0.0))
+            self.vz_score_data.append(metrics.get("vz_score", 0.0))
+            self.roll_score_data.append(metrics.get("roll_score", 0.0))
+            self.pitch_score_data.append(metrics.get("pitch_score", 0.0))
+            self.yaw_score_data.append(metrics.get("yaw_score", 0.0))
+
+
+            print("in the UI : ")
+            print((self.vx_score_data[-1]))
+            print((self.vy_score_data[-1]))
+            print((self.vz_score_data[-1]))
+            
+            self.critic_loss_data.append(metrics.get("critic_loss", 0.0))
+            self.actor_loss_data.append(metrics.get("actor_loss", 0.0))
+
+            self.mean_step_time_data.append(metrics.get("mean_step_time"))
+            self.q_value_data.append(metrics.get("mean_q_value"))
+
+            all_metrics = [
+                self.vx_rate_data, self.vy_rate_data, self.vz_rate_data,
+                self.roll_rate_data, self.pitch_rate_data, self.yaw_rate_data,
+                self.vx_target_data,
+                self.vx_score_data, self.vy_score_data, self.vz_score_data,
+                self.roll_score_data, self.pitch_score_data, self.yaw_score_data,
+                self.critic_loss_data, self.actor_loss_data,
+                self.mean_step_time_data, self.q_value_data
+            ]
+
+            for data_list in all_metrics:
+                if len(data_list) > 100:
+                    data_list.pop(0)
+
+                    
+                    
             self.ax2.cla()
             self.ax2.set_title("vx: Velocity Tracking")
             self.ax2.set_ylabel("vx (m/s)")
-            self.ax2.plot(self.vx_actual_data, label="vx_actual", color="blue")
+            self.ax2.plot(self.vx_rate_data, label="vx", color="blue")
+            self.ax2.plot(self.vy_rate_data, label="vy", color="red")
+            self.ax2.plot(self.vz_rate_data, label="vz", color="pink")
             self.ax2.plot(self.vx_target_data, label="vx_target", color="cyan", linestyle="dashed")
             self.ax2.legend()
 
-            self.yaw_data.append(metrics.get("yaw_rate", 0.0))
-            self.pitch_rate_data.append(metrics.get("pitch_rate", 0.0))
-            self.roll_rate_data.append(metrics.get("roll_rate", 0.0))
 
             self.ax3.cla()
             self.ax3.set_title("Angular Rates")
             self.ax3.set_ylabel("rad/s")
             self.ax3.set_xlabel("Episode")
-            self.ax3.plot(self.yaw_data, label="yaw", color="orange")
-            self.ax3.plot(self.pitch_rate_data, label="pitch", color="purple")
             self.ax3.plot(self.roll_rate_data, label="roll", color="green")
+            self.ax3.plot(self.pitch_rate_data, label="pitch", color="purple")
+            self.ax3.plot(self.yaw_rate_data, label="yaw", color="orange")
             self.ax3.legend()
             self.canvas2.draw()
 
-            self.velocity_data.append(metrics.get("velocity_score", 0.0))
-            self.stability_data.append(metrics.get("stability_score", 0.0))
-            self.angular_score_data.append(metrics.get("angular_score", 0.0))
-            self.bonus_data.append(metrics.get("bonus", 0.0))
-
+            
+                    
             self.ax4.cla()
             self.ax4.set_title("Reward Components")
             self.ax4.set_ylabel("Value")
             self.ax4.set_xlabel("Episode")
-            self.ax4.plot(self.velocity_data, label="velocity_score", color="blue")
-            self.ax4.plot(self.stability_data, label="stability_score", color="gray")
-            self.ax4.plot(self.angular_score_data, label="angular_score", color="black")
-            self.ax4.plot(self.bonus_data, label="bonus", color="magenta")
+            self.ax4.plot(self.vx_score_data, label="vx", color="blue")
+            self.ax4.plot(self.vy_score_data, label="vy", color="red")
+            self.ax4.plot(self.vz_score_data, label="vz", color="pink")
+            self.ax4.plot(self.roll_score_data, label="roll", color="green")
+            self.ax4.plot(self.pitch_score_data, label="pitch", color="purple")
+            self.ax4.plot(self.yaw_score_data, label="yaw", color="orange")
             self.ax4.legend()
             self.canvas3.draw()
             
-            self.critic_loss_data.append(metrics.get("critic_loss", 0.0))
-            self.actor_loss_data.append(metrics.get("actor_loss", 0.0))
-            self.entropy_data.append(metrics.get("entropy", 0.0))
+            
 
             self.ax6.cla()
             self.ax6.set_title("Training Diagnostics")
@@ -181,12 +225,11 @@ class RLGui:
             self.ax6.set_xlabel("Episode")
             self.ax6.plot(self.critic_loss_data, label="Critic Loss", color="red")
             self.ax6.plot(self.actor_loss_data, label="Actor Loss", color="blue")
-            self.ax6.plot(self.entropy_data, label="Entropy", color="green")
             self.ax6.legend()
             self.canvas5.draw()
             
             
-            self.mean_step_time_data.append(metrics.get("mean_step_time"))
+            
             self.ax7.cla()
             self.ax7.set_title("Mean Step Time")
             self.ax7.set_ylabel("Time")
@@ -195,7 +238,7 @@ class RLGui:
             self.ax7.legend()
             self.canvas6.draw()
 
-            self.q_value_data.append(metrics.get("mean_q_value"))
+            
             self.ax8.cla()
             self.ax8.set_title("Mean Q-Value")
             self.ax8.set_ylabel("Q(s, a)")
@@ -230,18 +273,28 @@ class RLGui:
 
 
     def launch_training(self):
-        self.reward_values.clear()
-        self.vx_actual_data.clear()
-        self.vx_target_data.clear()
-        self.yaw_data.clear()
-        self.pitch_rate_data.clear()
-        self.roll_rate_data.clear()
-        self.velocity_data.clear()
-        self.stability_data.clear()
-        self.bonus_data.clear()
-        self.q_value_data.clear()
-        self.angular_score_data.clear()
+        
+        self.vx_score_data.clear()
+        self.vy_score_data.clear()
+        self.vz_score_data.clear()
+        self.roll_score_data.clear()
+        self.pitch_score_data.clear()
+        self.yaw_score_data.clear()
 
+        self.vx_target_data.clear()
+        
+        
+        self.vx_rate_data.clear()
+        self.vy_rate_data.clear()
+        self.vz_rate_data.clear()
+        self.roll_rate_data.clear()
+        self.pitch_rate_data.clear()
+        self.yaw_rate_data.clear()
+        
+        self.critic_loss_data.clear()
+        self.actor_loss_data.clear()
+        self.mean_step_time_data.clear()
+        self.q_value_data.clear()
 
         self.ax.cla()
         self.ax.set_title("Episode Rewards")

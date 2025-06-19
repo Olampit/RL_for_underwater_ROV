@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "DAC compiling - No Results yet"
+git commit --author="Olampit <olampit@gmail.com>" -m "With some results and gradient explosion contained. Potential vx/y/z reward bug"
 git push -u origin deterministic
 
 # Increment and save back

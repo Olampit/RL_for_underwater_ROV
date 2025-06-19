@@ -48,15 +48,26 @@ class ROVEnvironment:
         state = {}
         att_seq = attitude_buffer.get_all()
         if att_seq:
-            yaws = np.array([abs(d["yawspeed"]) for _, d in att_seq if "yawspeed" in d])
-            pitchs = np.array([abs(d["pitchspeed"]) for _, d in att_seq if "pitchspeed" in d])
-            rolls = np.array([abs(d["rollspeed"]) for _, d in att_seq if "rollspeed" in d])
+            yawspeeds = np.array([abs(d["yawspeed"]) for _, d in att_seq if "yawspeed" in d])
+            pitchspeeds = np.array([abs(d["pitchspeed"]) for _, d in att_seq if "pitchspeed" in d])
+            rollspeeds = np.array([abs(d["rollspeed"]) for _, d in att_seq if "rollspeed" in d])
+            if yawspeeds.size > 0:
+                state["yaw_mean"] = yawspeeds.mean()
+            if pitchspeeds.size > 0:
+                state["pitch_mean"] = pitchspeeds.mean()
+            if rollspeeds.size > 0:
+                state["roll_mean"] = rollspeeds.mean()
+                
+            yaws = np.array([abs(d["yaw"]) for _, d in att_seq if "yaw" in d])
+            pitchs = np.array([abs(d["pitch"]) for _, d in att_seq if "pitch" in d])
+            rolls = np.array([abs(d["roll"]) for _, d in att_seq if "roll" in d])
             if yaws.size > 0:
                 state["yaw_mean"] = yaws.mean()
             if pitchs.size > 0:
                 state["pitch_mean"] = pitchs.mean()
             if rolls.size > 0:
                 state["roll_mean"] = rolls.mean()
+                
         vel_seq = velocity_buffer.get_all()
         if vel_seq:
             vxs = np.array([v["vx"] for _, v in vel_seq])
@@ -128,45 +139,67 @@ class ROVEnvironment:
         }
 
     def compute_reward(self, state):
+        
+        V_MAX = 1.0
+        R_MAX = 2.0
+
         goal = self.joystick.get_target()
         vx = state.get("vx_mean", 0.0)
         vy = state.get("vy_mean", 0.0)
         vz = state.get("vz_mean", 0.0)
-        yaw = abs(state.get("yaw_mean", 0.0))
-        pitch = abs(state.get("pitch_mean", 0.0))
-        roll = abs(state.get("roll_mean", 0.0))
+        yaw_rate = abs(state.get("yaw_mean", 0.0))
+        pitch_rate = abs(state.get("pitch_mean", 0.0))
+        roll_rate = abs(state.get("roll_mean", 0.0))
 
-        def sharp_score(x, target, min_val=0.0, sigma=0.03):
-            if x < min_val:
-                return -1.0
-            err = abs(x - target)
-            return np.exp(-(err ** 2) / (2 * sigma ** 2))
+        print("vitesse x:")
+        print(vx)
+        print("vitesse y:")
+        print(vy)
+        print("vitesse z:")
+        print(vz)
+        
+        vx_score  = ((goal["vx"]["mean"] - vx)/V_MAX)**2
+        vy_score  = ((goal["vy"]["mean"] - vy)/V_MAX)**2
+        vz_score  = ((goal["vz"]["mean"] - vz)/V_MAX)**2
 
-        def angular_penalty(x, sigma):
-            return 1.0 - np.exp(-x ** 2 / (2 * sigma ** 2))
+        print("score x :")
+        print(vx_score)
+        print("score y :")
+        print(vy_score)
+        print("score z :")
+        print(vz_score)
 
-        vx_score = sharp_score(vx, goal["vx"]["mean"], min_val=0.0, sigma=0.03)
-        vy_score = np.exp(-(vy ** 2) / (2 * 0.015 ** 2))
-        vz_score = np.exp(-(vz ** 2) / (2 * 0.015 ** 2))
+        roll_score = ((goal["roll_rate"]["mean"] - roll_rate)/R_MAX)**2
+        pitch_score = ((goal["pitch_rate"]["mean"] - pitch_rate)/R_MAX)**2
+        yaw_score = ((goal["yaw_rate"]["mean"] - yaw_rate)/R_MAX)**2
 
-        angle_penalty = (
-            angular_penalty(yaw, 0.7) +
-            angular_penalty(pitch, 0.7) +
-            angular_penalty(roll, 0.7)
-        )
 
-        total = 4.0 * vx_score + 1.0 * vy_score + 1.0 * vz_score - 3.5 * angle_penalty
-        total = 10 * np.tanh(total / 10.0)
+        vx_score *= -5.0 
+        vy_score *= -5.0
+        vz_score *= -5.0
+        roll_score *= -5.0
+        pitch_score *= -10.0
+        yaw_score *= -1.0
+
+
+
+
+        total = (vx_score + vy_score + vz_score 
+                + roll_score + pitch_score + yaw_score)
+        # total = 4.0 * vx_score + 1.0 * vy_score + 1.0 * vz_score - 3.5 * angle_penalty
+        # total = 10 * np.tanh(total / 10.0)
 
         return {
             "total": total,
-            "velocity_score": vx_score,
-            "stability_score": vy_score + vz_score,
-            "angular_score": -angle_penalty,
-            "bonus": 0.0,
-            "yaw_rate": yaw,
-            "pitch_rate": pitch,
-            "roll_rate": roll
+            "vx_score": vx_score,
+            "vy_score": vy_score,
+            "vz_score": vz_score,
+            "roll_score": roll_score,
+            "pitch_score": pitch_score,
+            "yaw_score": yaw_score,
+            "yaw_rate": yaw_rate,
+            "pitch_rate": pitch_rate,
+            "roll_rate": roll_rate
         }
 
 
