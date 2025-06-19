@@ -16,6 +16,8 @@ import traceback
 import sys
 from tkinter import messagebox
 
+from torch.utils.tensorboard import SummaryWriter
+
 def wait_for_heartbeat(conn, timeout=30):
     print("[WAIT] Waiting for MAVLink heartbeat…")
     conn.wait_heartbeat(timeout=timeout)
@@ -66,7 +68,7 @@ def train(
     time.sleep(1)
     
     
-    update_every = 5
+    update_every = 10
 
     env = make_env(conn, latest_imu)
     if device is None:
@@ -78,6 +80,8 @@ def train(
 
     agent = DeterministicGCAgent(state_dim, goal_dim, action_dim, device=device, gamma=gamma, lr=learning_rate)
 
+
+    
     episode_rewards = []
     total_steps = 0
 
@@ -126,13 +130,15 @@ def train(
                 if total_steps % update_every == 0 : 
                     critic_loss, actor_loss = agent.update(batch_size=batch_size)
                 
-                
+            
                 total_step_time += time.time() - t0
+                
+
 
             episode_rewards.append(ep_reward)
             env.rov.stop_motors(conn)
 
-
+            
             if progress_callback:
                 target = goal_dict
                 obs = env._state_to_obs(current_state)

@@ -155,10 +155,7 @@ class RLGui:
             self.yaw_score_data.append(metrics.get("yaw_score", 0.0))
 
 
-            print("in the UI : ")
-            print((self.vx_score_data[-1]))
-            print((self.vy_score_data[-1]))
-            print((self.vz_score_data[-1]))
+            
             
             self.critic_loss_data.append(metrics.get("critic_loss", 0.0))
             self.actor_loss_data.append(metrics.get("actor_loss", 0.0))
@@ -189,8 +186,8 @@ class RLGui:
             self.ax2.plot(self.vy_rate_data, label="vy", color="red")
             self.ax2.plot(self.vz_rate_data, label="vz", color="pink")
             self.ax2.plot(self.vx_target_data, label="vx_target", color="cyan", linestyle="dashed")
-            self.ax2.legend()
-
+            self.ax2.legend(loc = 'upper left')
+            
 
             self.ax3.cla()
             self.ax3.set_title("Angular Rates")
@@ -199,7 +196,7 @@ class RLGui:
             self.ax3.plot(self.roll_rate_data, label="roll", color="green")
             self.ax3.plot(self.pitch_rate_data, label="pitch", color="purple")
             self.ax3.plot(self.yaw_rate_data, label="yaw", color="orange")
-            self.ax3.legend()
+            self.ax3.legend(loc = 'upper left')
             self.canvas2.draw()
 
             
@@ -214,7 +211,7 @@ class RLGui:
             self.ax4.plot(self.roll_score_data, label="roll", color="green")
             self.ax4.plot(self.pitch_score_data, label="pitch", color="purple")
             self.ax4.plot(self.yaw_score_data, label="yaw", color="orange")
-            self.ax4.legend()
+            self.ax4.legend(loc = 'upper left')
             self.canvas3.draw()
             
             
@@ -225,7 +222,7 @@ class RLGui:
             self.ax6.set_xlabel("Episode")
             self.ax6.plot(self.critic_loss_data, label="Critic Loss", color="red")
             self.ax6.plot(self.actor_loss_data, label="Actor Loss", color="blue")
-            self.ax6.legend()
+            self.ax6.legend(loc = 'upper left')
             self.canvas5.draw()
             
             
@@ -235,7 +232,7 @@ class RLGui:
             self.ax7.set_ylabel("Time")
             self.ax7.set_xlabel("Episode")
             self.ax7.plot(self.mean_step_time_data, label="Mean Step Time", color="orange")
-            self.ax7.legend()
+            self.ax7.legend(loc = 'upper left')
             self.canvas6.draw()
 
             
@@ -244,7 +241,7 @@ class RLGui:
             self.ax8.set_ylabel("Q(s, a)")
             self.ax8.set_xlabel("Episode")
             self.ax8.plot(self.q_value_data, label="Q-Value", color="blue")
-            self.ax8.legend()
+            self.ax8.legend(loc = 'upper left')
             self.canvas7.draw()
 
 
@@ -302,7 +299,7 @@ class RLGui:
         self.ax.set_ylabel("Reward")
         self.ax.grid(True)
         self.reward_line, = self.ax.plot([], [], label="Reward", color="blue")
-        self.ax.legend()
+        self.ax.legend(loc = 'upper left')
         self.canvas.draw()
 
         config = {

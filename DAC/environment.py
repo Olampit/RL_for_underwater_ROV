@@ -52,11 +52,11 @@ class ROVEnvironment:
             pitchspeeds = np.array([abs(d["pitchspeed"]) for _, d in att_seq if "pitchspeed" in d])
             rollspeeds = np.array([abs(d["rollspeed"]) for _, d in att_seq if "rollspeed" in d])
             if yawspeeds.size > 0:
-                state["yaw_mean"] = yawspeeds.mean()
+                state["yaw_rate_mean"] = yawspeeds.mean()
             if pitchspeeds.size > 0:
-                state["pitch_mean"] = pitchspeeds.mean()
+                state["pitch_rate_mean"] = pitchspeeds.mean()
             if rollspeeds.size > 0:
-                state["roll_mean"] = rollspeeds.mean()
+                state["roll_rate_mean"] = rollspeeds.mean()
                 
             yaws = np.array([abs(d["yaw"]) for _, d in att_seq if "yaw" in d])
             pitchs = np.array([abs(d["pitch"]) for _, d in att_seq if "pitch" in d])
@@ -147,45 +147,34 @@ class ROVEnvironment:
         vx = state.get("vx_mean", 0.0)
         vy = state.get("vy_mean", 0.0)
         vz = state.get("vz_mean", 0.0)
-        yaw_rate = abs(state.get("yaw_mean", 0.0))
-        pitch_rate = abs(state.get("pitch_mean", 0.0))
-        roll_rate = abs(state.get("roll_mean", 0.0))
+        yaw_rate = abs(state.get("yaw_rate_mean", 0.0))
+        pitch_rate = abs(state.get("pitch_rate_mean", 0.0))
+        roll_rate = abs(state.get("roll_rate_mean", 0.0))
 
-        print("vitesse x:")
-        print(vx)
-        print("vitesse y:")
-        print(vy)
-        print("vitesse z:")
-        print(vz)
         
         vx_score  = ((goal["vx"]["mean"] - vx)/V_MAX)**2
         vy_score  = ((goal["vy"]["mean"] - vy)/V_MAX)**2
         vz_score  = ((goal["vz"]["mean"] - vz)/V_MAX)**2
 
-        print("score x :")
-        print(vx_score)
-        print("score y :")
-        print(vy_score)
-        print("score z :")
-        print(vz_score)
 
         roll_score = ((goal["roll_rate"]["mean"] - roll_rate)/R_MAX)**2
         pitch_score = ((goal["pitch_rate"]["mean"] - pitch_rate)/R_MAX)**2
         yaw_score = ((goal["yaw_rate"]["mean"] - yaw_rate)/R_MAX)**2
 
 
-        vx_score *= -5.0 
-        vy_score *= -5.0
-        vz_score *= -5.0
-        roll_score *= -5.0
-        pitch_score *= -10.0
+        GLOBAL_MULTIPLIER = 5
+        vx_score *= -2.0 
+        vy_score *= -2.0 
+        vz_score *= -2.0
+        roll_score *= -1.0
+        pitch_score *= -1.0
         yaw_score *= -1.0
 
 
 
 
         total = (vx_score + vy_score + vz_score 
-                + roll_score + pitch_score + yaw_score)
+                + roll_score + pitch_score + yaw_score) * GLOBAL_MULTIPLIER
         # total = 4.0 * vx_score + 1.0 * vy_score + 1.0 * vz_score - 3.5 * angle_penalty
         # total = 10 * np.tanh(total / 10.0)
 

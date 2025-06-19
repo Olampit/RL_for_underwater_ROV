@@ -95,7 +95,8 @@ class PrioritizedGCReplayBuffer:
                 scalar = float(np.ravel(p)[0])
             else:
                 scalar = float(p)
-            self.priorities[i] = scalar + 1e-5
+            #self.priorities[i] = scalar + 1e-5
+            self.priorities[i] = 1e-4
 
 
     def __len__(self):
@@ -114,7 +115,7 @@ class DeterministicGCAgent:
 
         self.replay_buffer = PrioritizedGCReplayBuffer(capacity=10_000)
 
-    def select_action(self, state, goal, noise_std=0.1):
+    def select_action(self, state, goal, noise_std=0.01):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
         goal = torch.FloatTensor(goal).unsqueeze(0).to(self.device)
         action = self.actor(state, goal).cpu().data.numpy()[0]
