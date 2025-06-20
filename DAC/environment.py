@@ -100,7 +100,7 @@ class ROVEnvironment:
         px = round(random.uniform(-1.0, 1.0), 2)
         py = round(random.uniform(49.0, 51.0), 2)
         pz = round(random.uniform(9.5, 10.5), 2)
-        quat = self.random_orientation_quat(max_angle_deg=15)
+        quat = self.random_orientation_quat(max_angle_deg=0)
         qx, qy, qz, qw = quat["x"], quat["y"], quat["z"], quat["w"]
         cmd = [
             "ros2", "service", "call",

@@ -16,7 +16,7 @@ import traceback
 import sys
 from tkinter import messagebox
 
-from torch.utils.tensorboard import SummaryWriter
+import requests
 
 def wait_for_heartbeat(conn, timeout=30):
     print("[WAIT] Waiting for MAVLink heartbeat…")
@@ -80,10 +80,12 @@ def train(
 
     agent = DeterministicGCAgent(state_dim, goal_dim, action_dim, device=device, gamma=gamma, lr=learning_rate)
 
-
+  
     
     episode_rewards = []
     total_steps = 0
+    
+    restart_countdown = 1000
 
     try:
         for ep in range(1, episodes + 1):
@@ -99,6 +101,18 @@ def train(
                         return
                     time.sleep(0.5)
 
+            
+            url = "http://localhost/ardupilot-manager/v1.0/restart"
+            if restart_countdown == 0:
+                response = requests.post(url)
+                time.sleep(120)
+                restart_countdown = 1000
+            else : 
+                restart_countdown -= 1 
+            
+            
+            
+            
             obs = env.reset(conn)
             goal_dict = env.rov.joystick.get_target()
             goal = env._state_to_obs(env.rov._goal_to_state(goal_dict))
@@ -128,7 +142,10 @@ def train(
                 total_steps += 1
 
                 if total_steps % update_every == 0 : 
-                    critic_loss, actor_loss = agent.update(batch_size=batch_size)
+                    update_info = agent.update(batch_size=batch_size, total_step=total_steps)
+                    critic_loss = update_info.get("critic_loss", 0.0)
+                    actor_loss = update_info.get("actor_loss", 0.0)
+
                 
             
                 total_step_time += time.time() - t0
@@ -168,6 +185,7 @@ def train(
                     "roll_score": safe_scalar(reward_components.get("roll_score", 0.0)),
                     "pitch_score": safe_scalar(reward_components.get("pitch_score", 0.0)),
                     "yaw_score": safe_scalar(reward_components.get("yaw_score", 0.0)),
+                    
 
 
                     "critic_loss": safe_scalar(critic_loss),

@@ -6,9 +6,12 @@ import torch.nn.functional as F
 import numpy as np
 import random
 
+from torch.utils.tensorboard import SummaryWriter
+from torch.optim.lr_scheduler import LambdaLR
+
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dims=(256, 256)):
+    def __init__(self, input_dim, output_dim, hidden_dims=(64, 64)):
         super().__init__()
         layers = []
         dims = [input_dim] + list(hidden_dims)
@@ -19,6 +22,7 @@ class MLP(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+
 
 
 class DeterministicGCActor(nn.Module):
@@ -114,6 +118,25 @@ class DeterministicGCAgent:
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=lr)
 
         self.replay_buffer = PrioritizedGCReplayBuffer(capacity=10_000)
+        
+        dummy_state = torch.zeros(1, state_dim).to(self.device)
+        dummy_goal = torch.zeros(1, goal_dim).to(self.device)
+        dummy_action = torch.zeros(1, action_dim).to(self.device)
+
+        self.writer = SummaryWriter(log_dir="runs/dac_agent")
+        
+        self.writer.add_graph(self.actor, (dummy_state, dummy_goal))
+        self.writer.add_graph(self.critic, (dummy_state, dummy_goal, dummy_action))
+        
+        self.actor_scheduler = LambdaLR(
+            self.actor_opt,
+            lr_lambda=lambda step: max(0.0001 / 0.05, 1.0 - step / 50000)
+        )
+        self.critic_scheduler = LambdaLR(
+            self.critic_opt,
+            lr_lambda=lambda step: max(0.0001 / 0.05, 1.0 - step / 50000)
+        )
+
 
     def select_action(self, state, goal, noise_std=0.01):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
@@ -122,9 +145,19 @@ class DeterministicGCAgent:
         action += np.random.normal(0, noise_std, size=action.shape)
         return np.clip(action, -1.0, 1.0)
 
-    def update(self, batch_size=128, beta=0.4):
+    def update(self, batch_size=128, beta=0.4, total_step = None):
         if len(self.replay_buffer) < batch_size:
-            return 0.0, 0.0
+            return {
+            "critic_loss": 0.0,
+            "actor_loss": 0.0,
+            "td_mean": 0.0,
+            "td_max": 0.0,
+            "td_min": 0.0,
+            "actor_grad_norm": 0.0,
+            "critic_grad_norm": 0.0,
+            "actor_weight_norm": 0.0,
+            "critic_weight_norm": 0.0
+        }
 
         s, g, a, r, s2, d, w, idx = self.replay_buffer.sample(batch_size, beta=beta)
         s, g, a, r, s2, d, w = s.to(self.device), g.to(self.device), a.to(self.device), r.to(self.device), s2.to(self.device), d.to(self.device), w.to(self.device)
@@ -153,7 +186,43 @@ class DeterministicGCAgent:
         self.actor_opt.zero_grad()
         actor_loss.backward()
         self.actor_opt.step()
+        
+        self.actor_scheduler.step()
+        self.critic_scheduler.step()
+        
+        
+        
+        for name, param in self.actor.named_parameters():
+            if param.grad is not None:
+                self.writer.add_histogram(f"actor/params/{name}", param, total_step)
+                self.writer.add_histogram(f"actor/grads/{name}", param.grad, total_step)
+
+        for name, param in self.critic.named_parameters():
+            if param.grad is not None:
+                self.writer.add_histogram(f"critic/params/{name}", param, total_step)
+                self.writer.add_histogram(f"critic/grads/{name}", param.grad, total_step)
+
+        self.writer.add_scalar("lr/actor", self.actor_scheduler.get_last_lr()[0], total_step)
+        self.writer.add_scalar("lr/critic", self.critic_scheduler.get_last_lr()[0], total_step)
 
         self.replay_buffer.update_priorities(idx, td_error)
 
-        return critic_loss.item(), actor_loss.item()
+        # Calculate norms for debug
+        actor_grad_norm = sum(p.grad.data.norm(2).item() for p in self.actor.parameters() if p.grad is not None)
+        critic_grad_norm = sum(p.grad.data.norm(2).item() for p in self.critic.parameters() if p.grad is not None)
+
+        actor_weight_norm = sum(p.data.norm(2).item() for p in self.actor.parameters())
+        critic_weight_norm = sum(p.data.norm(2).item() for p in self.critic.parameters())
+
+        return {
+            "critic_loss": critic_loss.item(),
+            "actor_loss": actor_loss.item(),
+            "td_mean": float(td_error.mean()),
+            "td_max": float(td_error.max()),
+            "td_min": float(td_error.min()),
+            "actor_grad_norm": actor_grad_norm,
+            "critic_grad_norm": critic_grad_norm,
+            "actor_weight_norm": actor_weight_norm,
+            "critic_weight_norm": critic_weight_norm
+        }
+
