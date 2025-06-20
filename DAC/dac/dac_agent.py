@@ -197,8 +197,8 @@ class DeterministicGCAgent:
                 self.writer.add_histogram(f"critic/params/{name}", param, total_step)
                 self.writer.add_histogram(f"critic/grads/{name}", param.grad, total_step)
 
-        self.writer.add_scalar("lr/actor", self.actor_scheduler.get_last_lr()[0], total_step)
-        self.writer.add_scalar("lr/critic", self.critic_scheduler.get_last_lr()[0], total_step)
+        self.writer.add_scalar("lr/actor", self.current_lr, total_step)
+        self.writer.add_scalar("lr/critic", self.current_lr, total_step)
 
         self.replay_buffer.update_priorities(idx, td_error)
 

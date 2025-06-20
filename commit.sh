@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "correct decaying alpha (working version)"
+git commit --author="Olampit <olampit@gmail.com>" -m "GUI that plots the [bad] critic losses"
 git push -u origin deterministic
 
 # Increment and save back

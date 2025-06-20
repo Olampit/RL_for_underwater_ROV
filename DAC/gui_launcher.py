@@ -14,7 +14,6 @@ class RLGui:
     def __init__(self, root):
         self.root = root
         self.root.title("ROV RL Training Launcher")
-
         self.pause_flag = threading.Event()
 
         self.vx_score_data = []
@@ -98,7 +97,7 @@ class RLGui:
         self.pause_button = ttk.Button(root, text="Pause", command=self.toggle_pause)
         self.pause_button.grid(row=6, column=1, pady=10)
 
-        self.progress = ttk.Progressbar(root, orient="horizontal", length=300, mode="determinate")
+        self.progress = ttk.Progressbar(root, orient="horizontal", length=1000, mode="determinate")
         self.progress.grid(row=5, column=0, columnspan=3, pady=10)
 
         self.fig, self.ax = plt.subplots(figsize=(6, 2.5))
@@ -116,7 +115,12 @@ class RLGui:
         self.log_text = tk.Text(root, height=10, width=50, state="disabled")
         self.log_text.grid(row=7, column=0, columnspan=3, pady=10)
         
-        
+        self.critic_loss_text = tk.Text(root, height=10, width=30, state="disabled", bg="#ffecec")
+        self.critic_loss_text.grid(row=7, column=3, pady=10, padx=5)
+
+        self.critic_loss_text.tag_configure("normal", foreground="black")
+        self.critic_loss_text.tag_configure("high", foreground="red", font=("TkDefaultFont", 9, "bold"))
+
         self.training_thread = None
         self.shutdown_flag = threading.Event()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -145,6 +149,8 @@ class RLGui:
             pass
     
         self.log(f"[EP {current}/{total}] Reward: {reward:.2f}")
+        if metrics:
+            self.update_critic_loss_text(metrics.get("critic_loss", 0.0))
 
         self.reward_values.append(reward)
         self.reward_line.set_data(range(1, len(self.reward_values) + 1), self.reward_values)
@@ -216,6 +222,7 @@ class RLGui:
             self.ax2.plot(self.vx_rate_data, label="vx", color="blue")
             self.ax2.plot(self.vy_rate_data, label="vy", color="red")
             self.ax2.plot(self.vz_rate_data, label="vz", color="pink")
+            self.ax2.plot(0.0, label="0", color="black", linestyle="dashed")
             self.ax2.plot(self.vx_target_data, label="vx_target", color="cyan", linestyle="dashed")
             self.ax2.legend(loc = 'upper left')
             
@@ -401,6 +408,21 @@ class RLGui:
                 self.log("Training finished or stopped. Closing GUI...")
                 self.root.quit()
         self.root.after(0, stop_loop)
+    
+    def update_critic_loss_text(self, value):
+        if not self.root.winfo_exists():
+            return
+        try:
+            tag = "normal" if value < 1000 else "high"
+
+            self.critic_loss_text.config(state="normal")
+            self.critic_loss_text.insert("end", f"{value:.5f}\n", tag)
+            self.critic_loss_text.see("end")
+            self.critic_loss_text.config(state="disabled")
+        except tk.TclError:
+            pass
+
+
 
 
 if __name__ == "__main__":
@@ -410,3 +432,6 @@ if __name__ == "__main__":
     # After mainloop exits (e.g. after notify_training_finished called root.quit())
     if root.winfo_exists():
         root.destroy()
+
+
+
