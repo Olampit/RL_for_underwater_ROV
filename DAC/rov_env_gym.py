@@ -14,7 +14,13 @@ class ROVEnvGymWrapper(gym.Env):
         super().__init__()
         self.rov = rov_env
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(8,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,), dtype=np.float32)
+        obs_sample = self._state_to_obs(self.rov.get_state())
+        self.observation_space = spaces.Box(
+            low=-np.inf, high=np.inf,
+            shape=obs_sample.shape,
+            dtype=np.float32
+)
+
 
     def reset(self, connection):
         self.rov.stop_motors(connection)
@@ -45,16 +51,16 @@ class ROVEnvGymWrapper(gym.Env):
 
     def _state_to_obs(self, state):
         keys = [
-            "yaw_mean",
-            "pitch_mean",
-            "roll_mean",
-            "vx_mean",
-            "vy_mean",
-            "vz_mean"
+            "vx", "vx_diff", "vx_std",
+            "vy", "vy_diff", "vy_std",
+            "vz", "vz_diff", "vz_std",
+            "yaw_rate", "yaw_rate_diff", "yaw_rate_std",
+            "pitch_rate", "pitch_rate_diff", "pitch_rate_std",
+            "roll_rate", "roll_rate_diff", "roll_rate_std"
         ]
-        getter = itemgetter(*keys)
-        values = getter({k: state.get(k, 0.0) for k in keys})
+        values = [state.get(k, 0.0) for k in keys]
         return np.array(values, dtype=np.float32)
+
 
     def goal_to_obs(self, goal_dict):
         goal_state = self.rov._goal_to_state(goal_dict)

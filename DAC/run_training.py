@@ -18,6 +18,7 @@ from tkinter import messagebox
 
 import requests
 
+
 def wait_for_heartbeat(conn, timeout=30):
     print("[WAIT] Waiting for MAVLink heartbeat…")
     conn.wait_heartbeat(timeout=timeout)
@@ -190,10 +191,10 @@ def train(
                 
 
                 metrics = {
-                    "vx": safe_scalar(current_state.get("vx_mean", 0.0)),
+                    "vx": safe_scalar(current_state.get("vx", 0.0)),
                     "vx_target": safe_scalar(target.get("vx", {}).get("mean", 0.0)),
-                    "vy": safe_scalar(current_state.get("vy_mean", 0.0)),
-                    "vz": safe_scalar(current_state.get("vz_mean", 0.0)),
+                    "vy": safe_scalar(current_state.get("vy", 0.0)),
+                    "vz": safe_scalar(current_state.get("vz", 0.0)),
                     
                     "yaw_rate": safe_scalar(reward_components.get("yaw_rate", 0.0)),
                     "pitch_rate": safe_scalar(reward_components.get("pitch_rate", 0.0)),
@@ -233,6 +234,7 @@ def train(
 
     except Exception as e:
         print(f"[ERROR] Exception in training: {e}")
+        traceback.print_exc()
 
     finally:
         print("[CLEANUP] Stopping imu listener threads...")

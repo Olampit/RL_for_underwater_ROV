@@ -46,37 +46,47 @@ class ROVEnvironment:
 
     def get_state(self):
         state = {}
+
         att_seq = attitude_buffer.get_all()
         if att_seq:
-            yawspeeds = np.array([abs(d["yawspeed"]) for _, d in att_seq if "yawspeed" in d])
-            pitchspeeds = np.array([abs(d["pitchspeed"]) for _, d in att_seq if "pitchspeed" in d])
-            rollspeeds = np.array([abs(d["rollspeed"]) for _, d in att_seq if "rollspeed" in d])
-            if yawspeeds.size > 0:
-                state["yaw_rate_mean"] = yawspeeds.mean()
-            if pitchspeeds.size > 0:
-                state["pitch_rate_mean"] = pitchspeeds.mean()
-            if rollspeeds.size > 0:
-                state["roll_rate_mean"] = rollspeeds.mean()
-                
-            yaws = np.array([abs(d["yaw"]) for _, d in att_seq if "yaw" in d])
-            pitchs = np.array([abs(d["pitch"]) for _, d in att_seq if "pitch" in d])
-            rolls = np.array([abs(d["roll"]) for _, d in att_seq if "roll" in d])
-            if yaws.size > 0:
-                state["yaw_mean"] = yaws.mean()
-            if pitchs.size > 0:
-                state["pitch_mean"] = pitchs.mean()
-            if rolls.size > 0:
-                state["roll_mean"] = rolls.mean()
-                
+            yawspeeds = np.array([d["yawspeed"] for _, d in att_seq if "yawspeed" in d])
+            pitchspeeds = np.array([d["pitchspeed"] for _, d in att_seq if "pitchspeed" in d])
+            rollspeeds = np.array([d["rollspeed"] for _, d in att_seq if "rollspeed" in d])
+
+            if len(yawspeeds) >= 2:
+                state["yaw_rate"] = yawspeeds[-1]
+                state["yaw_rate_diff"] = yawspeeds[-1] - yawspeeds[-2]
+                state["yaw_rate_std"] = np.std(np.diff(yawspeeds))
+            if len(pitchspeeds) >= 2:
+                state["pitch_rate"] = pitchspeeds[-1]
+                state["pitch_rate_diff"] = pitchspeeds[-1] - pitchspeeds[-2]
+                state["pitch_rate_std"] = np.std(np.diff(pitchspeeds))
+            if len(rollspeeds) >= 2:
+                state["roll_rate"] = rollspeeds[-1]
+                state["roll_rate_diff"] = rollspeeds[-1] - rollspeeds[-2]
+                state["roll_rate_std"] = np.std(np.diff(rollspeeds))
+
         vel_seq = velocity_buffer.get_all()
         if vel_seq:
             vxs = np.array([v["vx"] for _, v in vel_seq])
             vys = np.array([v["vy"] for _, v in vel_seq])
             vzs = np.array([v["vz"] for _, v in vel_seq])
-            state["vx_mean"] = vxs.mean()
-            state["vy_mean"] = vys.mean()
-            state["vz_mean"] = vzs.mean()
+
+            if len(vxs) >= 2:
+                state["vx"] = vxs[-1]
+                state["vx_diff"] = vxs[-1] - vxs[-2]
+                state["vx_std"] = np.std(np.diff(vxs))
+            if len(vys) >= 2:
+                state["vy"] = vys[-1]
+                state["vy_diff"] = vys[-1] - vys[-2]
+                state["vy_std"] = np.std(np.diff(vys))
+            if len(vzs) >= 2:
+                state["vz"] = vzs[-1]
+                state["vz_diff"] = vzs[-1] - vzs[-2]
+                state["vz_std"] = np.std(np.diff(vzs))
+
         return state
+
 
     def random_orientation_quat(self, max_angle_deg=15):
         max_angle_rad = math.radians(max_angle_deg)
@@ -130,53 +140,59 @@ class ROVEnvironment:
 
     def _goal_to_state(self, goal):
         return {
-            "yaw_mean": 0.0,
-            "pitch_mean": 0.0,
-            "roll_mean": 0.0,
-            "vx_mean": goal["vx"]["mean"],
-            "vy_mean": goal["vy"]["mean"],
-            "vz_mean": goal["vz"]["mean"]
+            "vx": goal["vx"]["mean"],
+            "vx_diff": 0.0,
+            "vx_std": 0.0,
+            "vy": goal["vy"]["mean"],
+            "vy_diff": 0.0,
+            "vy_std": 0.0,
+            "vz": goal["vz"]["mean"],
+            "vz_diff": 0.0,
+            "vz_std": 0.0,
+            "yaw_rate": goal["yaw_rate"]["mean"],
+            "yaw_rate_diff": 0.0,
+            "yaw_rate_std": 0.0,
+            "pitch_rate": goal["pitch_rate"]["mean"],
+            "pitch_rate_diff": 0.0,
+            "pitch_rate_std": 0.0,
+            "roll_rate": goal["roll_rate"]["mean"],
+            "roll_rate_diff": 0.0,
+            "roll_rate_std": 0.0
         }
 
+
     def compute_reward(self, state):
-        
+        goal = self.joystick.get_target()
+
         V_MAX = 1.0
         R_MAX = 2.0
+        SMOOTH_W = 0.5
+        MULT = 5
 
-        goal = self.joystick.get_target()
-        vx = state.get("vx_mean", 0.0)
-        vy = state.get("vy_mean", 0.0)
-        vz = state.get("vz_mean", 0.0)
-        yaw_rate = abs(state.get("yaw_rate_mean", 0.0))
-        pitch_rate = abs(state.get("pitch_rate_mean", 0.0))
-        roll_rate = abs(state.get("roll_rate_mean", 0.0))
+        vx = state.get("vx", 0.0)
+        vy = state.get("vy", 0.0)
+        vz = state.get("vz", 0.0)
+        yaw_rate = abs(state.get("yaw_rate", 0.0))
+        pitch_rate = abs(state.get("pitch_rate", 0.0))
+        roll_rate = abs(state.get("roll_rate", 0.0))
 
-        
-        vx_score  = ((goal["vx"]["mean"] - vx)/V_MAX)**2
-        vy_score  = ((goal["vy"]["mean"] - vy)/V_MAX)**2
-        vz_score  = ((goal["vz"]["mean"] - vz)/V_MAX)**2
+        vx_error = abs(vx - goal["vx"]["mean"]) / V_MAX
+        vy_error = abs(vy - goal["vy"]["mean"]) / V_MAX
+        vz_error = abs(vz - goal["vz"]["mean"]) / V_MAX
 
+        yaw_error = abs(yaw_rate - goal["yaw_rate"]["mean"]) / R_MAX
+        pitch_error = abs(pitch_rate - goal["pitch_rate"]["mean"]) / R_MAX
+        roll_error = abs(roll_rate - goal["roll_rate"]["mean"]) / R_MAX
 
-        roll_score = ((goal["roll_rate"]["mean"] - roll_rate)/R_MAX)**2
-        pitch_score = ((goal["pitch_rate"]["mean"] - pitch_rate)/R_MAX)**2
-        yaw_score = ((goal["yaw_rate"]["mean"] - yaw_rate)/R_MAX)**2
+        vx_score = -vx_error - SMOOTH_W * state.get("vx_std", 0.0)
+        vy_score = -vy_error - SMOOTH_W * state.get("vy_std", 0.0)
+        vz_score = -vz_error - SMOOTH_W * state.get("vz_std", 0.0)
 
+        yaw_score = -yaw_error - SMOOTH_W * state.get("yaw_rate_std", 0.0)
+        pitch_score = -pitch_error - SMOOTH_W * state.get("pitch_rate_std", 0.0)
+        roll_score = -roll_error - SMOOTH_W * state.get("roll_rate_std", 0.0)
 
-        GLOBAL_MULTIPLIER = 5
-        vx_score *= -2.0 
-        vy_score *= -2.0 
-        vz_score *= -2.0
-        roll_score *= -1.0
-        pitch_score *= -1.0
-        yaw_score *= -1.0
-
-
-
-
-        total = (vx_score + vy_score + vz_score 
-                + roll_score + pitch_score + yaw_score) * GLOBAL_MULTIPLIER
-        # total = 4.0 * vx_score + 1.0 * vy_score + 1.0 * vz_score - 3.5 * angle_penalty
-        # total = 10 * np.tanh(total / 10.0)
+        total = (vx_score + vy_score + vz_score + yaw_score + pitch_score + roll_score) * MULT
 
         return {
             "total": total,
@@ -190,6 +206,7 @@ class ROVEnvironment:
             "pitch_rate": pitch_rate,
             "roll_rate": roll_rate
         }
+
 
 
     def is_terminal(self, state):

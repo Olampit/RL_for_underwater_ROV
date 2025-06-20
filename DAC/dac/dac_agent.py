@@ -12,7 +12,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dims=(64, 64)):
+    def __init__(self, input_dim, output_dim, hidden_dims=(128, 128)):
         super().__init__()
         layers = []
         dims = [input_dim] + list(hidden_dims)

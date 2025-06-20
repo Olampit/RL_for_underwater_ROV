@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "with policy and critic saves, and a run_policy file that is no longer obsolete"
+git commit --author="Olampit <olampit@gmail.com>" -m "better state and reward computation"
 git push -u origin deterministic
 
 # Increment and save back
