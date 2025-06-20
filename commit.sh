@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "tensorboard not running but ardupilot resets to avoir crashes"
+git commit --author="Olampit <olampit@gmail.com>" -m "correct decaying alpha (working version)"
 git push -u origin deterministic
 
 # Increment and save back

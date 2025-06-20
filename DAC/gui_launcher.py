@@ -47,7 +47,7 @@ class RLGui:
         self.critic_grad_norm_data = []
         self.actor_weight_norm_data = []
         self.critic_weight_norm_data = []
-
+        self.lr_data = []
         
 
         self.fig2, (self.ax2, self.ax3) = plt.subplots(2, 1, figsize=(6, 2.5))
@@ -62,9 +62,9 @@ class RLGui:
         self.canvas5 = FigureCanvasTkAgg(self.fig5, master=root)
         self.canvas5.get_tk_widget().grid(row=9, column=1, columnspan=2, sticky="nsew")
 
-        self.fig6, self.ax7 = plt.subplots(figsize=(6, 2.5))  
+        self.fig6, (self.ax7, self.ax10) = plt.subplots(2, 1, figsize=(6, 2.5)) 
         self.canvas6 = FigureCanvasTkAgg(self.fig6, master=root)
-        self.canvas6.get_tk_widget().grid(row=10, column=0, sticky="nsew")  
+        self.canvas6.get_tk_widget().grid(row=10, column=0, columnspan=2, sticky="nsew")  
         
         self.fig7, (self.ax8, self.ax9) = plt.subplots(2, 1, figsize=(6, 2.5))  
         self.canvas7 = FigureCanvasTkAgg(self.fig7, master=root)
@@ -75,8 +75,9 @@ class RLGui:
         ttk.Combobox(root, textvariable=self.agent_type, values=["sac"]).grid(row=0, column=1)
 
         self.episodes_var = tk.IntVar(value=20_000)
-        self.max_steps_var = tk.IntVar(value=10)
-        self.lr_var = tk.DoubleVar(value=1e-4)
+        self.max_steps_var = tk.IntVar(value=50)
+        self.lr_var = tk.DoubleVar(value=0.05)
+        self.lr_var_end = tk.DoubleVar(value=1e-4)
 
         ttk.Label(root, text="Episodes:").grid(row=1, column=0, sticky="w")
         ttk.Entry(root, textvariable=self.episodes_var).grid(row=1, column=1)
@@ -84,8 +85,12 @@ class RLGui:
         ttk.Label(root, text="Max Steps:").grid(row=2, column=0, sticky="w")
         ttk.Entry(root, textvariable=self.max_steps_var).grid(row=2, column=1)
 
-        ttk.Label(root, text="Learning Rate:").grid(row=3, column=0, sticky="w")
+        ttk.Label(root, text="Learning Rate (start):").grid(row=3, column=0, sticky="w")
         ttk.Entry(root, textvariable=self.lr_var).grid(row=3, column=1)
+        
+        ttk.Label(root, text="Learning Rate (end):").grid(row=4, column=0, sticky="w")
+        ttk.Entry(root, textvariable=self.lr_var_end).grid(row=4, column=1)
+
 
         self.train_button = ttk.Button(root, text="Start Training", command=self.launch_training)
         self.train_button.grid(row=6, column=0, pady=10)
@@ -179,6 +184,8 @@ class RLGui:
             self.critic_grad_norm_data.append(metrics.get("critic_grad_norm", 0.0))
             self.actor_weight_norm_data.append(metrics.get("actor_weight_norm", 0.0))
             self.critic_weight_norm_data.append(metrics.get("critic_weight_norm", 0.0))
+            self.lr_data.append(metrics.get("learning_rate", 0.0))
+
 
 
             all_metrics = [
@@ -199,6 +206,8 @@ class RLGui:
                 if len(data_list) > 100:
                     data_list.pop(0)
 
+            if len(self.lr_data) > 1000:
+                self.lr_data.pop(0)
                     
                     
             self.ax2.cla()
@@ -252,10 +261,18 @@ class RLGui:
             self.ax7.cla()
             self.ax7.set_title("Mean Step Time")
             self.ax7.set_ylabel("Time")
-            self.ax7.set_xlabel("Episode")
             self.ax7.plot(self.mean_step_time_data, label="Mean Step Time", color="orange")
-            self.ax7.legend(loc = 'upper left')
+            self.ax7.legend(loc='upper left')
+
+            self.ax10.cla()
+            self.ax10.set_title("Learning Rate")
+            self.ax10.set_ylabel("LR")
+            self.ax10.set_xlabel("Episode")
+            self.ax10.plot(self.lr_data, label="Actor LR", color="blue")
+            self.ax10.legend(loc='upper left')
+
             self.canvas6.draw()
+
 
             
             self.ax8.cla()
@@ -340,7 +357,8 @@ class RLGui:
         config = {
             "episodes": self.episodes_var.get(),
             "max_steps": self.max_steps_var.get(),
-            "learning_rate": self.lr_var.get(),
+            "learning_rate_start": self.lr_var.get(),
+            "learning_rate_end":self.lr_var_end.get(),
             "progress_callback": self.update_progress,
             "pause_flag": self.pause_flag,
             "shutdown_flag": self.shutdown_flag,

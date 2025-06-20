@@ -54,7 +54,8 @@ def train(
     batch_size=1024,
     start_steps=1000,
     gamma=0.99,
-    learning_rate=3e-4,
+    learning_rate_start=5e-2,
+    learning_rate_end=1e-4,
     device=None,
     mavlink_endpoint="udp:127.0.0.1:14550",
     progress_callback=None,
@@ -78,7 +79,7 @@ def train(
     goal_dim = state_dim
     action_dim = env.action_space.shape[0]
 
-    agent = DeterministicGCAgent(state_dim, goal_dim, action_dim, device=device, gamma=gamma, lr=learning_rate)
+    agent = DeterministicGCAgent(state_dim, goal_dim, action_dim, device=device, gamma=gamma, lr=learning_rate_start, lr_end=learning_rate_end)
 
   
     
@@ -147,8 +148,8 @@ def train(
                     critic_loss = update_info.get("critic_loss", 0.0)
                     actor_loss = update_info.get("actor_loss", 0.0)
 
+                agent.lr_step(total_steps, lr_start=learning_rate_start, lr_end=learning_rate_end)
                 
-            
                 total_step_time += time.time() - t0
                 
 
@@ -203,7 +204,8 @@ def train(
                     "actor_grad_norm": safe_scalar(update_info.get("actor_grad_norm", 0.0)),
                     "critic_grad_norm": safe_scalar(update_info.get("critic_grad_norm", 0.0)),
                     "actor_weight_norm": safe_scalar(update_info.get("actor_weight_norm", 0.0)),
-                    "critic_weight_norm": safe_scalar(update_info.get("critic_weight_norm", 0.0))
+                    "critic_weight_norm": safe_scalar(update_info.get("critic_weight_norm", 0.0)),
+                    "learning_rate":safe_scalar(update_info.get("learning_rate", 0.0))
                     
                     
                 }

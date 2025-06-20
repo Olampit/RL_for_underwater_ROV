@@ -8,6 +8,7 @@ import random
 
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import LambdaLR
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 
 class MLP(nn.Module):
@@ -108,7 +109,7 @@ class PrioritizedGCReplayBuffer:
 
 
 class DeterministicGCAgent:
-    def __init__(self, state_dim, goal_dim, action_dim, device="cpu", gamma=0.99, lr=3e-4):
+    def __init__(self, state_dim, goal_dim, action_dim, device="cpu", gamma=0.99, lr=5e-2, lr_end = 1e-4):
         self.device = device
         self.gamma = gamma
 
@@ -125,19 +126,14 @@ class DeterministicGCAgent:
 
         self.writer = SummaryWriter(log_dir="runs/dac_agent")
         
+        dummy_state = torch.randn(1, state_dim).to(self.device)
+        dummy_goal = torch.randn(1, goal_dim).to(self.device)
+        dummy_action = torch.randn(1, action_dim).to(self.device)
+
         self.writer.add_graph(self.actor, (dummy_state, dummy_goal))
         self.writer.add_graph(self.critic, (dummy_state, dummy_goal, dummy_action))
-        
-        self.actor_scheduler = LambdaLR(
-            self.actor_opt,
-            lr_lambda=lambda step: max(0.0001 / 0.05, 1.0 - step / 50000)
-        )
-        self.critic_scheduler = LambdaLR(
-            self.critic_opt,
-            lr_lambda=lambda step: max(0.0001 / 0.05, 1.0 - step / 50000)
-        )
 
-
+    
     def select_action(self, state, goal, noise_std=0.01):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
         goal = torch.FloatTensor(goal).unsqueeze(0).to(self.device)
@@ -156,9 +152,10 @@ class DeterministicGCAgent:
             "actor_grad_norm": 0.0,
             "critic_grad_norm": 0.0,
             "actor_weight_norm": 0.0,
-            "critic_weight_norm": 0.0
+            "critic_weight_norm": 0.0,
+            "learning_rate": 0.0
         }
-
+        
         s, g, a, r, s2, d, w, idx = self.replay_buffer.sample(batch_size, beta=beta)
         s, g, a, r, s2, d, w = s.to(self.device), g.to(self.device), a.to(self.device), r.to(self.device), s2.to(self.device), d.to(self.device), w.to(self.device)
 
@@ -187,8 +184,6 @@ class DeterministicGCAgent:
         actor_loss.backward()
         self.actor_opt.step()
         
-        self.actor_scheduler.step()
-        self.critic_scheduler.step()
         
         
         
@@ -223,6 +218,27 @@ class DeterministicGCAgent:
             "actor_grad_norm": actor_grad_norm,
             "critic_grad_norm": critic_grad_norm,
             "actor_weight_norm": actor_weight_norm,
-            "critic_weight_norm": critic_weight_norm
+            "critic_weight_norm": critic_weight_norm,
+            "learning_rate" : self.current_lr
         }
 
+
+
+    def lr_step(self, total_step, lr_start=3e-4, lr_end=1e-6):
+        warmup_steps = 5000
+        lr_start = lr_start
+        lr_end = lr_end
+        decay_steps = 100_000
+
+        if total_step < warmup_steps:
+            lr = lr_start * (total_step / warmup_steps)
+        else:
+            decay_ratio = min((total_step - warmup_steps) / (decay_steps - warmup_steps), 1.0)
+            lr = lr_start * (1 - decay_ratio) + lr_end * decay_ratio
+
+        for param_group in self.actor_opt.param_groups:
+            param_group['lr'] = lr
+        for param_group in self.critic_opt.param_groups:
+            param_group['lr'] = lr
+
+        self.current_lr = lr
