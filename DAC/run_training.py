@@ -47,12 +47,26 @@ def safe_scalar(x):
             return 0.0
     else:
         return float(x)
+    
+def set_servo_function(servo_number, connection, value=0):
+    param_name = f"SERVO{servo_number}_FUNCTION"
+    param_name = param_name.encode("utf-8")
+
+    connection.mav.param_set_send(
+        connection.target_system,
+        connection.target_component,
+        param_name,
+        float(value),
+        mavutil.mavlink.MAV_PARAM_TYPE_REAL32
+    )
+    
+    print(f"{param_name.decode()} set to {value}")
 
 def train(
     episodes=500,
     max_steps=20,
     batch_size=1024,
-    start_steps=1000,
+    start_steps=0,
     gamma=0.99,
     learning_rate_start=5e-2,
     learning_rate_end=1e-4,
@@ -105,12 +119,14 @@ def train(
 
             
             
-            # if restart_countdown == 0:
-            #     response = requests.post(url)
-            #     time.sleep(120)
-            #     restart_countdown = 1000
-            # else : 
-            #     restart_countdown -= 1 
+            if restart_countdown == 0:
+                response = requests.post(url)
+                time.sleep(120)
+                for i in range(1, 9):
+                    set_servo_function(i, conn, 0)
+                restart_countdown = 1000
+            else : 
+                restart_countdown -= 1 
             
             
             

@@ -15,6 +15,8 @@ class RLGui:
         self.root = root
         self.root.title("ROV RL Training Launcher")
         self.pause_flag = threading.Event()
+        
+
 
         self.vx_score_data = []
         self.vy_score_data = []
@@ -59,11 +61,11 @@ class RLGui:
         
         self.fig5, self.ax6 = plt.subplots(figsize=(6, 2.5))
         self.canvas5 = FigureCanvasTkAgg(self.fig5, master=root)
-        self.canvas5.get_tk_widget().grid(row=9, column=1, columnspan=2, sticky="nsew")
+        self.canvas5.get_tk_widget().grid(row=9, column=1, columnspan=1, sticky="nsew")
 
         self.fig6, (self.ax7, self.ax10) = plt.subplots(2, 1, figsize=(6, 2.5)) 
         self.canvas6 = FigureCanvasTkAgg(self.fig6, master=root)
-        self.canvas6.get_tk_widget().grid(row=10, column=0, columnspan=2, sticky="nsew")  
+        self.canvas6.get_tk_widget().grid(row=10, column=0, columnspan=1, sticky="nsew")  
         
         self.fig7, (self.ax8, self.ax9) = plt.subplots(2, 1, figsize=(6, 2.5))  
         self.canvas7 = FigureCanvasTkAgg(self.fig7, master=root)
@@ -75,7 +77,7 @@ class RLGui:
 
         self.episodes_var = tk.IntVar(value=20_000)
         self.max_steps_var = tk.IntVar(value=50)
-        self.lr_var = tk.DoubleVar(value=0.05)
+        self.lr_var = tk.DoubleVar(value=5e-4)
         self.lr_var_end = tk.DoubleVar(value=1e-4)
 
         ttk.Label(root, text="Episodes:").grid(row=1, column=0, sticky="w")
@@ -113,10 +115,11 @@ class RLGui:
         self.canvas.get_tk_widget().grid(row=8, column=0, sticky="nsew")
 
         self.log_text = tk.Text(root, height=10, width=50, state="disabled")
-        self.log_text.grid(row=7, column=0, columnspan=3, pady=10)
-        
-        self.critic_loss_text = tk.Text(root, height=10, width=30, state="disabled", bg="#ffecec")
-        self.critic_loss_text.grid(row=7, column=3, pady=10, padx=5)
+        self.log_text.grid(row=7, column=0, columnspan=1, padx=(10, 5), pady=10, sticky="nsew")
+
+        self.critic_loss_text = tk.Text(root, height=10, width=30, state="disabled", bg="#eaffea")
+        self.critic_loss_text.grid(row=7, column=1, columnspan=1, padx=(5, 10), pady=10, sticky="nsew")
+
 
         self.critic_loss_text.tag_configure("normal", foreground="black")
         self.critic_loss_text.tag_configure("high", foreground="red", font=("TkDefaultFont", 9, "bold"))
@@ -414,7 +417,11 @@ class RLGui:
             return
         try:
             tag = "normal" if value < 1000 else "high"
-
+            
+            
+            if value >= 1000:
+                self.critic_loss_text.config(bg="#ffcccc")  # light red
+            
             self.critic_loss_text.config(state="normal")
             self.critic_loss_text.insert("end", f"{value:.5f}\n", tag)
             self.critic_loss_text.see("end")

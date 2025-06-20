@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "GUI that plots the [bad] critic losses"
+git commit --author="Olampit <olampit@gmail.com>" -m "GUI propre, restarts périodiques pour éviter les crashs ardupilot"
 git push -u origin deterministic
 
 # Increment and save back
