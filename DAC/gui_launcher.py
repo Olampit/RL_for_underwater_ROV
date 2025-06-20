@@ -39,6 +39,16 @@ class RLGui:
         self.mean_step_time_data = []
         self.q_value_data = []
         
+        self.td_mean_data = []
+        self.td_max_data = []
+        self.td_min_data = []
+
+        self.actor_grad_norm_data = []
+        self.critic_grad_norm_data = []
+        self.actor_weight_norm_data = []
+        self.critic_weight_norm_data = []
+
+        
 
         self.fig2, (self.ax2, self.ax3) = plt.subplots(2, 1, figsize=(6, 2.5))
         self.canvas2 = FigureCanvasTkAgg(self.fig2, master=root)
@@ -56,15 +66,15 @@ class RLGui:
         self.canvas6 = FigureCanvasTkAgg(self.fig6, master=root)
         self.canvas6.get_tk_widget().grid(row=10, column=0, sticky="nsew")  
         
-        self.fig7, self.ax8 = plt.subplots(figsize=(6, 2.5))  
+        self.fig7, (self.ax8, self.ax9) = plt.subplots(2, 1, figsize=(6, 2.5))  
         self.canvas7 = FigureCanvasTkAgg(self.fig7, master=root)
-        self.canvas7.get_tk_widget().grid(row=10, column=1, sticky="nsew")  
+        self.canvas7.get_tk_widget().grid(row=10, column=1, sticky="nsew")
 
         self.agent_type = tk.StringVar(value="sac")
         ttk.Label(root, text="Agent Type:").grid(row=0, column=0, sticky="w")
         ttk.Combobox(root, textvariable=self.agent_type, values=["sac"]).grid(row=0, column=1)
 
-        self.episodes_var = tk.IntVar(value=100000)
+        self.episodes_var = tk.IntVar(value=20_000)
         self.max_steps_var = tk.IntVar(value=10)
         self.lr_var = tk.DoubleVar(value=1e-4)
 
@@ -161,7 +171,15 @@ class RLGui:
             self.actor_loss_data.append(metrics.get("actor_loss", 0.0))
 
             self.mean_step_time_data.append(metrics.get("mean_step_time"))
-            self.q_value_data.append(metrics.get("mean_q_value"))
+            
+            self.td_mean_data.append(metrics.get("td_mean", 0.0))
+            self.td_max_data.append(metrics.get("td_max", 0.0))
+            self.td_min_data.append(metrics.get("td_min", 0.0))
+            self.actor_grad_norm_data.append(metrics.get("actor_grad_norm", 0.0))
+            self.critic_grad_norm_data.append(metrics.get("critic_grad_norm", 0.0))
+            self.actor_weight_norm_data.append(metrics.get("actor_weight_norm", 0.0))
+            self.critic_weight_norm_data.append(metrics.get("critic_weight_norm", 0.0))
+
 
             all_metrics = [
                 self.vx_rate_data, self.vy_rate_data, self.vz_rate_data,
@@ -170,8 +188,12 @@ class RLGui:
                 self.vx_score_data, self.vy_score_data, self.vz_score_data,
                 self.roll_score_data, self.pitch_score_data, self.yaw_score_data,
                 self.critic_loss_data, self.actor_loss_data,
-                self.mean_step_time_data, self.q_value_data
+                self.mean_step_time_data,
+                self.td_mean_data, self.td_max_data, self.td_min_data,
+                self.actor_grad_norm_data, self.critic_grad_norm_data,
+                self.actor_weight_norm_data, self.critic_weight_norm_data
             ]
+
 
             for data_list in all_metrics:
                 if len(data_list) > 100:
@@ -237,12 +259,25 @@ class RLGui:
 
             
             self.ax8.cla()
-            self.ax8.set_title("Mean Q-Value")
-            self.ax8.set_ylabel("Q(s, a)")
-            self.ax8.set_xlabel("Episode")
-            self.ax8.plot(self.q_value_data, label="Q-Value", color="blue")
-            self.ax8.legend(loc = 'upper left')
+            self.ax8.set_title("TD Error Stats")
+            self.ax8.set_ylabel("TD Error")
+            self.ax8.plot(self.td_mean_data, label="TD Mean", color="blue")
+            self.ax8.plot(self.td_max_data, label="TD Max", color="red")
+            self.ax8.plot(self.td_min_data, label="TD Min", color="green")
+            self.ax8.legend(loc='upper left')
+
+            self.ax9.cla()
+            self.ax9.set_title("Gradient/Weight Norms")
+            self.ax9.set_ylabel("Norm")
+            self.ax9.set_xlabel("Episode")
+            self.ax9.plot(self.actor_grad_norm_data, label="Actor Grad", color="purple")
+            self.ax9.plot(self.critic_grad_norm_data, label="Critic Grad", color="orange")
+            self.ax9.plot(self.actor_weight_norm_data, label="Actor W", linestyle="dashed", color="purple")
+            self.ax9.plot(self.critic_weight_norm_data, label="Critic W", linestyle="dashed", color="orange")
+            self.ax9.legend(loc='upper left')
+
             self.canvas7.draw()
+
 
 
 

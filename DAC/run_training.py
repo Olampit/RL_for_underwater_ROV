@@ -86,6 +86,7 @@ def train(
     total_steps = 0
     
     restart_countdown = 1000
+    url = "http://localhost/ardupilot-manager/v1.0/restart"
 
     try:
         for ep in range(1, episodes + 1):
@@ -102,13 +103,13 @@ def train(
                     time.sleep(0.5)
 
             
-            url = "http://localhost/ardupilot-manager/v1.0/restart"
-            if restart_countdown == 0:
-                response = requests.post(url)
-                time.sleep(120)
-                restart_countdown = 1000
-            else : 
-                restart_countdown -= 1 
+            
+            # if restart_countdown == 0:
+            #     response = requests.post(url)
+            #     time.sleep(120)
+            #     restart_countdown = 1000
+            # else : 
+            #     restart_countdown -= 1 
             
             
             
@@ -168,6 +169,8 @@ def train(
                     torch.FloatTensor(goal).unsqueeze(0).to(device),
                     torch.FloatTensor(action).unsqueeze(0).to(device)
                 ).item()
+                
+                
 
                 metrics = {
                     "vx": safe_scalar(current_state.get("vx_mean", 0.0)),
@@ -191,7 +194,18 @@ def train(
                     "critic_loss": safe_scalar(critic_loss),
                     "actor_loss": safe_scalar(actor_loss),
                     "mean_step_time": safe_scalar(total_step_time) / max_steps,
-                    "mean_q_value": safe_scalar(q_val)
+                    "mean_q_value": safe_scalar(q_val),
+                    
+                    
+                    "td_mean": safe_scalar(update_info.get("td_mean", 0.0)),
+                    "td_max": safe_scalar(update_info.get("td_max", 0.0)),
+                    "td_min": safe_scalar(update_info.get("td_min", 0.0)),
+                    "actor_grad_norm": safe_scalar(update_info.get("actor_grad_norm", 0.0)),
+                    "critic_grad_norm": safe_scalar(update_info.get("critic_grad_norm", 0.0)),
+                    "actor_weight_norm": safe_scalar(update_info.get("actor_weight_norm", 0.0)),
+                    "critic_weight_norm": safe_scalar(update_info.get("critic_weight_norm", 0.0))
+                    
+                    
                 }
 
                 progress_callback(ep, episodes, float(ep_reward), metrics)
