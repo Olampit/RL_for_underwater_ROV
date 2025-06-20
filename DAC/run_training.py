@@ -227,6 +227,9 @@ def train(
                 }
 
                 progress_callback(ep, episodes, float(ep_reward), metrics)
+                
+        torch.save(agent.actor.state_dict(), "policy_actor.pth")
+        torch.save(agent.critic.state_dict(), "policy_critic.pth")
 
     except Exception as e:
         print(f"[ERROR] Exception in training: {e}")
@@ -249,6 +252,8 @@ def train(
         except Exception as e:
             print(f"[CLEANUP] Error closing env: {e}")
         print("[DONE] Training loop exited.")
+    
+    
 
 
 def run_training(self, agent_type, config):

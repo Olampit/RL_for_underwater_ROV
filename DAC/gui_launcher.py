@@ -49,7 +49,7 @@ class RLGui:
         self.actor_weight_norm_data = []
         self.critic_weight_norm_data = []
         self.lr_data = []
-        
+        self.zeroes = []
 
         self.fig2, (self.ax2, self.ax3) = plt.subplots(2, 1, figsize=(6, 2.5))
         self.canvas2 = FigureCanvasTkAgg(self.fig2, master=root)
@@ -195,7 +195,7 @@ class RLGui:
             self.critic_weight_norm_data.append(metrics.get("critic_weight_norm", 0.0))
             self.lr_data.append(metrics.get("learning_rate", 0.0))
 
-
+            self.zeroes.append(metrics.get("zero", 0.0))
 
             all_metrics = [
                 self.vx_rate_data, self.vy_rate_data, self.vz_rate_data,
@@ -207,7 +207,8 @@ class RLGui:
                 self.mean_step_time_data,
                 self.td_mean_data, self.td_max_data, self.td_min_data,
                 self.actor_grad_norm_data, self.critic_grad_norm_data,
-                self.actor_weight_norm_data, self.critic_weight_norm_data
+                self.actor_weight_norm_data, self.critic_weight_norm_data,
+                self.zeroes
             ]
 
 
@@ -225,7 +226,7 @@ class RLGui:
             self.ax2.plot(self.vx_rate_data, label="vx", color="blue")
             self.ax2.plot(self.vy_rate_data, label="vy", color="red")
             self.ax2.plot(self.vz_rate_data, label="vz", color="pink")
-            self.ax2.plot(0.0, label="0", color="black", linestyle="dashed")
+            self.ax2.plot(self.zeroes, label="0", color="black", linestyle="dashed")
             self.ax2.plot(self.vx_target_data, label="vx_target", color="cyan", linestyle="dashed")
             self.ax2.legend(loc = 'upper left')
             
@@ -354,6 +355,8 @@ class RLGui:
         self.actor_loss_data.clear()
         self.mean_step_time_data.clear()
         self.q_value_data.clear()
+        
+        self.zeroes.clear()
 
         self.ax.cla()
         self.ax.set_title("Episode Rewards")
