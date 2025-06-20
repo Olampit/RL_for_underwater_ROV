@@ -1,4 +1,4 @@
-save/*
-runs/*
-!save/.gitkeep
-!runs/.gitkeep
+save/**/*
+!save/
+runs/**/*
+!runs/
