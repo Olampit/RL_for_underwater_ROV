@@ -84,7 +84,7 @@ def train(
     time.sleep(1)
     
     
-    update_every = 10
+    update_every = 5
 
     env = make_env(conn, latest_imu)
     if device is None:
@@ -146,7 +146,8 @@ def train(
                 t0 = time.time()
 
                 if total_steps < start_steps:
-                    action = np.random.uniform(-1, 1, size=action_dim)
+                    action = agent.sample_random_structured()
+                    
                 else:
                     action = agent.select_action(obs, goal)
 

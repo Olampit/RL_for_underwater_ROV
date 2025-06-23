@@ -164,35 +164,40 @@ class ROVEnvironment:
     def compute_reward(self, state):
         goal = self.joystick.get_target()
 
+        # Constants
         V_MAX = 1.0
         R_MAX = 2.0
-        SMOOTH_W = 0.5
-        MULT = 5
+        STAB_W = 0.4     # Weight for std penalty
+        TRACK_W = 1.0    # Weight for tracking error
+        SHARP_BONUS_W = 0.5  # Weight for proximity bonus
+        DECAY_RATE = 10.0    # Decay speed for smooth bonus
+        MULT = 1             # Final reward multiplier
 
-        vx = state.get("vx", 0.0)
-        vy = state.get("vy", 0.0)
-        vz = state.get("vz", 0.0)
-        yaw_rate = abs(state.get("yaw_rate", 0.0))
-        pitch_rate = abs(state.get("pitch_rate", 0.0))
-        roll_rate = abs(state.get("roll_rate", 0.0))
+        def e(key): return state.get(key, 0.0)
+        def g(key): return goal[key]["mean"]
 
-        vx_error = abs(vx - goal["vx"]["mean"]) / V_MAX
-        vy_error = abs(vy - goal["vy"]["mean"]) / V_MAX
-        vz_error = abs(vz - goal["vz"]["mean"]) / V_MAX
+        # --- Tracking errors (normalized)
+        vx_err = abs(e("vx") - g("vx")) / V_MAX
+        vy_err = abs(e("vy") - g("vy")) / V_MAX
+        vz_err = abs(e("vz") - g("vz")) / V_MAX
+        yaw_err = abs(e("yaw_rate") - g("yaw_rate")) / R_MAX
+        pitch_err = abs(e("pitch_rate") - g("pitch_rate")) / R_MAX
+        roll_err = abs(e("roll_rate") - g("roll_rate")) / R_MAX
 
-        yaw_error = abs(yaw_rate - goal["yaw_rate"]["mean"]) / R_MAX
-        pitch_error = abs(pitch_rate - goal["pitch_rate"]["mean"]) / R_MAX
-        roll_error = abs(roll_rate - goal["roll_rate"]["mean"]) / R_MAX
+        # --- Smooth bonus (decays exponentially as error grows)
+        def smooth_bonus(error): return SHARP_BONUS_W * np.exp(-DECAY_RATE * error)
 
-        vx_score = -vx_error - SMOOTH_W * state.get("vx_std", 0.0)
-        vy_score = -vy_error - SMOOTH_W * state.get("vy_std", 0.0)
-        vz_score = -vz_error - SMOOTH_W * state.get("vz_std", 0.0)
+        vx_score = -TRACK_W * vx_err - STAB_W * e("vx_std") + smooth_bonus(vx_err)
+        vy_score = -TRACK_W * vy_err - STAB_W * e("vy_std") + smooth_bonus(vy_err)
+        vz_score = -TRACK_W * vz_err - STAB_W * e("vz_std") + smooth_bonus(vz_err)
 
-        yaw_score = -yaw_error - SMOOTH_W * state.get("yaw_rate_std", 0.0)
-        pitch_score = -pitch_error - SMOOTH_W * state.get("pitch_rate_std", 0.0)
-        roll_score = -roll_error - SMOOTH_W * state.get("roll_rate_std", 0.0)
+        yaw_score   = -TRACK_W * yaw_err   - STAB_W * e("yaw_rate_std")   + smooth_bonus(yaw_err)
+        pitch_score = -TRACK_W * pitch_err - STAB_W * e("pitch_rate_std") + smooth_bonus(pitch_err)
+        roll_score  = -TRACK_W * roll_err  - STAB_W * e("roll_rate_std")  + smooth_bonus(roll_err)
 
+        # --- Final shaped reward
         total = (vx_score + vy_score + vz_score + yaw_score + pitch_score + roll_score) * MULT
+        total = np.clip(total, -1000, 1000)
 
         return {
             "total": total,
@@ -202,10 +207,12 @@ class ROVEnvironment:
             "roll_score": roll_score,
             "pitch_score": pitch_score,
             "yaw_score": yaw_score,
-            "yaw_rate": yaw_rate,
-            "pitch_rate": pitch_rate,
-            "roll_rate": roll_rate
+            "yaw_rate": e("yaw_rate"),
+            "pitch_rate": e("pitch_rate"),
+            "roll_rate": e("roll_rate")
         }
+
+
 
 
 

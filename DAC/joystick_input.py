@@ -22,11 +22,11 @@ class FakeJoystick:
         """
         base = {
             "vx": {"mean": 0.3, "std": 0.02},
-            "vy": {"mean": 0.0, "std": 0.01},
-            "vz": {"mean": 0.0, "std": 0.01},
-            "yaw_rate": {"mean": 0.0, "std": 0.01},
-            "pitch_rate": {"mean": 0.0, "std": 0.01},
-            "roll_rate": {"mean": 0.0, "std": 0.01}
+            "vy": {"mean": 0.0, "std": 0.0},
+            "vz": {"mean": 0.0, "std": 0.0},
+            "yaw_rate": {"mean": 0.0, "std": 0.0},
+            "pitch_rate": {"mean": 0.0, "std": 0.0},
+            "roll_rate": {"mean": 0.0, "std": 0.0}
         }
 
         # Add mild goal jitter (~5% noise)
