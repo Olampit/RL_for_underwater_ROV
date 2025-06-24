@@ -84,7 +84,7 @@ def train(
     time.sleep(1)
     
     
-    update_every = 5
+    update_every = 1
 
     env = make_env(conn, latest_imu)
     if device is None:
@@ -104,8 +104,11 @@ def train(
     restart_countdown = 1000
     url = "http://localhost/ardupilot-manager/v1.0/restart"
 
+    for i in range(1, 9):
+        set_servo_function(i, conn, 0)
+        
     try:
-        for ep in range(1, episodes + 1):
+        for ep in range(5, episodes + 6):
             if shutdown_flag and shutdown_flag.is_set():
                 print("[STOP] Shutdown flag detected. Ending training...")
                 break
@@ -118,9 +121,10 @@ def train(
                         return
                     time.sleep(0.5)
 
-            
+    
             
             if restart_countdown == 0:
+                print("resetting firmware")
                 response = requests.post(url)
                 time.sleep(120)
                 for i in range(1, 9):
@@ -130,9 +134,8 @@ def train(
                 restart_countdown -= 1 
             
             
-            
-            
-            obs = env.reset(conn)
+            if ep%5 == 0:
+                obs = env.reset(conn)
             goal_dict = env.rov.joystick.get_target()
             goal = env._state_to_obs(env.rov._goal_to_state(goal_dict))
             ep_reward = 0.0

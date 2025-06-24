@@ -14,12 +14,16 @@ import os
 import datetime
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dims=(128, 128, 64)):
+    def __init__(self, input_dim, output_dim, hidden_dims=(64,64)):
         super().__init__()
         layers = []
         dims = [input_dim] + list(hidden_dims)
+
         for i in range(len(dims) - 1):
-            layers += [nn.Linear(dims[i], dims[i+1]), nn.ReLU()]
+            layers.append(nn.Linear(dims[i], dims[i+1]))
+            layers.append(nn.LayerNorm(dims[i+1]))  # Normalize before activation
+            layers.append(nn.ReLU())
+
         layers.append(nn.Linear(dims[-1], output_dim))
         self.model = nn.Sequential(*layers)
 

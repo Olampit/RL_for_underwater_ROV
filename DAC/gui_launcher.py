@@ -77,8 +77,8 @@ class RLGui:
 
         self.episodes_var = tk.IntVar(value=40_000)
         self.max_steps_var = tk.IntVar(value=50)
-        self.lr_var = tk.DoubleVar(value=3e-5)
-        self.lr_var_end = tk.DoubleVar(value=1e-5)
+        self.lr_var = tk.DoubleVar(value=3e-3)
+        self.lr_var_end = tk.DoubleVar(value=1e-4)
 
         ttk.Label(root, text="Episodes:").grid(row=1, column=0, sticky="w")
         ttk.Entry(root, textvariable=self.episodes_var).grid(row=1, column=1)

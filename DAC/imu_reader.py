@@ -50,7 +50,6 @@ def start_imu_listener(connection, latest_imu):
                             "yawspeed": getattr(msg, 'yawspeed', 0.0),
                         }
                         attitude_buffer.add(time.time(), imu_data)
-
                 except AttributeError as e:
                     print(f"[IMU] Missing attribute: {e}")
                 except Exception as e:
@@ -81,6 +80,8 @@ def start_imu_listener(connection, latest_imu):
                     velocity_z = msg.twist.twist.linear.z
                     velocity_mag = np.linalg.norm([velocity_x, velocity_y, velocity_z])
 
+                    
+                    
                     self.velocity_history.append(velocity_mag)
                     if len(self.velocity_history) > 100:
                         self.velocity_history.pop(0)
@@ -91,7 +92,11 @@ def start_imu_listener(connection, latest_imu):
                         "vy": velocity_y,
                         "vz": velocity_z,
                         "mag": velocity_mag,
-                        "avg": average_velocity
+                        "avg": average_velocity,
+                        "qx": msg.pose.pose.orientation.x,
+                        "qy": msg.pose.pose.orientation.y,
+                        "qz": msg.pose.pose.orientation.z,
+                        "qw": msg.pose.pose.orientation.w
                     }
                     velocity_buffer.add(time.time(), velocity_data)
 

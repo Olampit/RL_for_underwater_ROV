@@ -7,7 +7,7 @@ from environment import ROVEnvironment
 import time
 from operator import itemgetter
 
-SPEED_UP = 1
+SPEED_UP = 5
 
 class ROVEnvGymWrapper(gym.Env):
     def __init__(self, rov_env: ROVEnvironment):
@@ -51,12 +51,12 @@ class ROVEnvGymWrapper(gym.Env):
 
     def _state_to_obs(self, state):
         keys = [
-            "vx", "vx_diff", "vx_std",
-            "vy", "vy_diff", "vy_std",
-            "vz", "vz_diff", "vz_std",
-            "yaw_rate", "yaw_rate_diff", "yaw_rate_std",
-            "pitch_rate", "pitch_rate_diff", "pitch_rate_std",
-            "roll_rate", "roll_rate_diff", "roll_rate_std"
+            "vx", 
+            "vy", 
+            "vz",
+            "yaw_rate", 
+            "pitch_rate", 
+            "roll_rate"
         ]
         values = [state.get(k, 0.0) for k in keys]
         return np.array(values, dtype=np.float32)

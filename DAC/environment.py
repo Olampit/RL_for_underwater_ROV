@@ -54,17 +54,11 @@ class ROVEnvironment:
             rollspeeds = np.array([d["rollspeed"] for _, d in att_seq if "rollspeed" in d])
 
             if len(yawspeeds) >= 2:
-                state["yaw_rate"] = yawspeeds[-1]
-                state["yaw_rate_diff"] = yawspeeds[-1] - yawspeeds[-2]
-                state["yaw_rate_std"] = np.std(np.diff(yawspeeds))
+                state["yaw_rate"] = float(np.mean(np.abs(yawspeeds)))
             if len(pitchspeeds) >= 2:
-                state["pitch_rate"] = pitchspeeds[-1]
-                state["pitch_rate_diff"] = pitchspeeds[-1] - pitchspeeds[-2]
-                state["pitch_rate_std"] = np.std(np.diff(pitchspeeds))
+                state["pitch_rate"] = float(np.mean(np.abs(pitchspeeds)))
             if len(rollspeeds) >= 2:
-                state["roll_rate"] = rollspeeds[-1]
-                state["roll_rate_diff"] = rollspeeds[-1] - rollspeeds[-2]
-                state["roll_rate_std"] = np.std(np.diff(rollspeeds))
+                state["roll_rate"] = float(np.mean(np.abs(rollspeeds)))
 
         vel_seq = velocity_buffer.get_all()
         if vel_seq:
@@ -73,17 +67,11 @@ class ROVEnvironment:
             vzs = np.array([v["vz"] for _, v in vel_seq])
 
             if len(vxs) >= 2:
-                state["vx"] = vxs[-1]
-                state["vx_diff"] = vxs[-1] - vxs[-2]
-                state["vx_std"] = np.std(np.diff(vxs))
+                state["vx"] = float(np.mean(np.abs(vxs)))
             if len(vys) >= 2:
-                state["vy"] = vys[-1]
-                state["vy_diff"] = vys[-1] - vys[-2]
-                state["vy_std"] = np.std(np.diff(vys))
+                state["vy"] = float(np.mean(np.abs(vys)))
             if len(vzs) >= 2:
-                state["vz"] = vzs[-1]
-                state["vz_diff"] = vzs[-1] - vzs[-2]
-                state["vz_std"] = np.std(np.diff(vzs))
+                state["vz"] = float(np.mean(np.abs(vzs)))
 
         return state
 
@@ -108,10 +96,25 @@ class ROVEnvironment:
 
     def reset(self):
         px = round(random.uniform(-1.0, 1.0), 2)
-        py = round(random.uniform(49.0, 51.0), 2)
+        py = round(random.uniform(4900.0, 5100.0), 2)
         pz = round(random.uniform(9.5, 10.5), 2)
-        quat = self.random_orientation_quat(max_angle_deg=0)
-        qx, qy, qz, qw = quat["x"], quat["y"], quat["z"], quat["w"]
+        
+        # quat = self.random_orientation_quat(max_angle_deg=0)
+        # qx, qy, qz, qw = quat["x"], quat["y"], quat["z"], quat["w"]
+        
+        # qx, qy, qz, qw = 0, 0, (np.sqrt(2))/2, (np.sqrt(2))/2
+        
+        odom_seq = velocity_buffer.get_last_n(1)
+        if odom_seq:
+            _, last_data = odom_seq[0]
+            qx = last_data.get("qx", 0.0)
+            qy = last_data.get("qy", 0.0)
+            qz = last_data.get("qz", 0.0)
+            qw = last_data.get("qw", 1.0)
+        else:
+            # Fallback in case buffer is empty
+            qx, qy, qz, qw = 0.0, 0.0, np.sqrt(2)/2, np.sqrt(2)/2
+            
         cmd = [
             "ros2", "service", "call",
             "/stonefish_ros2/respawn_robot",
@@ -141,42 +144,28 @@ class ROVEnvironment:
     def _goal_to_state(self, goal):
         return {
             "vx": goal["vx"]["mean"],
-            "vx_diff": 0.0,
-            "vx_std": 0.0,
             "vy": goal["vy"]["mean"],
-            "vy_diff": 0.0,
-            "vy_std": 0.0,
             "vz": goal["vz"]["mean"],
-            "vz_diff": 0.0,
-            "vz_std": 0.0,
             "yaw_rate": goal["yaw_rate"]["mean"],
-            "yaw_rate_diff": 0.0,
-            "yaw_rate_std": 0.0,
             "pitch_rate": goal["pitch_rate"]["mean"],
-            "pitch_rate_diff": 0.0,
-            "pitch_rate_std": 0.0,
-            "roll_rate": goal["roll_rate"]["mean"],
-            "roll_rate_diff": 0.0,
-            "roll_rate_std": 0.0
+            "roll_rate": goal["roll_rate"]["mean"]
         }
 
 
     def compute_reward(self, state):
         goal = self.joystick.get_target()
 
-        # Constants
         V_MAX = 1.0
         R_MAX = 2.0
-        STAB_W = 0.4     # Weight for std penalty
-        TRACK_W = 1.0    # Weight for tracking error
-        SHARP_BONUS_W = 0.5  # Weight for proximity bonus
-        DECAY_RATE = 10.0    # Decay speed for smooth bonus
-        MULT = 1             # Final reward multiplier
+        BONUS = 0.5
+        DECAY = 10.0
+        MULT = 1.0
 
         def e(key): return state.get(key, 0.0)
         def g(key): return goal[key]["mean"]
+        def bonus(err): return BONUS * np.exp(-DECAY * err)
 
-        # --- Tracking errors (normalized)
+        # Normalized errors
         vx_err = abs(e("vx") - g("vx")) / V_MAX
         vy_err = abs(e("vy") - g("vy")) / V_MAX
         vz_err = abs(e("vz") - g("vz")) / V_MAX
@@ -184,18 +173,14 @@ class ROVEnvironment:
         pitch_err = abs(e("pitch_rate") - g("pitch_rate")) / R_MAX
         roll_err = abs(e("roll_rate") - g("roll_rate")) / R_MAX
 
-        # --- Smooth bonus (decays exponentially as error grows)
-        def smooth_bonus(error): return SHARP_BONUS_W * np.exp(-DECAY_RATE * error)
+        # Scores
+        vx_score = -vx_err + bonus(vx_err)
+        vy_score = -vy_err + bonus(vy_err)
+        vz_score = -vz_err + bonus(vz_err)
+        yaw_score = -yaw_err + bonus(yaw_err)
+        pitch_score = -pitch_err + bonus(pitch_err)
+        roll_score = -roll_err + bonus(roll_err)
 
-        vx_score = -TRACK_W * vx_err - STAB_W * e("vx_std") + smooth_bonus(vx_err)
-        vy_score = -TRACK_W * vy_err - STAB_W * e("vy_std") + smooth_bonus(vy_err)
-        vz_score = -TRACK_W * vz_err - STAB_W * e("vz_std") + smooth_bonus(vz_err)
-
-        yaw_score   = -TRACK_W * yaw_err   - STAB_W * e("yaw_rate_std")   + smooth_bonus(yaw_err)
-        pitch_score = -TRACK_W * pitch_err - STAB_W * e("pitch_rate_std") + smooth_bonus(pitch_err)
-        roll_score  = -TRACK_W * roll_err  - STAB_W * e("roll_rate_std")  + smooth_bonus(roll_err)
-
-        # --- Final shaped reward
         total = (vx_score + vy_score + vz_score + yaw_score + pitch_score + roll_score) * MULT
         total = np.clip(total, -1000, 1000)
 
@@ -211,6 +196,7 @@ class ROVEnvironment:
             "pitch_rate": e("pitch_rate"),
             "roll_rate": e("roll_rate")
         }
+
 
 
 
