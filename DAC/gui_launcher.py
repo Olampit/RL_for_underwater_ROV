@@ -9,6 +9,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import traceback
 import sys
 
+import matplotlib
+matplotlib.use('Agg')
 
 class RLGui:
     def __init__(self, root):
