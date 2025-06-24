@@ -1,7 +1,0 @@
-/home/mig/Documents/RL/build/mavlink/CMakeFiles/generate_c_headers.dir
-/home/mig/Documents/RL/build/mavlink/CMakeFiles/edit_cache.dir
-/home/mig/Documents/RL/build/mavlink/CMakeFiles/rebuild_cache.dir
-/home/mig/Documents/RL/build/mavlink/CMakeFiles/list_install_components.dir
-/home/mig/Documents/RL/build/mavlink/CMakeFiles/install.dir
-/home/mig/Documents/RL/build/mavlink/CMakeFiles/install/local.dir
-/home/mig/Documents/RL/build/mavlink/CMakeFiles/install/strip.dir

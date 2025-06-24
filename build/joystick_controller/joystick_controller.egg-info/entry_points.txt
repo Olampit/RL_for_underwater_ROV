@@ -1,2 +1,0 @@
-[console_scripts]
-joystick_listener = joystick_controller.joystick_listener:main
