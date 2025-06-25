@@ -32,12 +32,10 @@ def run_policy(
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     state_dim = env.observation_space.shape[0]
-    goal_dim = state_dim
     action_dim = env.action_space.shape[0]
 
     agent = DeterministicGCAgent(
         state_dim=state_dim,
-        goal_dim=goal_dim,
         action_dim=action_dim,
         device=device
     )
@@ -45,12 +43,10 @@ def run_policy(
     agent.actor.eval()
 
     obs = env.reset(conn)
-    goal_dict = env.rov.joystick.get_target()
-    goal = env._state_to_obs(env.rov._goal_to_state(goal_dict))
 
     for step in range(max_steps):
         current_state = env.rov.get_state()
-        action = agent.select_action(obs, goal, deterministic=True)
+        action = agent.select_action(obs, deterministic=True)
         obs, reward_components, done, _ = env.step(action, current_state)
         time.sleep(sleep_interval)
 

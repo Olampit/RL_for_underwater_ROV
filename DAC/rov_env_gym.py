@@ -30,9 +30,11 @@ class ROVEnvGymWrapper(gym.Env):
     def stop_motors(self, connection):
         self.rov.stop_motors(connection)
 
-    def step(self, action, state):
+    def step(self, action, state, no_update):
         self._apply_action_continuous(action)
         time.sleep(0.1 / SPEED_UP)
+        if no_update :
+            time.sleep(0.1)
         reward = self.rov.compute_reward(state)
         done = self.rov.is_terminal(state)
         obs = self._state_to_obs(self.rov.get_state())
@@ -61,7 +63,3 @@ class ROVEnvGymWrapper(gym.Env):
         values = [state.get(k, 0.0) for k in keys]
         return np.array(values, dtype=np.float32)
 
-
-    def goal_to_obs(self, goal_dict):
-        goal_state = self.rov._goal_to_state(goal_dict)
-        return self._state_to_obs(goal_state)

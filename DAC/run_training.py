@@ -18,6 +18,8 @@ from tkinter import messagebox
 
 import requests
 
+from joystick_input import FakeJoystick
+
 
 def wait_for_heartbeat(conn, timeout=30):
     print("[WAIT] Waiting for MAVLink heartbeat…")
@@ -79,22 +81,25 @@ def train(
 ):
     conn = mavutil.mavlink_connection(mavlink_endpoint)
     wait_for_heartbeat(conn)
+    
+    joystick = FakeJoystick()
+    
+    
     latest_imu = {}
-    start_imu_listener(conn, latest_imu)
+    start_imu_listener(conn, latest_imu, joystick)
     time.sleep(1)
     
     
-    update_every = 1
+    update_every = 10
 
     env = make_env(conn, latest_imu)
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
     state_dim = env.observation_space.shape[0]
-    goal_dim = state_dim
     action_dim = env.action_space.shape[0]
 
-    agent = DeterministicGCAgent(state_dim, goal_dim, action_dim, device=device, gamma=gamma, lr=learning_rate_start, lr_end=learning_rate_end)
+    agent = DeterministicGCAgent(state_dim, action_dim, device=device, gamma=gamma, lr=learning_rate_start, lr_end=learning_rate_end)
 
   
     
@@ -136,10 +141,10 @@ def train(
             
             if ep%5 == 0:
                 obs = env.reset(conn)
-            goal_dict = env.rov.joystick.get_target()
-            goal = env._state_to_obs(env.rov._goal_to_state(goal_dict))
             ep_reward = 0.0
             total_step_time = 0
+            
+            exploration_bool = total_steps < start_steps
 
             for step in range(max_steps):
                 if shutdown_flag and shutdown_flag.is_set():
@@ -148,17 +153,17 @@ def train(
 
                 t0 = time.time()
 
-                if total_steps < start_steps:
+                if exploration_bool:
                     action = agent.sample_random_structured()
                     
                 else:
-                    action = agent.select_action(obs, goal)
+                    action = agent.select_action(obs)
 
                 current_state = env.rov.get_state()
-                next_obs, reward_components, done, _ = env.step(action, current_state)
+                next_obs, reward_components, done, _ = env.step(action, current_state, exploration_bool)
                 reward = reward_components["total"]
 
-                agent.replay_buffer.push(obs, goal, action, reward, next_obs, done)
+                agent.replay_buffer.push(obs, action, reward, next_obs, done)
 
                 obs = next_obs
                 ep_reward += reward
@@ -180,45 +185,46 @@ def train(
 
             
             if progress_callback:
-                target = goal_dict
                 obs = env._state_to_obs(current_state)
                 obs = np.asarray(obs).astype(np.float32).flatten()
-                goal = np.asarray(goal).astype(np.float32).flatten()
                 action = np.asarray(action).astype(np.float32).flatten()
 
                 q_val = agent.critic(
                     torch.FloatTensor(obs).unsqueeze(0).to(device),
-                    torch.FloatTensor(goal).unsqueeze(0).to(device),
                     torch.FloatTensor(action).unsqueeze(0).to(device)
                 ).item()
                 
                 
 
                 metrics = {
-                    "vx": safe_scalar(current_state.get("vx", 0.0)),
-                    "vx_target": safe_scalar(target.get("vx", {}).get("mean", 0.0)),
-                    "vy": safe_scalar(current_state.get("vy", 0.0)),
-                    "vz": safe_scalar(current_state.get("vz", 0.0)),
-                    
-                    "yaw_rate": safe_scalar(reward_components.get("yaw_rate", 0.0)),
-                    "pitch_rate": safe_scalar(reward_components.get("pitch_rate", 0.0)),
-                    "roll_rate": safe_scalar(reward_components.get("roll_rate", 0.0)),
-                    
+                    # --- Velocity and targets ---
+                    "vx": safe_scalar(current_state.get("vx_error", 0.0)),
+                    "vy": safe_scalar(current_state.get("vy_error", 0.0)),
+                    "vz": safe_scalar(current_state.get("vz_error", 0.0)),
+
+                    # --- Angular motion ---
+                    "yaw_rate": safe_scalar(current_state.get("yaw_error", 0.0)),
+                    "pitch_rate": safe_scalar(current_state.get("pitch_error", 0.0)),
+                    "roll_rate": safe_scalar(current_state.get("roll_error", 0.0)),
+
+                    # --- Reward breakdowns ---
                     "vx_score": safe_scalar(reward_components.get("vx_score", 0.0)),
                     "vy_score": safe_scalar(reward_components.get("vy_score", 0.0)),
                     "vz_score": safe_scalar(reward_components.get("vz_score", 0.0)),
-                    "roll_score": safe_scalar(reward_components.get("roll_score", 0.0)),
-                    "pitch_score": safe_scalar(reward_components.get("pitch_score", 0.0)),
                     "yaw_score": safe_scalar(reward_components.get("yaw_score", 0.0)),
-                    
+                    "pitch_score": safe_scalar(reward_components.get("pitch_score", 0.0)),
+                    "roll_score": safe_scalar(reward_components.get("roll_score", 0.0)),
+                    "tracking_total": safe_scalar(reward_components.get("tracking_total", 0.0)),
+                    "stability_penalty": safe_scalar(reward_components.get("stability_penalty", 0.0)),
+                    "reward_total": safe_scalar(reward_components.get("total", 0.0)),
 
-
+                    # --- Losses & Learning ---
                     "critic_loss": safe_scalar(critic_loss),
                     "actor_loss": safe_scalar(actor_loss),
                     "mean_step_time": safe_scalar(total_step_time) / max_steps,
                     "mean_q_value": safe_scalar(q_val),
-                    
-                    
+
+                    # --- TD & Grad Stats ---
                     "td_mean": safe_scalar(update_info.get("td_mean", 0.0)),
                     "td_max": safe_scalar(update_info.get("td_max", 0.0)),
                     "td_min": safe_scalar(update_info.get("td_min", 0.0)),
@@ -226,10 +232,14 @@ def train(
                     "critic_grad_norm": safe_scalar(update_info.get("critic_grad_norm", 0.0)),
                     "actor_weight_norm": safe_scalar(update_info.get("actor_weight_norm", 0.0)),
                     "critic_weight_norm": safe_scalar(update_info.get("critic_weight_norm", 0.0)),
-                    "learning_rate":safe_scalar(update_info.get("learning_rate", 0.0))
-                    
-                    
+
+                    # --- Learning rate schedule tracking ---
+                    "learning_rate": safe_scalar(update_info.get("learning_rate", 0.0)),
+
+                    # --- For dashed centerline reference ---
+                    "zero": 0.0
                 }
+
 
                 progress_callback(ep, episodes, float(ep_reward), metrics)
                 

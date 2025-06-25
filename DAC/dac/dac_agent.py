@@ -21,7 +21,7 @@ class MLP(nn.Module):
 
         for i in range(len(dims) - 1):
             layers.append(nn.Linear(dims[i], dims[i+1]))
-            layers.append(nn.LayerNorm(dims[i+1]))  # Normalize before activation
+            # layers.append(nn.LayerNorm(dims[i+1]))  # Normalize before activation
             layers.append(nn.ReLU())
 
         layers.append(nn.Linear(dims[-1], output_dim))
@@ -33,23 +33,23 @@ class MLP(nn.Module):
 
 
 class DeterministicGCActor(nn.Module):
-    def __init__(self, state_dim, goal_dim, action_dim):
+    def __init__(self, state_dim, action_dim):
         super().__init__()
-        self.net = MLP(state_dim + goal_dim, action_dim, hidden_dims=(128, 128, 64))
+        self.net = MLP(state_dim , action_dim, hidden_dims=(128, 128, 64))
 
-    def forward(self, state, goal):
-        x = torch.cat([state, goal], dim=-1)
+    def forward(self, state):
+        x = torch.cat([state], dim=-1)
         action = torch.tanh(self.net(x))
         return action
 
 
 class DeterministicCritic(nn.Module):
-    def __init__(self, state_dim, goal_dim, action_dim):
+    def __init__(self, state_dim, action_dim):
         super().__init__()
-        self.q_net = MLP(state_dim + goal_dim + action_dim, 1, hidden_dims=(128, 128, 64))
+        self.q_net = MLP(state_dim + action_dim, 1, hidden_dims=(128, 128, 64))
 
-    def forward(self, state, goal, action):
-        x = torch.cat([state, goal, action], dim=-1)
+    def forward(self, state, action):
+        x = torch.cat([state, action], dim=-1)
         return self.q_net(x).view(-1)  # Replaces .squeeze(-1)
 
 
@@ -61,9 +61,9 @@ class PrioritizedGCReplayBuffer:
         self.alpha = alpha
         self.pos = 0
 
-    def push(self, state, goal, action, reward, next_state, done):
+    def push(self, state, action, reward, next_state, done):
         max_prio = max(self.priorities, default=1.0)
-        data = (state, goal, action, reward, next_state, done)
+        data = (state, action, reward, next_state, done)
 
         if len(self.buffer) < self.capacity:
             self.buffer.append(data)
@@ -87,11 +87,10 @@ class PrioritizedGCReplayBuffer:
         weights = (len(self.buffer) * probs[indices]) ** (-beta)
         weights /= weights.max()
 
-        states, goals, actions, rewards, next_states, dones = map(np.stack, zip(*samples))
+        states, actions, rewards, next_states, dones = map(np.stack, zip(*samples))
 
         return (
             torch.FloatTensor(states),
-            torch.FloatTensor(goals),
             torch.FloatTensor(actions),
             torch.FloatTensor(rewards).unsqueeze(1),
             torch.FloatTensor(next_states),
@@ -115,16 +114,16 @@ class PrioritizedGCReplayBuffer:
 
 
 class DeterministicGCAgent:
-    def __init__(self, state_dim, goal_dim, action_dim, device="cpu", gamma=0.99, lr=3e-4, lr_end=1e-5, tau=0.005):
+    def __init__(self, state_dim, action_dim, device="cpu", gamma=0.99, lr=3e-4, lr_end=1e-5, tau=0.005):
         self.device = device
         self.gamma = gamma
         self.tau = tau
 
-        self.actor = DeterministicGCActor(state_dim, goal_dim, action_dim).to(device)
-        self.critic = DeterministicCritic(state_dim, goal_dim, action_dim).to(device)
+        self.actor = DeterministicGCActor(state_dim, action_dim).to(device)
+        self.critic = DeterministicCritic(state_dim, action_dim).to(device)
 
-        self.target_actor = DeterministicGCActor(state_dim, goal_dim, action_dim).to(device)
-        self.target_critic = DeterministicCritic(state_dim, goal_dim, action_dim).to(device)
+        self.target_actor = DeterministicGCActor(state_dim, action_dim).to(device)
+        self.target_critic = DeterministicCritic(state_dim, action_dim).to(device)
 
         self.target_actor.load_state_dict(self.actor.state_dict())
         self.target_critic.load_state_dict(self.critic.state_dict())
@@ -150,10 +149,9 @@ class DeterministicGCAgent:
             target_param.data.copy_(tau * param.data + (1.0 - tau) * target_param.data)
 
     
-    def select_action(self, state, goal, noise_std=0.01):
+    def select_action(self, state, noise_std=0.01):
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-        goal = torch.FloatTensor(goal).unsqueeze(0).to(self.device)
-        action = self.actor(state, goal).cpu().data.numpy()[0]
+        action = self.actor(state).cpu().data.numpy()[0]
         action += np.random.normal(0, noise_std, size=action.shape)
         return np.clip(action, -1.0, 1.0)
 
@@ -172,15 +170,15 @@ class DeterministicGCAgent:
             "learning_rate": 0.0
         }
         
-        s, g, a, r, s2, d, w, idx = self.replay_buffer.sample(batch_size, beta=beta)
-        s, g, a, r, s2, d, w = s.to(self.device), g.to(self.device), a.to(self.device), r.to(self.device), s2.to(self.device), d.to(self.device), w.to(self.device)
+        s, a, r, s2, d, w, idx = self.replay_buffer.sample(batch_size, beta=beta)
+        s, a, r, s2, d, w = s.to(self.device), a.to(self.device), r.to(self.device), s2.to(self.device), d.to(self.device), w.to(self.device)
 
         with torch.no_grad():
-            a2 = self.actor(s2, g)
-            q_target = r + self.gamma * self.target_critic(s2, g, a2).unsqueeze(1)
+            a2 = self.actor(s2)
+            q_target = r + self.gamma * self.target_critic(s2, a2).unsqueeze(1)
 
 
-        q_val = self.target_critic(s, g, a).unsqueeze(1)
+        q_val = self.target_critic(s, a).unsqueeze(1)
         
         
         td_error = (q_val - q_target).abs().detach().cpu().numpy()
@@ -200,8 +198,8 @@ class DeterministicGCAgent:
         torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0)
         self.critic_opt.step()
 
-        pred_action = self.actor(s, g)
-        actor_loss = -self.critic(s, g, pred_action).mean()
+        pred_action = self.actor(s)
+        actor_loss = -self.critic(s, pred_action).mean()
 
         self.actor_opt.zero_grad()
         actor_loss.backward()
@@ -239,7 +237,7 @@ class DeterministicGCAgent:
             self.writer.add_scalar("q_value/std", q_val.std().item(), total_step)
 
             # Track action stats
-            action_tensor = self.actor(s, g)
+            action_tensor = self.actor(s)
             self.writer.add_scalar("action/mean", action_tensor.mean().item(), total_step)
             self.writer.add_scalar("action/std", action_tensor.std().item(), total_step)
 

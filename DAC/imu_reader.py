@@ -1,5 +1,3 @@
-# imu_reader.py
-
 from pymavlink import mavutil
 import threading
 import traceback
@@ -14,8 +12,15 @@ import numpy as np
 
 from imu_buffer import IMUBuffer
 
+# Buffers
 attitude_buffer = IMUBuffer(max_seconds=1.0, frequency=400)
 velocity_buffer = IMUBuffer(max_seconds=1.0, frequency=400)
+goal_buffer = IMUBuffer(max_seconds=1.0, frequency=400)
+
+# Shared state for synchronization
+latest_att_data = {}
+latest_vel_data = {}
+joystick_ref = None  # Set externally when starting
 
 # Shutdown control
 stop_event = threading.Event()
@@ -24,15 +29,49 @@ imu_thread = None
 
 imu_types = ['ATTITUDE', 'VIBRATION']
 
-def start_imu_listener(connection, latest_imu):
+
+def log_synchronized_frame(att_data, vel_data, joystick):
+    t = time.time()
+
+    # Log state
+    attitude_buffer.add(t, att_data)
+    velocity_buffer.add(t, vel_data)
+
+    # Log goal
+    goal = joystick.get_target()
+    goal_data = {
+        "vx": goal["vx"]["mean"],
+        "vy": goal["vy"]["mean"],
+        "vz": goal["vz"]["mean"],
+        "yaw_rate": goal["yaw_rate"]["mean"],
+        "pitch_rate": goal["pitch_rate"]["mean"],
+        "roll_rate": goal["roll_rate"]["mean"],
+    }
+    goal_buffer.add(t, goal_data)
+
+
+def synchronized_logging_loop():
+    print("[SYNC] Starting synchronized logger...")
+    while not stop_event.is_set():
+        if latest_att_data and latest_vel_data and joystick_ref:
+            log_synchronized_frame(
+                latest_att_data.copy(),
+                latest_vel_data.copy(),
+                joystick_ref
+            )
+        time.sleep(1 / 400.0)  # match logging frequency
+
+
+def start_imu_listener(connection, latest_imu, joystick):
     """
-    Starts MAVLink attitude listener and ROS 2 odometry subscriber in separate threads.
+    Starts MAVLink and ROS 2 listeners and launches synchronized logger.
     """
+    global imu_thread, ros_thread, joystick_ref
+    joystick_ref = joystick
+
     def imu_loop():
         try:
             print("[IMU] Starting MAVLink listener thread...")
-            print(time.time())
-
             while not stop_event.is_set():
                 msg = connection.recv_match(type=imu_types, blocking=True, timeout=1)
                 if msg is None:
@@ -49,13 +88,12 @@ def start_imu_listener(connection, latest_imu):
                             "yaw": getattr(msg, 'yaw', 0.0),
                             "yawspeed": getattr(msg, 'yawspeed', 0.0),
                         }
-                        attitude_buffer.add(time.time(), imu_data)
+                        latest_att_data.update(imu_data)
                 except AttributeError as e:
                     print(f"[IMU] Missing attribute: {e}")
                 except Exception as e:
                     print(f"[IMU] Unexpected error: {e}")
                     traceback.print_exc()
-
         except Exception as e:
             print(f"[IMU THREAD ERROR] {e}")
             traceback.print_exc()
@@ -63,6 +101,7 @@ def start_imu_listener(connection, latest_imu):
     def ros_spin():
         try:
             rclpy.init()
+
             class OdomListener(Node):
                 def __init__(self):
                     super().__init__('odom_listener')
@@ -80,8 +119,6 @@ def start_imu_listener(connection, latest_imu):
                     velocity_z = msg.twist.twist.linear.z
                     velocity_mag = np.linalg.norm([velocity_x, velocity_y, velocity_z])
 
-                    
-                    
                     self.velocity_history.append(velocity_mag)
                     if len(self.velocity_history) > 100:
                         self.velocity_history.pop(0)
@@ -98,7 +135,7 @@ def start_imu_listener(connection, latest_imu):
                         "qz": msg.pose.pose.orientation.z,
                         "qw": msg.pose.pose.orientation.w
                     }
-                    velocity_buffer.add(time.time(), velocity_data)
+                    latest_vel_data.update(velocity_data)
 
             node = OdomListener()
             executor = SingleThreadedExecutor()
@@ -116,9 +153,11 @@ def start_imu_listener(connection, latest_imu):
             print(f"[ROS2 ODOM ERROR] {e}")
             traceback.print_exc()
 
-    global imu_thread, ros_thread
+    # Start threads
     imu_thread = threading.Thread(target=imu_loop, daemon=True)
     ros_thread = threading.Thread(target=ros_spin, daemon=True)
+    sync_thread = threading.Thread(target=synchronized_logging_loop, daemon=True)
 
     imu_thread.start()
     ros_thread.start()
+    sync_thread.start()

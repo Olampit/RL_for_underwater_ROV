@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "better exploration and various bug fixed"
+git commit --author="Olampit <olampit@gmail.com>" -m "state that includes goal (diff v_actual v_goal)"
 git push -u origin new-clean-branch
 
 # Increment and save back

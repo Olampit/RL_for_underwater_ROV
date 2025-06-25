@@ -8,7 +8,7 @@ from joystick_input import FakeJoystick
 import math
 import random
 
-from imu_reader import attitude_buffer, velocity_buffer
+from imu_reader import attitude_buffer, velocity_buffer, goal_buffer
 
 SERVO_MIN = 1100
 SERVO_MAX = 1900
@@ -47,33 +47,35 @@ class ROVEnvironment:
     def get_state(self):
         state = {}
 
-        att_seq = attitude_buffer.get_all()
-        if att_seq:
-            yawspeeds = np.array([d["yawspeed"] for _, d in att_seq if "yawspeed" in d])
-            pitchspeeds = np.array([d["pitchspeed"] for _, d in att_seq if "pitchspeed" in d])
-            rollspeeds = np.array([d["rollspeed"] for _, d in att_seq if "rollspeed" in d])
+        vel_seq = velocity_buffer.get_last_n(1)
+        att_seq = attitude_buffer.get_last_n(1)
+        goal_seq = goal_buffer.get_last_n(1)
 
-            if len(yawspeeds) >= 2:
-                state["yaw_rate"] = float(np.mean(np.abs(yawspeeds)))
-            if len(pitchspeeds) >= 2:
-                state["pitch_rate"] = float(np.mean(np.abs(pitchspeeds)))
-            if len(rollspeeds) >= 2:
-                state["roll_rate"] = float(np.mean(np.abs(rollspeeds)))
+        if vel_seq and goal_seq:
+            _, v = vel_seq[0]
+            _, g = goal_seq[0]
+            state["vx_error"] = v["vx"] - g["vx"]
+            state["vy_error"] = v["vy"] - g["vy"]
+            state["vz_error"] = v["vz"] - g["vz"]
+        else:
+            state["vx_error"] = 0.0
+            state["vy_error"] = 0.0
+            state["vz_error"] = 0.0
 
-        vel_seq = velocity_buffer.get_all()
-        if vel_seq:
-            vxs = np.array([v["vx"] for _, v in vel_seq])
-            vys = np.array([v["vy"] for _, v in vel_seq])
-            vzs = np.array([v["vz"] for _, v in vel_seq])
-
-            if len(vxs) >= 2:
-                state["vx"] = float(np.mean(np.abs(vxs)))
-            if len(vys) >= 2:
-                state["vy"] = float(np.mean(np.abs(vys)))
-            if len(vzs) >= 2:
-                state["vz"] = float(np.mean(np.abs(vzs)))
+        if att_seq and goal_seq:
+            _, a = att_seq[0]
+            _, g = goal_seq[0]
+            state["yaw_error"] = a["yawspeed"] - g["yaw_rate"]
+            state["pitch_error"] = a["pitchspeed"] - g["pitch_rate"]
+            state["roll_error"] = a["rollspeed"] - g["roll_rate"]
+        else:
+            state["yaw_error"] = 0.0
+            state["pitch_error"] = 0.0
+            state["roll_error"] = 0.0
 
         return state
+
+
 
 
     def random_orientation_quat(self, max_angle_deg=15):
@@ -97,7 +99,7 @@ class ROVEnvironment:
     def reset(self):
         px = round(random.uniform(-1.0, 1.0), 2)
         py = round(random.uniform(4900.0, 5100.0), 2)
-        pz = round(random.uniform(9.5, 10.5), 2)
+        pz = round(random.uniform(95.0, 105.0), 2)
         
         # quat = self.random_orientation_quat(max_angle_deg=0)
         # qx, qy, qz, qw = quat["x"], quat["y"], quat["z"], quat["w"]
@@ -141,62 +143,67 @@ class ROVEnvironment:
                 0, 0, 0, 0, 0
             )
 
-    def _goal_to_state(self, goal):
-        return {
-            "vx": goal["vx"]["mean"],
-            "vy": goal["vy"]["mean"],
-            "vz": goal["vz"]["mean"],
-            "yaw_rate": goal["yaw_rate"]["mean"],
-            "pitch_rate": goal["pitch_rate"]["mean"],
-            "roll_rate": goal["roll_rate"]["mean"]
-        }
 
 
     def compute_reward(self, state):
-        goal = self.joystick.get_target()
+        TRACKING_WEIGHT = 1.0
+        STABILITY_WEIGHT = 0.01
+        CLIP = 100.0
 
-        V_MAX = 1.0
-        R_MAX = 2.0
-        BONUS = 0.5
-        DECAY = 10.0
-        MULT = 1.0
+        # Errors
+        vx_e = state["vx_error"]
+        vy_e = state["vy_error"]
+        vz_e = state["vz_error"]
+        yaw_e = state["yaw_error"]
+        pitch_e = state["pitch_error"]
+        roll_e = state["roll_error"]
 
-        def e(key): return state.get(key, 0.0)
-        def g(key): return goal[key]["mean"]
-        def bonus(err): return BONUS * np.exp(-DECAY * err)
+        V_SCALE = 1.0
+        R_SCALE = 2.0
 
-        # Normalized errors
-        vx_err = abs(e("vx") - g("vx")) / V_MAX
-        vy_err = abs(e("vy") - g("vy")) / V_MAX
-        vz_err = abs(e("vz") - g("vz")) / V_MAX
-        yaw_err = abs(e("yaw_rate") - g("yaw_rate")) / R_MAX
-        pitch_err = abs(e("pitch_rate") - g("pitch_rate")) / R_MAX
-        roll_err = abs(e("roll_rate") - g("roll_rate")) / R_MAX
+        def shaped_score(err, scale):
+            return - (err / scale) ** 2
 
-        # Scores
-        vx_score = -vx_err + bonus(vx_err)
-        vy_score = -vy_err + bonus(vy_err)
-        vz_score = -vz_err + bonus(vz_err)
-        yaw_score = -yaw_err + bonus(yaw_err)
-        pitch_score = -pitch_err + bonus(pitch_err)
-        roll_score = -roll_err + bonus(roll_err)
+        vx_score = shaped_score(vx_e, V_SCALE)
+        vy_score = shaped_score(vy_e, V_SCALE)
+        vz_score = shaped_score(vz_e, V_SCALE)
+        yaw_score = shaped_score(yaw_e, R_SCALE)
+        pitch_score = shaped_score(pitch_e, R_SCALE)
+        roll_score = shaped_score(roll_e, R_SCALE)
 
-        total = (vx_score + vy_score + vz_score + yaw_score + pitch_score + roll_score) * MULT
-        total = np.clip(total, -1000, 1000)
+        tracking_total = (vx_score + vy_score + vz_score + yaw_score + pitch_score + roll_score) * TRACKING_WEIGHT
+
+        # Stability term (short window only)
+        vel_seq = velocity_buffer.get_last_n(5)
+        att_seq = attitude_buffer.get_last_n(5)
+
+        vxs = np.array([v["vx"] for _, v in vel_seq])
+        vys = np.array([v["vy"] for _, v in vel_seq])
+        vzs = np.array([v["vz"] for _, v in vel_seq])
+        yaws = np.array([a["yawspeed"] for _, a in att_seq])
+        pitches = np.array([a["pitchspeed"] for _, a in att_seq])
+        rolls = np.array([a["rollspeed"] for _, a in att_seq])
+
+        motion_sum = np.mean(np.abs(vxs)) + np.mean(np.abs(vys)) + np.mean(np.abs(vzs)) + \
+                    np.mean(np.abs(yaws)) + np.mean(np.abs(pitches)) + np.mean(np.abs(rolls))
+
+        # stability_penalty = motion_sum * STABILITY_WEIGHT
+        stability_penalty = 0
+        
+        total_reward = tracking_total - stability_penalty
+        total_reward = np.clip(total_reward, -CLIP, CLIP)
 
         return {
-            "total": total,
+            "total": total_reward,
             "vx_score": vx_score,
             "vy_score": vy_score,
             "vz_score": vz_score,
-            "roll_score": roll_score,
-            "pitch_score": pitch_score,
             "yaw_score": yaw_score,
-            "yaw_rate": e("yaw_rate"),
-            "pitch_rate": e("pitch_rate"),
-            "roll_rate": e("roll_rate")
+            "pitch_score": pitch_score,
+            "roll_score": roll_score,
+            "tracking_total": tracking_total,
+            "stability_penalty": -stability_penalty
         }
-
 
 
 

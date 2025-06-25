@@ -27,7 +27,6 @@ class RLGui:
         self.pitch_score_data = []
         self.yaw_score_data = []
 
-        self.vx_target_data = []
         
         
         self.vx_rate_data = []
@@ -52,6 +51,10 @@ class RLGui:
         self.critic_weight_norm_data = []
         self.lr_data = []
         self.zeroes = []
+        
+        self.tracking_total_data = []
+        self.stability_penalty_data = []
+        self.reward_total_data = []
 
         self.fig2, (self.ax2, self.ax3) = plt.subplots(2, 1, figsize=(6, 2.5))
         self.canvas2 = FigureCanvasTkAgg(self.fig2, master=root)
@@ -72,6 +75,11 @@ class RLGui:
         self.fig7, (self.ax8, self.ax9) = plt.subplots(2, 1, figsize=(6, 2.5))  
         self.canvas7 = FigureCanvasTkAgg(self.fig7, master=root)
         self.canvas7.get_tk_widget().grid(row=10, column=1, sticky="nsew")
+        
+        self.fig8, self.ax9 = plt.subplots(figsize=(6, 2.5))
+        self.canvas8 = FigureCanvasTkAgg(self.fig8, master=root)
+        self.canvas8.get_tk_widget().grid(row=10, column=2, columnspan=2, sticky="nsew")
+
 
         self.agent_type = tk.StringVar(value="sac")
         ttk.Label(root, text="Agent Type:").grid(row=0, column=0, sticky="w")
@@ -79,7 +87,7 @@ class RLGui:
 
         self.episodes_var = tk.IntVar(value=40_000)
         self.max_steps_var = tk.IntVar(value=50)
-        self.lr_var = tk.DoubleVar(value=3e-3)
+        self.lr_var = tk.DoubleVar(value=3e-4)
         self.lr_var_end = tk.DoubleVar(value=1e-4)
 
         ttk.Label(root, text="Episodes:").grid(row=1, column=0, sticky="w")
@@ -171,7 +179,6 @@ class RLGui:
             self.pitch_rate_data.append(metrics.get("pitch_rate", 0.0))
             self.yaw_rate_data.append(metrics.get("yaw_rate", 0.0))
 
-            self.vx_target_data.append(metrics.get("vx_target", 0.3))
 
             self.vx_score_data.append(metrics.get("vx_score", 0.0))
             self.vy_score_data.append(metrics.get("vy_score", 0.0))
@@ -198,11 +205,15 @@ class RLGui:
             self.lr_data.append(metrics.get("learning_rate", 0.0))
 
             self.zeroes.append(metrics.get("zero", 0.0))
+            
+            self.tracking_total_data.append(metrics.get("tracking_total", 0.0))
+            self.stability_penalty_data.append(metrics.get("stability_penalty", 0.0))
+            self.reward_total_data.append(metrics.get("reward_total", 0.0))
+
 
             all_metrics = [
                 self.vx_rate_data, self.vy_rate_data, self.vz_rate_data,
                 self.roll_rate_data, self.pitch_rate_data, self.yaw_rate_data,
-                self.vx_target_data,
                 self.vx_score_data, self.vy_score_data, self.vz_score_data,
                 self.roll_score_data, self.pitch_score_data, self.yaw_score_data,
                 self.critic_loss_data, self.actor_loss_data,
@@ -210,7 +221,7 @@ class RLGui:
                 self.td_mean_data, self.td_max_data, self.td_min_data,
                 self.actor_grad_norm_data, self.critic_grad_norm_data,
                 self.actor_weight_norm_data, self.critic_weight_norm_data,
-                self.zeroes
+                self.zeroes, self.stability_penalty_data, self.tracking_total_data, self.reward_total_data
             ]
 
 
@@ -223,18 +234,16 @@ class RLGui:
                     
                     
             self.ax2.cla()
-            self.ax2.set_title("vx: Velocity Tracking")
-            self.ax2.set_ylabel("vx (m/s)")
+            self.ax2.set_title("V_actual - V_goal")
+            self.ax2.set_ylabel("m/s")
             self.ax2.plot(self.vx_rate_data, label="vx", color="blue")
             self.ax2.plot(self.vy_rate_data, label="vy", color="red")
             self.ax2.plot(self.vz_rate_data, label="vz", color="pink")
             self.ax2.plot(self.zeroes, label="0", color="black", linestyle="dashed")
-            self.ax2.plot(self.vx_target_data, label="vx_target", color="cyan", linestyle="dashed")
             self.ax2.legend(loc = 'upper left')
             
 
             self.ax3.cla()
-            self.ax3.set_title("Angular Rates")
             self.ax3.set_ylabel("rad/s")
             self.ax3.set_xlabel("Episode")
             self.ax3.plot(self.roll_rate_data, label="roll", color="green")
@@ -272,13 +281,11 @@ class RLGui:
             
             
             self.ax7.cla()
-            self.ax7.set_title("Mean Step Time")
-            self.ax7.set_ylabel("Time")
+            self.ax7.set_ylabel("s")
             self.ax7.plot(self.mean_step_time_data, label="Mean Step Time", color="orange")
             self.ax7.legend(loc='upper left')
 
             self.ax10.cla()
-            self.ax10.set_title("Learning Rate")
             self.ax10.set_ylabel("LR")
             self.ax10.set_xlabel("Episode")
             self.ax10.plot(self.lr_data, label="Actor LR", color="blue")
@@ -307,6 +314,18 @@ class RLGui:
             self.ax9.legend(loc='upper left')
 
             self.canvas7.draw()
+            
+            self.ax9.cla()
+            self.ax9.set_title("Reward Breakdown")
+            self.ax9.set_ylabel("Value")
+            self.ax9.set_xlabel("Episode")
+            self.ax9.plot(self.tracking_total_data, label="Tracking Total", color="blue")
+            self.ax9.plot(self.stability_penalty_data, label="Stability Penalty", color="orange")
+            self.ax9.plot(self.reward_total_data, label="Total Reward", color="green")
+            self.ax9.axhline(y=0.0, color="gray", linestyle="dashed", linewidth=0.8)
+            self.ax9.legend()
+            self.canvas8.draw()
+
 
 
 
@@ -343,7 +362,6 @@ class RLGui:
         self.pitch_score_data.clear()
         self.yaw_score_data.clear()
 
-        self.vx_target_data.clear()
         
         
         self.vx_rate_data.clear()
@@ -359,6 +377,11 @@ class RLGui:
         self.q_value_data.clear()
         
         self.zeroes.clear()
+        
+        self.tracking_total_data.clear()
+        self.stability_penalty_data.clear()
+        self.reward_total_data.clear()
+
 
         self.ax.cla()
         self.ax.set_title("Episode Rewards")
