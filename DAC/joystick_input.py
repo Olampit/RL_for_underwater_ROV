@@ -21,7 +21,7 @@ class FakeJoystick:
             dict: Velocity and angular rate targets with mean/std values.
         """
         base = {
-            "vx": {"mean": 0.3, "std": 0.02},
+            "vx": {"mean": 0.7, "std": 0.02},
             "vy": {"mean": 0.0, "std": 0.0},
             "vz": {"mean": 0.0, "std": 0.0},
             "yaw_rate": {"mean": 0.0, "std": 0.0},

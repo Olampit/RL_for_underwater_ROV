@@ -34,7 +34,7 @@ class ROVEnvGymWrapper(gym.Env):
         self._apply_action_continuous(action)
         time.sleep(0.1 / SPEED_UP)
         if no_update :
-            time.sleep(0.1)
+            time.sleep(0.01)
         reward = self.rov.compute_reward(state)
         done = self.rov.is_terminal(state)
         obs = self._state_to_obs(self.rov.get_state())

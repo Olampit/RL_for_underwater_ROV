@@ -76,7 +76,7 @@ class RLGui:
         self.canvas7 = FigureCanvasTkAgg(self.fig7, master=root)
         self.canvas7.get_tk_widget().grid(row=10, column=1, sticky="nsew")
         
-        self.fig8, self.ax9 = plt.subplots(figsize=(6, 2.5))
+        self.fig8, self.ax11 = plt.subplots(figsize=(6, 2.5))
         self.canvas8 = FigureCanvasTkAgg(self.fig8, master=root)
         self.canvas8.get_tk_widget().grid(row=10, column=2, columnspan=2, sticky="nsew")
 
@@ -315,15 +315,15 @@ class RLGui:
 
             self.canvas7.draw()
             
-            self.ax9.cla()
-            self.ax9.set_title("Reward Breakdown")
-            self.ax9.set_ylabel("Value")
-            self.ax9.set_xlabel("Episode")
-            self.ax9.plot(self.tracking_total_data, label="Tracking Total", color="blue")
-            self.ax9.plot(self.stability_penalty_data, label="Stability Penalty", color="orange")
-            self.ax9.plot(self.reward_total_data, label="Total Reward", color="green")
-            self.ax9.axhline(y=0.0, color="gray", linestyle="dashed", linewidth=0.8)
-            self.ax9.legend()
+            self.ax11.cla()
+            self.ax11.set_title("Reward Breakdown")
+            self.ax11.set_ylabel("Value")
+            self.ax11.set_xlabel("Episode")
+            self.ax11.plot(self.tracking_total_data, label="Tracking Total", color="blue")
+            self.ax11.plot(self.stability_penalty_data, label="Stability Penalty", color="orange")
+            self.ax11.plot(self.reward_total_data, label="Total Reward", color="green")
+            self.ax11.axhline(y=0.0, color="gray", linestyle="dashed", linewidth=0.8)
+            self.ax11.legend()
             self.canvas8.draw()
 
 

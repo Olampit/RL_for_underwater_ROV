@@ -98,8 +98,8 @@ class ROVEnvironment:
 
     def reset(self):
         px = round(random.uniform(-1.0, 1.0), 2)
-        py = round(random.uniform(4900.0, 5100.0), 2)
-        pz = round(random.uniform(95.0, 105.0), 2)
+        py = round(random.uniform(4999.0, 5001.0), 2)
+        pz = round(random.uniform(39.0, 41.0), 2)
         
         # quat = self.random_orientation_quat(max_angle_deg=0)
         # qx, qy, qz, qw = quat["x"], quat["y"], quat["z"], quat["w"]
@@ -158,22 +158,26 @@ class ROVEnvironment:
         pitch_e = state["pitch_error"]
         roll_e = state["roll_error"]
 
-        V_SCALE = 1.0
-        R_SCALE = 2.0
+        # Scales and coefficients
+        V_SCALE = 0.5
+        R_SCALE = 1.0
+        COEFF_V = 1.0
+        COEFF_A = 1.0
 
-        def shaped_score(err, scale):
-            return - (err / scale) ** 2
+        def shaped_penalty(err, scale, coeff):
+            norm_err = err / scale
+            return -coeff * np.log1p(norm_err**2)
 
-        vx_score = shaped_score(vx_e, V_SCALE)
-        vy_score = shaped_score(vy_e, V_SCALE)
-        vz_score = shaped_score(vz_e, V_SCALE)
-        yaw_score = shaped_score(yaw_e, R_SCALE)
-        pitch_score = shaped_score(pitch_e, R_SCALE)
-        roll_score = shaped_score(roll_e, R_SCALE)
+        vx_score = shaped_penalty(vx_e, V_SCALE, COEFF_V)
+        vy_score = shaped_penalty(vy_e, V_SCALE, COEFF_V)
+        vz_score = shaped_penalty(vz_e, V_SCALE, COEFF_V)
+        yaw_score = shaped_penalty(yaw_e, R_SCALE, COEFF_A)
+        pitch_score = shaped_penalty(pitch_e, R_SCALE, COEFF_A)
+        roll_score = shaped_penalty(roll_e, R_SCALE, COEFF_A)
 
         tracking_total = (vx_score + vy_score + vz_score + yaw_score + pitch_score + roll_score) * TRACKING_WEIGHT
 
-        # Stability term (short window only)
+        # Stability
         vel_seq = velocity_buffer.get_last_n(5)
         att_seq = attitude_buffer.get_last_n(5)
 
@@ -184,12 +188,11 @@ class ROVEnvironment:
         pitches = np.array([a["pitchspeed"] for _, a in att_seq])
         rolls = np.array([a["rollspeed"] for _, a in att_seq])
 
-        motion_sum = np.mean(np.abs(vxs)) + np.mean(np.abs(vys)) + np.mean(np.abs(vzs)) + \
-                    np.mean(np.abs(yaws)) + np.mean(np.abs(pitches)) + np.mean(np.abs(rolls))
+        vel_std = np.std(vxs) + np.std(vys) + np.std(vzs)
+        att_std = np.std(yaws) + np.std(pitches) + np.std(rolls)
 
-        # stability_penalty = motion_sum * STABILITY_WEIGHT
-        stability_penalty = 0
-        
+        stability_penalty = (vel_std + att_std) * STABILITY_WEIGHT
+
         total_reward = tracking_total - stability_penalty
         total_reward = np.clip(total_reward, -CLIP, CLIP)
 
@@ -204,6 +207,8 @@ class ROVEnvironment:
             "tracking_total": tracking_total,
             "stability_penalty": -stability_penalty
         }
+
+
 
 
 

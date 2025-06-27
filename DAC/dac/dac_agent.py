@@ -35,7 +35,7 @@ class MLP(nn.Module):
 class DeterministicGCActor(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
-        self.net = MLP(state_dim , action_dim, hidden_dims=(128, 128, 64))
+        self.net = MLP(state_dim , action_dim, hidden_dims=(64, 64))
 
     def forward(self, state):
         x = torch.cat([state], dim=-1)
@@ -46,7 +46,7 @@ class DeterministicGCActor(nn.Module):
 class DeterministicCritic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
-        self.q_net = MLP(state_dim + action_dim, 1, hidden_dims=(128, 128, 64))
+        self.q_net = MLP(state_dim + action_dim, 1, hidden_dims=(64, 64))
 
     def forward(self, state, action):
         x = torch.cat([state, action], dim=-1)
@@ -178,7 +178,7 @@ class DeterministicGCAgent:
             q_target = r + self.gamma * self.target_critic(s2, a2).unsqueeze(1)
 
 
-        q_val = self.target_critic(s, a).unsqueeze(1)
+        q_val = self.critic(s, a).unsqueeze(1)
         
         
         td_error = (q_val - q_target).abs().detach().cpu().numpy()

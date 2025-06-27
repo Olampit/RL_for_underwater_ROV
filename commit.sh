@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "state that includes goal (diff v_actual v_goal)"
+git commit --author="Olampit <olampit@gmail.com>" -m "Working nicely (bug fixed about q values in dac_agent)"
 git push -u origin new-clean-branch
 
 # Increment and save back
