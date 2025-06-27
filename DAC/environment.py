@@ -97,9 +97,13 @@ class ROVEnvironment:
         }
 
     def reset(self):
-        px = round(random.uniform(-1.0, 1.0), 2)
-        py = round(random.uniform(4999.0, 5001.0), 2)
-        pz = round(random.uniform(39.0, 41.0), 2)
+        # px = round(random.uniform(-1.0, 1.0), 2)
+        # py = round(random.uniform(4999.0, 5001.0), 2)
+        # pz = round(random.uniform(39.0, 41.0), 2)
+        
+        px = 0
+        py = 5000
+        pz = 20
         
         # quat = self.random_orientation_quat(max_angle_deg=0)
         # qx, qy, qz, qw = quat["x"], quat["y"], quat["z"], quat["w"]
@@ -128,7 +132,6 @@ class ROVEnvironment:
             }}}}"""
         ]
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self.joystick.next_episode()
         return self.get_state()
 
     def stop_motors(self, connection):

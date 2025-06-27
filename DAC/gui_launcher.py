@@ -36,6 +36,13 @@ class RLGui:
         self.pitch_rate_data = []
         self.yaw_rate_data = []
         
+        self.vx_goal_data = []
+        self.vy_goal_data = []
+        self.vz_goal_data = []
+        self.roll_goal_data = []
+        self.pitch_goal_data = []
+        self.yaw_goal_data = []
+        
         self.critic_loss_data = []
         self.actor_loss_data = []
         self.mean_step_time_data = []
@@ -80,12 +87,15 @@ class RLGui:
         self.canvas8 = FigureCanvasTkAgg(self.fig8, master=root)
         self.canvas8.get_tk_widget().grid(row=10, column=2, columnspan=2, sticky="nsew")
 
+        self.fig9, (self.ax12, self.ax13) = plt.subplots(2, 1, figsize=(6, 2.5))
+        self.canvas9 = FigureCanvasTkAgg(self.fig9, master=root)
+        self.canvas9.get_tk_widget().grid(row=9, column=2, sticky="nsew")
 
         self.agent_type = tk.StringVar(value="sac")
         ttk.Label(root, text="Agent Type:").grid(row=0, column=0, sticky="w")
         ttk.Combobox(root, textvariable=self.agent_type, values=["sac"]).grid(row=0, column=1)
 
-        self.episodes_var = tk.IntVar(value=40_000)
+        self.episodes_var = tk.IntVar(value=120_000)
         self.max_steps_var = tk.IntVar(value=50)
         self.lr_var = tk.DoubleVar(value=3e-4)
         self.lr_var_end = tk.DoubleVar(value=1e-4)
@@ -179,6 +189,13 @@ class RLGui:
             self.pitch_rate_data.append(metrics.get("pitch_rate", 0.0))
             self.yaw_rate_data.append(metrics.get("yaw_rate", 0.0))
 
+            
+            self.vx_goal_data.append(metrics.get("goal_vx", 0.0))
+            self.vy_goal_data.append(metrics.get("goal_vy", 0.0))
+            self.vz_goal_data.append(metrics.get("goal_vz", 0.0))
+            self.roll_goal_data.append(metrics.get("goal_roll", 0.0))
+            self.pitch_goal_data.append(metrics.get("goal_pitch", 0.0))
+            self.yaw_goal_data.append(metrics.get("goal_yaw", 0.0))
 
             self.vx_score_data.append(metrics.get("vx_score", 0.0))
             self.vy_score_data.append(metrics.get("vy_score", 0.0))
@@ -221,7 +238,8 @@ class RLGui:
                 self.td_mean_data, self.td_max_data, self.td_min_data,
                 self.actor_grad_norm_data, self.critic_grad_norm_data,
                 self.actor_weight_norm_data, self.critic_weight_norm_data,
-                self.zeroes, self.stability_penalty_data, self.tracking_total_data, self.reward_total_data
+                self.zeroes, self.stability_penalty_data, self.tracking_total_data, self.reward_total_data, 
+                self.vx_goal_data, self.vy_goal_data, self.vz_goal_data, self.roll_goal_data, self.pitch_goal_data, self.yaw_goal_data
             ]
 
 
@@ -325,6 +343,28 @@ class RLGui:
             self.ax11.axhline(y=0.0, color="gray", linestyle="dashed", linewidth=0.8)
             self.ax11.legend()
             self.canvas8.draw()
+            
+            
+            
+            
+            self.ax12.cla()
+            self.ax12.set_title("V_goal")
+            self.ax12.set_ylabel("m/s")
+            self.ax12.plot(self.vx_goal_data, label="vx", color="blue")
+            self.ax12.plot(self.vy_goal_data, label="vy", color="red")
+            self.ax12.plot(self.vz_goal_data, label="vz", color="pink")
+            self.ax12.plot(self.zeroes, label="0", color="black", linestyle="dashed")
+            self.ax12.legend(loc = 'upper left')
+            
+
+            self.ax13.cla()
+            self.ax13.set_ylabel("rad/s")
+            self.ax13.set_xlabel("Episode")
+            self.ax13.plot(self.roll_goal_data, label="roll", color="green")
+            self.ax13.plot(self.pitch_goal_data, label="pitch", color="purple")
+            self.ax13.plot(self.yaw_goal_data, label="yaw", color="orange")
+            self.ax13.legend(loc = 'upper left')
+            self.canvas9.draw()
 
 
 
@@ -370,6 +410,15 @@ class RLGui:
         self.roll_rate_data.clear()
         self.pitch_rate_data.clear()
         self.yaw_rate_data.clear()
+        
+        
+        self.vx_goal_data.clear()
+        self.vy_goal_data.clear()
+        self.vz_goal_data.clear()
+        self.roll_goal_data.clear()
+        self.pitch_goal_data.clear()
+        self.yaw_goal_data.clear()
+        
         
         self.critic_loss_data.clear()
         self.actor_loss_data.clear()

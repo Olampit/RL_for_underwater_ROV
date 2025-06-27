@@ -99,7 +99,7 @@ def train(
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
 
-    agent = DeterministicGCAgent(state_dim, action_dim, device=device, gamma=gamma, lr=learning_rate_start, lr_end=learning_rate_end)
+    agent = DeterministicGCAgent(state_dim, action_dim, device=device, gamma=gamma, lr=learning_rate_start, lr_end=learning_rate_end, use_writer=False)
 
   
     
@@ -168,6 +168,8 @@ def train(
                 obs = next_obs
                 ep_reward += reward
                 total_steps += 1
+                joystick.next_step()
+
 
                 if total_steps % update_every == 0 : 
                     update_info = agent.update(batch_size=batch_size, total_step=total_steps)
@@ -194,13 +196,21 @@ def train(
                     torch.FloatTensor(action).unsqueeze(0).to(device)
                 ).item()
                 
-                
+                c_goal = joystick.get_target()
 
                 metrics = {
                     # --- Velocity and targets ---
                     "vx": safe_scalar(current_state.get("vx_error", 0.0)),
                     "vy": safe_scalar(current_state.get("vy_error", 0.0)),
                     "vz": safe_scalar(current_state.get("vz_error", 0.0)),
+                    
+                    "goal_vx": safe_scalar(c_goal["vx"]["mean"]),
+                    "goal_vy": safe_scalar(c_goal["vy"]["mean"]),
+                    "goal_vz": safe_scalar(c_goal["vz"]["mean"]),
+                    "goal_yaw": safe_scalar(c_goal["yaw_rate"]["mean"]),
+                    "goal_pitch": safe_scalar(c_goal["pitch_rate"]["mean"]),
+                    "goal_roll": safe_scalar(c_goal["roll_rate"]["mean"]),
+
 
                     # --- Angular motion ---
                     "yaw_rate": safe_scalar(current_state.get("yaw_error", 0.0)),

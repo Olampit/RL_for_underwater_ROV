@@ -114,11 +114,11 @@ class PrioritizedGCReplayBuffer:
 
 
 class DeterministicGCAgent:
-    def __init__(self, state_dim, action_dim, device="cpu", gamma=0.99, lr=3e-4, lr_end=1e-5, tau=0.005):
+    def __init__(self, state_dim, action_dim, device="cpu", gamma=0.99, lr=3e-4, lr_end=1e-5, tau=0.005, use_writer=False):
         self.device = device
         self.gamma = gamma
         self.tau = tau
-
+        self.use_writer = use_writer
         self.actor = DeterministicGCActor(state_dim, action_dim).to(device)
         self.critic = DeterministicCritic(state_dim, action_dim).to(device)
 
@@ -131,8 +131,11 @@ class DeterministicGCAgent:
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=lr)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=lr)
 
-        self.log_dir = os.path.join("runs", "dac_agent", datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-        self.writer = SummaryWriter(log_dir=self.log_dir)
+        if self.use_writer:
+            self.log_dir = os.path.join("runs", "dac_agent", datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+            self.writer = SummaryWriter(log_dir=self.log_dir)
+        else:
+            self.writer = None
         
         self.current_lr = lr
         self.lr_start = lr
@@ -184,11 +187,12 @@ class DeterministicGCAgent:
         td_error = (q_val - q_target).abs().detach().cpu().numpy()
         td_error = np.clip(td_error, 1e-6, 1e2)
         
-        
+        #!change here for the weights on monday ? 
         if total_step % 1000 == 0:
             for name, param in self.actor.named_parameters():
                 if param.data.dim() == 2:  # Only log matrices
-                    self.writer.add_embedding(param.data, tag=f"actor/weights/{name}", global_step=total_step)
+                    if self.writer is not None:
+                        self.writer.add_embedding(param.data, tag=f"actor/weights/{name}", global_step=total_step)
 
 
         critic_loss = (F.mse_loss(q_val, q_target, reduction='none') * w).mean()
@@ -215,35 +219,36 @@ class DeterministicGCAgent:
         
         # --- Logging weights/gradients with tensorboard
         if total_step is not None:
-            for name, param in self.actor.named_parameters():
-                if param.grad is not None:
-                    self.writer.add_histogram(f"actor/params/{name}", param, total_step)
-                    self.writer.add_histogram(f"actor/grads/{name}", param.grad, total_step)
+            if self.writer is not None:
+                for name, param in self.actor.named_parameters():
+                    if param.grad is not None:
+                        self.writer.add_histogram(f"actor/params/{name}", param, total_step)
+                        self.writer.add_histogram(f"actor/grads/{name}", param.grad, total_step)
 
-            for name, param in self.critic.named_parameters():
-                if param.grad is not None:
-                    self.writer.add_histogram(f"critic/params/{name}", param, total_step)
-                    self.writer.add_histogram(f"critic/grads/{name}", param.grad, total_step)
+                for name, param in self.critic.named_parameters():
+                    if param.grad is not None:
+                        self.writer.add_histogram(f"critic/params/{name}", param, total_step)
+                        self.writer.add_histogram(f"critic/grads/{name}", param.grad, total_step)
 
-            # Scalar logging
-            self.writer.add_scalar("loss/critic", critic_loss.item(), total_step)
-            self.writer.add_scalar("loss/actor", actor_loss.item(), total_step)
-            self.writer.add_scalar("td_error/mean", float(td_error.mean()), total_step)
-            self.writer.add_scalar("td_error/max", float(td_error.max()), total_step)
-            self.writer.add_scalar("td_error/min", float(td_error.min()), total_step)
-            self.writer.add_scalar("lr/actor", self.current_lr, total_step)
-            self.writer.add_scalar("lr/critic", self.current_lr, total_step)
-            self.writer.add_scalar("q_value/mean", q_val.mean().item(), total_step)
-            self.writer.add_scalar("q_value/std", q_val.std().item(), total_step)
+                # Scalar logging
+                self.writer.add_scalar("loss/critic", critic_loss.item(), total_step)
+                self.writer.add_scalar("loss/actor", actor_loss.item(), total_step)
+                self.writer.add_scalar("td_error/mean", float(td_error.mean()), total_step)
+                self.writer.add_scalar("td_error/max", float(td_error.max()), total_step)
+                self.writer.add_scalar("td_error/min", float(td_error.min()), total_step)
+                self.writer.add_scalar("lr/actor", self.current_lr, total_step)
+                self.writer.add_scalar("lr/critic", self.current_lr, total_step)
+                self.writer.add_scalar("q_value/mean", q_val.mean().item(), total_step)
+                self.writer.add_scalar("q_value/std", q_val.std().item(), total_step)
 
-            # Track action stats
-            action_tensor = self.actor(s)
-            self.writer.add_scalar("action/mean", action_tensor.mean().item(), total_step)
-            self.writer.add_scalar("action/std", action_tensor.std().item(), total_step)
+                # Track action stats
+                action_tensor = self.actor(s)
+                self.writer.add_scalar("action/mean", action_tensor.mean().item(), total_step)
+                self.writer.add_scalar("action/std", action_tensor.std().item(), total_step)
 
-            # Optional: log one reward component if passed via r
-            if r.numel() == 1:
-                self.writer.add_scalar("env/reward_total", r.item(), total_step)
+                # Optional: log one reward component if passed via r
+                if r.numel() == 1:
+                    self.writer.add_scalar("env/reward_total", r.item(), total_step)
 
         self.replay_buffer.update_priorities(idx, td_error)
 

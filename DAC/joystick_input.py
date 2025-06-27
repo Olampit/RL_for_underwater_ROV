@@ -2,50 +2,52 @@
 
 import numpy as np
 
+import random
+
 class FakeJoystick:
-    """
-    Simulates a human-like joystick by generating a randomized but structured goal velocity.
-    """
-    def __init__(self):
-        """
-        Initializes the joystick and generates the first target.
-        """
+    def __init__(self, seed=42, total_phases=24, phase_length=25_000):
         self.episode = 0
+        self.phase_length = phase_length
+        self.total_phases = total_phases
+        random.seed(seed)
+
+        self.goal_schedule = self._generate_goal_schedule()
         self.goal = self._generate_goal()
+
+    def _generate_goal_schedule(self):
+        """
+        Generate a list of structured, randomized goals with up to 2 nonzero components.
+        """
+        directions = ["vx", "vy", "vz", "yaw_rate", "pitch_rate", "roll_rate"]
+        goal_list = []
+
+        for _ in range(self.total_phases):
+            goal = {d: 0.0 for d in directions}
+            active = random.sample(directions, k=random.choice([1, 2]))  # choose 1 or 2 active axes
+
+            for axis in active:
+                if "v" in axis:
+                    goal[axis] = random.choice([0.2, 0.4, 0.6, 0.8]) * random.choice([1, -1])
+                else:  # rotational rates
+                    goal[axis] = random.choice([0.1, 0.2, 0.3]) * random.choice([1, -1])
+
+            goal_list.append(goal)
+
+        return goal_list
 
     def _generate_goal(self):
         """
-        Creates a new goal with slight random noise around base target.
-
-        Returns:
-            dict: Velocity and angular rate targets with mean/std values.
+        Picks the goal for the current episode based on the schedule.
         """
-        base = {
-            "vx": {"mean": 0.7, "std": 0.02},
-            "vy": {"mean": 0.0, "std": 0.0},
-            "vz": {"mean": 0.0, "std": 0.0},
-            "yaw_rate": {"mean": 0.0, "std": 0.0},
-            "pitch_rate": {"mean": 0.0, "std": 0.0},
-            "roll_rate": {"mean": 0.0, "std": 0.0}
-        }
+        phase_idx = min(self.episode // self.phase_length, self.total_phases - 1)
+        raw_goal = self.goal_schedule[phase_idx]
 
-        # Add mild goal jitter (~5% noise)
-        # for key in base:
-            # jitter = np.random.normal(0, base[key]["std"])
-            # base[key]["mean"] += jitter
+        return {k: {"mean": v, "std": 0.0} for k, v in raw_goal.items()}
 
-        return base
-
-    def next_episode(self):
-        """
-        Increments episode counter and generates a new goal.
-        """
+    def next_step(self):
         self.episode += 1
         self.goal = self._generate_goal()
 
     def get_target(self):
-        """
-        Returns:
-            dict: The current target for this episode.
-        """
         return self.goal
+
