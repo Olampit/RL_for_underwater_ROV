@@ -14,12 +14,14 @@ from imu_buffer import IMUBuffer
 
 # Buffers
 attitude_buffer = IMUBuffer(max_seconds=1.0, frequency=400)
+raw_buffer = IMUBuffer(max_seconds=1.0, frequency=400)
 velocity_buffer = IMUBuffer(max_seconds=1.0, frequency=400)
 goal_buffer = IMUBuffer(max_seconds=1.0, frequency=400)
 
 # Shared state for synchronization
 latest_att_data = {}
 latest_vel_data = {}
+latest_raw_data = {}
 joystick_ref = None  # Set externally when starting
 
 # Shutdown control
@@ -27,15 +29,18 @@ stop_event = threading.Event()
 ros_thread = None
 imu_thread = None
 
-imu_types = ['ATTITUDE', 'VIBRATION']
+imu_types = ['ATTITUDE', 'RAW_IMU', 'VIBRATION']
 
 
-def log_synchronized_frame(att_data, vel_data, joystick):
+def log_synchronized_frame(att_data, vel_data, raw_data, joystick):
     t = time.time()
 
     # Log state
     attitude_buffer.add(t, att_data)
     velocity_buffer.add(t, vel_data)
+    raw_buffer.add(t, raw_data)
+
+    
 
     # Log goal
     goal = joystick.get_target()
@@ -57,6 +62,7 @@ def synchronized_logging_loop():
             log_synchronized_frame(
                 latest_att_data.copy(),
                 latest_vel_data.copy(),
+                latest_raw_data.copy(),
                 joystick_ref
             )
         time.sleep(1 / 400.0)  # match logging frequency
@@ -89,6 +95,18 @@ def start_imu_listener(connection, latest_imu, joystick):
                             "yawspeed": getattr(msg, 'yawspeed', 0.0),
                         }
                         latest_att_data.update(imu_data)
+                        
+                    elif msg_type == "RAW_IMU":
+                        imu_data = {
+                            "ax": getattr(msg, 'xacc', 0.0) / 1000.0,  # convert from mg to m/s²
+                            "ay": getattr(msg, 'yacc', 0.0) / 1000.0,
+                            "az": getattr(msg, 'zacc', 0.0) / 1000.0,
+                            "gx": getattr(msg, 'xgyro', 0.0) / 1000.0,  # rad/s
+                            "gy": getattr(msg, 'ygyro', 0.0) / 1000.0,
+                            "gz": getattr(msg, 'zgyro', 0.0) / 1000.0,
+                        }
+                        latest_raw_data.update(imu_data)
+
                 except AttributeError as e:
                     print(f"[IMU] Missing attribute: {e}")
                 except Exception as e:

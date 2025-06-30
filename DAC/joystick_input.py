@@ -14,15 +14,15 @@ class FakeJoystick:
         self.goal = self._generate_goal()
 
     def _generate_goal_schedule(self):
-        directions = ["vx", "vy", "vz", "yaw_rate", "pitch_rate", "roll_rate"]
+        directions = ["vx", "vy", "vz", "yaw_rate", "pitch_rate" , "roll_rate"]
         goal_list = []
 
         for _ in range(self.total_phases):
             goal = {d: 0.0 for d in directions}
-            active = random.sample(directions, k=random.choice([1, 2]))
+            active = random.sample(directions, k=random.choice([1, 1])) #!change the second 1 to 2 for two axis
 
             for axis in active:
-                if "v" in axis[:,-1]:
+                if "v" in axis:
                     goal[axis] = random.choice([0.2, 0.4, 0.6, 0.8]) * random.choice([1, -1])
                 else:
                     goal[axis] = random.choice([0.1, 0.2, 0.3]) * random.choice([1, -1])

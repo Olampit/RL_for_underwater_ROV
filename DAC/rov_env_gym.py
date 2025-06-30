@@ -19,13 +19,20 @@ class ROVEnvGymWrapper(gym.Env):
             low=-np.inf, high=np.inf,
             shape=obs_sample.shape,
             dtype=np.float32
-)
+        )
+        self.history_length = 4  # or 5–10
+        self.state_history = []
+
 
 
     def reset(self, connection):
         self.rov.stop_motors(connection)
         state_dict = self.rov.reset()
-        return self._state_to_obs(state_dict)
+        
+        state = self.env.get_state()
+        self.state_history = [state] * self.history_length
+        obs = self.state_to_obs()
+        return obs
 
     def stop_motors(self, connection):
         self.rov.stop_motors(connection)
@@ -51,15 +58,15 @@ class ROVEnvGymWrapper(gym.Env):
                 i + 1, pwm, 0, 0, 0, 0, 0
             )
 
-    def _state_to_obs(self, state):
-        keys = [
-            "vx", 
-            "vy", 
-            "vz",
-            "yaw_rate", 
-            "pitch_rate", 
-            "roll_rate"
-        ]
-        values = [state.get(k, 0.0) for k in keys]
-        return np.array(values, dtype=np.float32)
+    def state_to_obs(self):
+        """
+        Convert list of recent state dicts to a flat observation vector.
+        Each state dict must have the same keys and order.
+        """
+        flat_obs = []
+        for state in self.state_history:
+            for key in sorted(state.keys()):
+                flat_obs.append(state[key])
+        return np.array(flat_obs, dtype=np.float32)
+
 

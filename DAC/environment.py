@@ -8,7 +8,7 @@ from joystick_input import FakeJoystick
 import math
 import random
 
-from imu_reader import attitude_buffer, velocity_buffer, goal_buffer
+from imu_reader import attitude_buffer, velocity_buffer, goal_buffer, raw_buffer
 
 SERVO_MIN = 1100
 SERVO_MAX = 1900
@@ -44,37 +44,58 @@ class ROVEnvironment:
                 0, 0, 0, 0, 0
             )
 
+    from imu_reader import attitude_buffer, raw_buffer, goal_buffer
+
     def get_state(self):
+        """
+        Returns a sensor-based, goal-conditioned state:
+        - Linear acceleration from raw IMU
+        - Orientation and angular velocity from ATTITUDE
+        - Goal values from joystick (velocity and rotation rates)
+        """
         state = {}
 
-        vel_seq = velocity_buffer.get_last_n(1)
+        # --- Raw linear acceleration ---
+        raw_seq = raw_buffer.get_last_n(1)
+        if raw_seq:
+            _, r = raw_seq[0]
+            state["ax"] = r.get("ax", 0.0)
+            state["ay"] = r.get("ay", 0.0)
+            state["az"] = r.get("az", 0.0)
+        else:
+            state["ax"] = state["ay"] = state["az"] = 0.0
+
+        # --- Attitude and angular velocities ---
         att_seq = attitude_buffer.get_last_n(1)
-        goal_seq = goal_buffer.get_last_n(1)
-
-        if vel_seq and goal_seq:
-            _, v = vel_seq[0]
-            _, g = goal_seq[0]
-            state["vx_error"] = v["vx"] - g["vx"]
-            state["vy_error"] = v["vy"] - g["vy"]
-            state["vz_error"] = v["vz"] - g["vz"]
-        else:
-            state["vx_error"] = 0.0
-            state["vy_error"] = 0.0
-            state["vz_error"] = 0.0
-
-        if att_seq and goal_seq:
+        if att_seq:
             _, a = att_seq[0]
-            _, g = goal_seq[0]
-            state["yaw_error"] = a["yawspeed"] - g["yaw_rate"]
-            state["pitch_error"] = a["pitchspeed"] - g["pitch_rate"]
-            state["roll_error"] = a["rollspeed"] - g["roll_rate"]
+            state["roll"] = a.get("roll", 0.0)
+            state["pitch"] = a.get("pitch", 0.0)
+            state["yaw"] = a.get("yaw", 0.0)
+            state["rollspeed"] = a.get("rollspeed", 0.0)
+            state["pitchspeed"] = a.get("pitchspeed", 0.0)
+            state["yawspeed"] = a.get("yawspeed", 0.0)
         else:
-            state["yaw_error"] = 0.0
-            state["pitch_error"] = 0.0
-            state["roll_error"] = 0.0
+            for key in ["roll", "pitch", "yaw", "rollspeed", "pitchspeed", "yawspeed"]:
+                state[key] = 0.0
+
+        # --- Goal from joystick ---
+        goal_seq = goal_buffer.get_last_n(1)
+        if goal_seq:
+            _, g = goal_seq[0]
+            state["goal_vx"] = g.get("vx", 0.0)
+            state["goal_vy"] = g.get("vy", 0.0)
+            state["goal_vz"] = g.get("vz", 0.0)
+            state["goal_yaw_rate"] = g.get("yaw_rate", 0.0)
+            state["goal_pitch_rate"] = g.get("pitch_rate", 0.0)
+            state["goal_roll_rate"] = g.get("roll_rate", 0.0)
+        else:
+            for key in ["goal_vx", "goal_vy", "goal_vz", "goal_yaw_rate", "goal_pitch_rate", "goal_roll_rate"]:
+                state[key] = 0.0
 
         return state
 
+    
 
 
 

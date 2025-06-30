@@ -90,7 +90,7 @@ def train(
     time.sleep(1)
     
     
-    update_every = 10
+    update_every = 1 #! maybe 10 ?? 
 
     env = make_env(conn, latest_imu)
     if device is None:

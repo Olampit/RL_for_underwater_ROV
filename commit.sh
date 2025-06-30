@@ -13,8 +13,8 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "version with run_policy"
-git push -u origin new-clean-branch
+git commit --author="Olampit <olampit@gmail.com>" -m "state with no velocities - Initial commit"
+git push -u origin imu-based
 
 # Increment and save back
 echo $((count + 1)) > "$COUNTER_FILE"
