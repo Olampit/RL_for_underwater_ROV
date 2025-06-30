@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "nice version (without writer)"
+git commit --author="Olampit <olampit@gmail.com>" -m "version with run_policy"
 git push -u origin new-clean-branch
 
 # Increment and save back

@@ -30,7 +30,7 @@ class ROVEnvGymWrapper(gym.Env):
     def stop_motors(self, connection):
         self.rov.stop_motors(connection)
 
-    def step(self, action, state, no_update):
+    def step(self, action, state, no_update=False):
         self._apply_action_continuous(action)
         time.sleep(0.1 / SPEED_UP)
         if no_update :
