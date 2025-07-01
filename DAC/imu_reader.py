@@ -41,7 +41,6 @@ def log_synchronized_frame(att_data, vel_data, raw_data, joystick):
     raw_buffer.add(t, raw_data)
 
     
-
     # Log goal
     goal = joystick.get_target()
     goal_data = {

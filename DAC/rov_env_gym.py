@@ -12,16 +12,16 @@ SPEED_UP = 5
 class ROVEnvGymWrapper(gym.Env):
     def __init__(self, rov_env: ROVEnvironment):
         super().__init__()
-        self.rov = rov_env
+        self.rov = rov_env                                      
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(8,), dtype=np.float32)
-        obs_sample = self._state_to_obs(self.rov.get_state())
+        self.state_history = []
+        obs_sample = self._state_to_obs()
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf,
             shape=obs_sample.shape,
             dtype=np.float32
         )
         self.history_length = 4  # or 5–10
-        self.state_history = []
 
 
 
@@ -29,9 +29,9 @@ class ROVEnvGymWrapper(gym.Env):
         self.rov.stop_motors(connection)
         state_dict = self.rov.reset()
         
-        state = self.env.get_state()
+        state = self.rov.get_state()
         self.state_history = [state] * self.history_length
-        obs = self.state_to_obs()
+        obs = self._state_to_obs()
         return obs
 
     def stop_motors(self, connection):
@@ -42,9 +42,9 @@ class ROVEnvGymWrapper(gym.Env):
         time.sleep(0.1 / SPEED_UP)
         if no_update :
             time.sleep(0.01)
-        reward = self.rov.compute_reward(state)
+        reward = self.rov.compute_reward()
         done = self.rov.is_terminal(state)
-        obs = self._state_to_obs(self.rov.get_state())
+        obs = self._state_to_obs()
         return obs, reward, done, {}
 
     def _apply_action_continuous(self, action):
@@ -58,7 +58,7 @@ class ROVEnvGymWrapper(gym.Env):
                 i + 1, pwm, 0, 0, 0, 0, 0
             )
 
-    def state_to_obs(self):
+    def _state_to_obs(self):
         """
         Convert list of recent state dicts to a flat observation vector.
         Each state dict must have the same keys and order.

@@ -14,7 +14,7 @@ import os
 import datetime
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dims=(64,64)):
+    def __init__(self, input_dim, output_dim, hidden_dims=(64,64,32)):
         super().__init__()
         layers = []
         dims = [input_dim] + list(hidden_dims)
@@ -114,7 +114,10 @@ class PrioritizedGCReplayBuffer:
 
 
 class DeterministicGCAgent:
-    def __init__(self, state_dim, action_dim, device="cpu", gamma=0.99, lr=3e-4, lr_end=1e-5, tau=0.005, use_writer=False):
+    def __init__(self, state_dim=0, action_dim=0, device="cpu", gamma=0.99, lr=3e-4, lr_end=1e-5, tau=0.005, use_writer=False):
+        
+        print(f"[Agent Init] state_dim={state_dim}, action_dim={action_dim}")
+
         self.device = device
         self.gamma = gamma
         self.tau = tau
@@ -153,17 +156,23 @@ class DeterministicGCAgent:
 
     
     def select_action(self, state, noise_std=0.01):
-        state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-        action = self.actor(state).cpu().data.numpy()[0]
+        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+        
+        # Optional sanity check
+        assert state_tensor.shape[1] == self.actor.net.model[0].in_features, \
+            f"Expected input dim {self.actor.net.model[0].in_features}, got {state_tensor.shape[1]}"
+        
+        action = self.actor(state_tensor).cpu().data.numpy()[0]
         action += np.random.normal(0, noise_std, size=action.shape)
         return np.clip(action, -1.0, 1.0)
+
 
     def update(self, batch_size=128, beta=0.4, total_step = None):
         if len(self.replay_buffer) < batch_size:
             return {
             "critic_loss": 0.0,
             "actor_loss": 0.0,
-            "td_mean": 0.0,
+            "td_mean": 0.0, 
             "td_max": 0.0,
             "td_min": 0.0,
             "actor_grad_norm": 0.0,

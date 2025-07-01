@@ -69,7 +69,7 @@ def train(
     episodes=500,
     max_steps=20,
     batch_size=1024,
-    start_steps=5000,
+    start_steps=5,
     gamma=0.99,
     learning_rate_start=5e-2,
     learning_rate_end=1e-4,
@@ -90,16 +90,25 @@ def train(
     time.sleep(1)
     
     
-    update_every = 1 #! maybe 10 ?? 
+    update_every = 1 #! maybe 10 ??
+    
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu" 
 
     env = make_env(conn, latest_imu)
-    if device is None:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+    
 
-    state_dim = env.observation_space.shape[0]
+    env = make_env(conn, latest_imu)
+    obs = env.reset(conn)
+    state_dim = len(obs)
     action_dim = env.action_space.shape[0]
 
-    agent = DeterministicGCAgent(state_dim, action_dim, device=device, gamma=gamma, lr=learning_rate_start, lr_end=learning_rate_end, use_writer=False)
+    agent = DeterministicGCAgent(
+        state_dim=state_dim,
+        action_dim=action_dim,
+        device=device,
+        use_writer=False
+    )
 
   
     
@@ -168,7 +177,7 @@ def train(
                 obs = next_obs
                 ep_reward += reward
                 total_steps += 1
-                joystick.next_step()
+                joystick.update_success_tracking(reward_components)
 
 
                 if total_steps % update_every == 0 : 
@@ -187,7 +196,7 @@ def train(
 
             
             if progress_callback:
-                obs = env._state_to_obs(current_state)
+                obs = env._state_to_obs()
                 obs = np.asarray(obs).astype(np.float32).flatten()
                 action = np.asarray(action).astype(np.float32).flatten()
 
@@ -200,9 +209,9 @@ def train(
 
                 metrics = {
                     # --- Velocity and targets ---
-                    "vx": safe_scalar(current_state.get("vx_error", 0.0)),
-                    "vy": safe_scalar(current_state.get("vy_error", 0.0)),
-                    "vz": safe_scalar(current_state.get("vz_error", 0.0)),
+                    "vx": safe_scalar(reward_components.get("vx_error", 0.0)),
+                    "vy": safe_scalar(reward_components.get("vy_error", 0.0)),
+                    "vz": safe_scalar(reward_components.get("vz_error", 0.0)),
                     
                     "goal_vx": safe_scalar(c_goal["vx"]["mean"]),
                     "goal_vy": safe_scalar(c_goal["vy"]["mean"]),
@@ -213,9 +222,9 @@ def train(
 
 
                     # --- Angular motion ---
-                    "yaw_rate": safe_scalar(current_state.get("yaw_error", 0.0)),
-                    "pitch_rate": safe_scalar(current_state.get("pitch_error", 0.0)),
-                    "roll_rate": safe_scalar(current_state.get("roll_error", 0.0)),
+                    "yaw_rate": safe_scalar(reward_components.get("yaw_error", 0.0)),
+                    "pitch_rate": safe_scalar(reward_components.get("pitch_error", 0.0)),
+                    "roll_rate": safe_scalar(reward_components.get("roll_error", 0.0)),
 
                     # --- Reward breakdowns ---
                     "vx_score": safe_scalar(reward_components.get("vx_score", 0.0)),

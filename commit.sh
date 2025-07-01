@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "state with no velocities - Initial commit"
+git commit --author="Olampit <olampit@gmail.com>" -m "Correct changing goal and some results"
 git push -u origin imu-based
 
 # Increment and save back

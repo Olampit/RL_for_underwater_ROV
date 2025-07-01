@@ -169,20 +169,33 @@ class ROVEnvironment:
 
 
 
-    def compute_reward(self, state):
+    def compute_reward(self):
         TRACKING_WEIGHT = 1.0
         STABILITY_WEIGHT = 0.01
         CLIP = 100.0
 
-        # Errors
-        vx_e = state["vx_error"]
-        vy_e = state["vy_error"]
-        vz_e = state["vz_error"]
-        yaw_e = state["yaw_error"]
-        pitch_e = state["pitch_error"]
-        roll_e = state["roll_error"]
+        # --- Get latest velocity and attitude ---
+        vel_seq = velocity_buffer.get_last_n(1)
+        att_seq = attitude_buffer.get_last_n(1)
+        goal_seq = goal_buffer.get_last_n(1)
 
-        # Scales and coefficients
+        if not vel_seq or not att_seq or not goal_seq:
+            return {"total": -CLIP, "reason": "missing data"}
+
+        _, vel = vel_seq[0]
+        _, att = att_seq[0]
+        _, goal = goal_seq[0]
+
+        # --- Compute velocity and rotation rate errors ---
+        vx_e = vel.get("vx", 0.0) - goal.get("vx", 0.0)
+        vy_e = vel.get("vy", 0.0) - goal.get("vy", 0.0)
+        vz_e = vel.get("vz", 0.0) - goal.get("vz", 0.0)
+
+        yaw_e = att.get("yawspeed", 0.0) - goal.get("yaw_rate", 0.0)
+        pitch_e = att.get("pitchspeed", 0.0) - goal.get("pitch_rate", 0.0)
+        roll_e = att.get("rollspeed", 0.0) - goal.get("roll_rate", 0.0)
+
+        # --- Reward shaping ---
         V_SCALE = 0.5
         R_SCALE = 1.0
         COEFF_V = 1.0
@@ -190,7 +203,7 @@ class ROVEnvironment:
 
         def shaped_penalty(err, scale, coeff):
             norm_err = err / scale
-            return -coeff * np.log1p(norm_err**2)
+            return -coeff * np.log1p(norm_err ** 2)
 
         vx_score = shaped_penalty(vx_e, V_SCALE, COEFF_V)
         vy_score = shaped_penalty(vy_e, V_SCALE, COEFF_V)
@@ -199,9 +212,10 @@ class ROVEnvironment:
         pitch_score = shaped_penalty(pitch_e, R_SCALE, COEFF_A)
         roll_score = shaped_penalty(roll_e, R_SCALE, COEFF_A)
 
-        tracking_total = (vx_score + vy_score + vz_score + yaw_score + pitch_score + roll_score) * TRACKING_WEIGHT
+        tracking_total = (vx_score + vy_score + vz_score +
+                        yaw_score + pitch_score + roll_score) * TRACKING_WEIGHT
 
-        # Stability
+        # --- Stability term ---
         vel_seq = velocity_buffer.get_last_n(5)
         att_seq = attitude_buffer.get_last_n(5)
 
@@ -220,8 +234,13 @@ class ROVEnvironment:
         total_reward = tracking_total - stability_penalty
         total_reward = np.clip(total_reward, -CLIP, CLIP)
 
+
+
+
         return {
             "total": total_reward,
+
+            # Reward terms
             "vx_score": vx_score,
             "vy_score": vy_score,
             "vz_score": vz_score,
@@ -229,8 +248,17 @@ class ROVEnvironment:
             "pitch_score": pitch_score,
             "roll_score": roll_score,
             "tracking_total": tracking_total,
-            "stability_penalty": -stability_penalty
+            "stability_penalty": -stability_penalty,
+
+            # --- Errors (for logging only) ---
+            "vx_error": vx_e,
+            "vy_error": vy_e,
+            "vz_error": vz_e,
+            "yaw_error": yaw_e,
+            "pitch_error": pitch_e,
+            "roll_error": roll_e
         }
+
 
 
 
