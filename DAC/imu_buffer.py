@@ -58,7 +58,26 @@ class IMUBuffer:
         Returns:
             List[Tuple[float, dict]]: The last n (timestamp, data) entries.
 
-        Not called usually (but still there)
         """
         with self.lock:
             return list(self.buffer)[-n:]
+
+
+    def get_since(self, since_time, max_age=None):
+        """
+        Get all (timestamp, data) tuples with timestamp ≥ since_time,
+        optionally limited to entries not older than max_age seconds.
+
+        Parameters:
+            since_time (float): Lower bound on timestamp (inclusive).
+            max_age (float or None): If set, filters out entries older than now - max_age.
+
+        Returns:
+            List[Tuple[float, dict]]: Matching entries.
+        """
+        now = time.time()
+        with self.lock:
+            return [
+                (t, d) for t, d in self.buffer
+                if t >= since_time and (max_age is None or t >= now - max_age)
+            ]

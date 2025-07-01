@@ -48,52 +48,60 @@ class ROVEnvironment:
 
     def get_state(self):
         """
-        Returns a sensor-based, goal-conditioned state:
-        - Linear acceleration from raw IMU
-        - Orientation and angular velocity from ATTITUDE
-        - Goal values from joystick (velocity and rotation rates)
+        Builds an averaged, temporally-aligned state based on buffered sensor data.
+        Uses new data since the last get_state() call, aligning IMU/goal in time.
         """
         state = {}
+        now = time.time()
+        max_age = 0.10
 
-        # --- Raw linear acceleration ---
-        raw_seq = raw_buffer.get_last_n(1)
+        if not hasattr(self, "last_obs_time"):
+            self.last_obs_time = now - max_age
+
+        raw_seq = raw_buffer.get_since(self.last_obs_time, max_age=max_age)
+        att_seq = attitude_buffer.get_since(self.last_obs_time, max_age=max_age)
+        goal_seq = goal_buffer.get_since(self.last_obs_time, max_age=max_age)
+
+        self.last_obs_time = now
+
+        if not goal_seq:
+            for k in ["goal_vx", "goal_vy", "goal_vz", "goal_roll", "goal_pitch", "goal_yaw"]:
+                state[k] = 0.0
+        else:
+            goal_times, goal_values = zip(*goal_seq)
+            mean_goal = {}
+            for key in ["vx", "vy", "vz", "roll", "pitch", "yaw"]:
+                mean_goal[key] = np.mean([g.get(key, 0.0) for g in goal_values])
+            state["goal_vx"] = mean_goal["vx"]
+            state["goal_vy"] = mean_goal["vy"]
+            state["goal_vz"] = mean_goal["vz"]
+            state["goal_roll"] = mean_goal["roll"]
+            state["goal_pitch"] = mean_goal["pitch"]
+            state["goal_yaw"] = mean_goal["yaw"]
+
         if raw_seq:
-            _, r = raw_seq[0]
-            state["ax"] = r.get("ax", 0.0)
-            state["ay"] = r.get("ay", 0.0)
-            state["az"] = r.get("az", 0.0)
+            axs = [r.get("ax", 0.0) for _, r in raw_seq]
+            ays = [r.get("ay", 0.0) for _, r in raw_seq]
+            azs = [r.get("az", 0.0) for _, r in raw_seq]
+            state["ax"] = np.mean(axs)
+            state["ay"] = np.mean(ays)
+            state["az"] = np.mean(azs)
         else:
             state["ax"] = state["ay"] = state["az"] = 0.0
 
-        # --- Attitude and angular velocities ---
-        att_seq = attitude_buffer.get_last_n(1)
         if att_seq:
-            _, a = att_seq[0]
-            state["roll"] = a.get("roll", 0.0)
-            state["pitch"] = a.get("pitch", 0.0)
-            state["yaw"] = a.get("yaw", 0.0)
-            state["rollspeed"] = a.get("rollspeed", 0.0)
-            state["pitchspeed"] = a.get("pitchspeed", 0.0)
-            state["yawspeed"] = a.get("yawspeed", 0.0)
+            rolls = [a.get("roll", 0.0) for _, a in att_seq]
+            pitches = [a.get("pitch", 0.0) for _, a in att_seq]
+            yaws = [a.get("yaw", 0.0) for _, a in att_seq]
+            state["roll"] = np.mean(rolls)
+            state["pitch"] = np.mean(pitches)
+            state["yaw"] = np.mean(yaws)
         else:
-            for key in ["roll", "pitch", "yaw", "rollspeed", "pitchspeed", "yawspeed"]:
-                state[key] = 0.0
-
-        # --- Goal from joystick ---
-        goal_seq = goal_buffer.get_last_n(1)
-        if goal_seq:
-            _, g = goal_seq[0]
-            state["goal_vx"] = g.get("vx", 0.0)
-            state["goal_vy"] = g.get("vy", 0.0)
-            state["goal_vz"] = g.get("vz", 0.0)
-            state["goal_yaw_rate"] = g.get("yaw_rate", 0.0)
-            state["goal_pitch_rate"] = g.get("pitch_rate", 0.0)
-            state["goal_roll_rate"] = g.get("roll_rate", 0.0)
-        else:
-            for key in ["goal_vx", "goal_vy", "goal_vz", "goal_yaw_rate", "goal_pitch_rate", "goal_roll_rate"]:
-                state[key] = 0.0
+            state["roll"] = state["pitch"] = state["yaw"] = 0.0
 
         return state
+
+
 
     
 
@@ -124,7 +132,7 @@ class ROVEnvironment:
         
         px = 0
         py = 5000
-        pz = 20
+        pz = 30
         
         # quat = self.random_orientation_quat(max_angle_deg=0)
         # qx, qy, qz, qw = quat["x"], quat["y"], quat["z"], quat["w"]
@@ -169,55 +177,87 @@ class ROVEnvironment:
 
 
 
-    def compute_reward(self):
+    
+
+
+
+    def compute_reward(self, use_mean=True):
         TRACKING_WEIGHT = 1.0
         STABILITY_WEIGHT = 0.01
+        ANGULAR_DEVIATION_WEIGHT = 2.0
         CLIP = 100.0
+        MAX_AGE = 0.5  # increase time window
 
-        # --- Get latest velocity and attitude ---
-        vel_seq = velocity_buffer.get_last_n(1)
-        att_seq = attitude_buffer.get_last_n(1)
-        goal_seq = goal_buffer.get_last_n(1)
+        def wrap_angle(angle):
+            return (angle + np.pi) % (2 * np.pi) - np.pi
 
-        if not vel_seq or not att_seq or not goal_seq:
+        now = time.time()
+        if not hasattr(self, "last_reward_time"):
+            self.last_reward_time = now - MAX_AGE
+
+        vel_seq = velocity_buffer.get_since(self.last_reward_time, max_age=MAX_AGE)
+        att_seq = attitude_buffer.get_since(self.last_reward_time, max_age=MAX_AGE)
+        goal_seq = goal_buffer.get_since(self.last_reward_time - 0.2, max_age=MAX_AGE + 0.2)
+
+        self.last_reward_time = now
+
+        if not vel_seq or not att_seq or len(goal_seq) < 2:
             return {"total": -CLIP, "reason": "missing data"}
 
-        _, vel = vel_seq[0]
-        _, att = att_seq[0]
-        _, goal = goal_seq[0]
+        # --- Interpolate goal trajectory ---
+        goal_times, goal_values = zip(*goal_seq)
+        goal_fields = ["vx", "vy", "vz", "roll", "pitch", "yaw"]
+        goal_interp = {k: np.interp(
+            [t for t, _ in vel_seq], goal_times, [g.get(k, 0.0) for g in goal_values]
+        ) for k in goal_fields}
 
-        # --- Compute velocity and rotation rate errors ---
-        vx_e = vel.get("vx", 0.0) - goal.get("vx", 0.0)
-        vy_e = vel.get("vy", 0.0) - goal.get("vy", 0.0)
-        vz_e = vel.get("vz", 0.0) - goal.get("vz", 0.0)
+        vx_errors, vy_errors, vz_errors = [], [], []
+        yaw_errors, pitch_errors, roll_errors = [], [], []
 
-        yaw_e = att.get("yawspeed", 0.0) - goal.get("yaw_rate", 0.0)
-        pitch_e = att.get("pitchspeed", 0.0) - goal.get("pitch_rate", 0.0)
-        roll_e = att.get("rollspeed", 0.0) - goal.get("roll_rate", 0.0)
-
-        # --- Reward shaping ---
-        V_SCALE = 0.5
-        R_SCALE = 1.0
-        COEFF_V = 1.0
-        COEFF_A = 1.0
+        for i, ((_, vel), (_, att)) in enumerate(zip(vel_seq, att_seq)):
+            vx_errors.append(vel.get("vx", 0.0) - goal_interp["vx"][i])
+            vy_errors.append(vel.get("vy", 0.0) - goal_interp["vy"][i])
+            vz_errors.append(vel.get("vz", 0.0) - goal_interp["vz"][i])
+            yaw_errors.append(att.get("yaw", 0.0) - goal_interp["yaw"][i])
+            pitch_errors.append(att.get("pitch", 0.0) - goal_interp["pitch"][i])
+            roll_errors.append(att.get("roll", 0.0) - goal_interp["roll"][i])
 
         def shaped_penalty(err, scale, coeff):
             norm_err = err / scale
             return -coeff * np.log1p(norm_err ** 2)
 
-        vx_score = shaped_penalty(vx_e, V_SCALE, COEFF_V)
-        vy_score = shaped_penalty(vy_e, V_SCALE, COEFF_V)
-        vz_score = shaped_penalty(vz_e, V_SCALE, COEFF_V)
-        yaw_score = shaped_penalty(yaw_e, R_SCALE, COEFF_A)
-        pitch_score = shaped_penalty(pitch_e, R_SCALE, COEFF_A)
-        roll_score = shaped_penalty(roll_e, R_SCALE, COEFF_A)
+        def compute_score(errs, scale, coeff):
+            if not errs:
+                return 0.0
+            value = np.mean(errs) if use_mean else errs[-1]
+            return shaped_penalty(value, scale, coeff)
 
-        tracking_total = (vx_score + vy_score + vz_score +
-                        yaw_score + pitch_score + roll_score) * TRACKING_WEIGHT
+        V_SCALE = 0.5
+        R_SCALE = 1.0
+        COEFF_V = 1.0
+        COEFF_A = 1.0
 
-        # --- Stability term ---
-        vel_seq = velocity_buffer.get_last_n(5)
-        att_seq = attitude_buffer.get_last_n(5)
+        vx_score = compute_score(vx_errors, V_SCALE, COEFF_V)
+        vy_score = compute_score(vy_errors, V_SCALE, COEFF_V)
+        vz_score = compute_score(vz_errors, V_SCALE, COEFF_V)
+        yaw_score = compute_score(yaw_errors, R_SCALE, COEFF_A)
+        pitch_score = compute_score(pitch_errors, R_SCALE, COEFF_A)
+        roll_score = compute_score(roll_errors, R_SCALE, COEFF_A)
+
+        tracking_total = (
+            vx_score + vy_score + vz_score +
+            yaw_score + pitch_score + roll_score
+        ) * TRACKING_WEIGHT
+
+        yawspeeds = np.array([a.get("yawspeed", 0.0) for _, a in att_seq])
+        pitchspeeds = np.array([a.get("pitchspeed", 0.0) for _, a in att_seq])
+        rollspeeds = np.array([a.get("rollspeed", 0.0) for _, a in att_seq])
+
+        yaw_dev = np.mean(np.abs(yawspeeds))
+        pitch_dev = np.mean(np.abs(pitchspeeds))
+        roll_dev = np.mean(np.abs(rollspeeds))
+        total_dev_penalty = (yaw_dev + pitch_dev + roll_dev) * ANGULAR_DEVIATION_WEIGHT
+
 
         vxs = np.array([v["vx"] for _, v in vel_seq])
         vys = np.array([v["vy"] for _, v in vel_seq])
@@ -228,19 +268,13 @@ class ROVEnvironment:
 
         vel_std = np.std(vxs) + np.std(vys) + np.std(vzs)
         att_std = np.std(yaws) + np.std(pitches) + np.std(rolls)
-
         stability_penalty = (vel_std + att_std) * STABILITY_WEIGHT
 
-        total_reward = tracking_total - stability_penalty
+        total_reward = tracking_total - stability_penalty - total_dev_penalty
         total_reward = np.clip(total_reward, -CLIP, CLIP)
-
-
-
 
         return {
             "total": total_reward,
-
-            # Reward terms
             "vx_score": vx_score,
             "vy_score": vy_score,
             "vz_score": vz_score,
@@ -249,21 +283,14 @@ class ROVEnvironment:
             "roll_score": roll_score,
             "tracking_total": tracking_total,
             "stability_penalty": -stability_penalty,
-
-            # --- Errors (for logging only) ---
-            "vx_error": vx_e,
-            "vy_error": vy_e,
-            "vz_error": vz_e,
-            "yaw_error": yaw_e,
-            "pitch_error": pitch_e,
-            "roll_error": roll_e
+            "deviation_penalty": -total_dev_penalty,
+            "vx_error": vx_errors[-1] if vx_errors else 0.0,
+            "vy_error": vy_errors[-1] if vy_errors else 0.0,
+            "vz_error": vz_errors[-1] if vz_errors else 0.0,
+            "yaw_error": yaw_errors[-1] if yaw_errors else 0.0,
+            "pitch_error": pitch_errors[-1] if pitch_errors else 0.0,
+            "roll_error": roll_errors[-1] if roll_errors else 0.0
         }
-
-
-
-
-
-
 
 
     def is_terminal(self, state):

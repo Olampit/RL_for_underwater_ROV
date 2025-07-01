@@ -47,9 +47,9 @@ def log_synchronized_frame(att_data, vel_data, raw_data, joystick):
         "vx": goal["vx"]["mean"],
         "vy": goal["vy"]["mean"],
         "vz": goal["vz"]["mean"],
-        "yaw_rate": goal["yaw_rate"]["mean"],
-        "pitch_rate": goal["pitch_rate"]["mean"],
-        "roll_rate": goal["roll_rate"]["mean"],
+        "yaw": goal["yaw"]["mean"],
+        "pitch": goal["pitch"]["mean"],
+        "roll": goal["roll"]["mean"],
     }
     goal_buffer.add(t, goal_data)
 

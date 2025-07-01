@@ -90,7 +90,7 @@ def train(
     time.sleep(1)
     
     
-    update_every = 1 #! maybe 10 ??
+    update_every = 10 #! maybe 10 ??
     
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu" 
@@ -216,9 +216,9 @@ def train(
                     "goal_vx": safe_scalar(c_goal["vx"]["mean"]),
                     "goal_vy": safe_scalar(c_goal["vy"]["mean"]),
                     "goal_vz": safe_scalar(c_goal["vz"]["mean"]),
-                    "goal_yaw": safe_scalar(c_goal["yaw_rate"]["mean"]),
-                    "goal_pitch": safe_scalar(c_goal["pitch_rate"]["mean"]),
-                    "goal_roll": safe_scalar(c_goal["roll_rate"]["mean"]),
+                    "goal_yaw": safe_scalar(c_goal["yaw"]["mean"]),
+                    "goal_pitch": safe_scalar(c_goal["pitch"]["mean"]),
+                    "goal_roll": safe_scalar(c_goal["roll"]["mean"]),
 
 
                     # --- Angular motion ---
@@ -234,7 +234,7 @@ def train(
                     "pitch_score": safe_scalar(reward_components.get("pitch_score", 0.0)),
                     "roll_score": safe_scalar(reward_components.get("roll_score", 0.0)),
                     "tracking_total": safe_scalar(reward_components.get("tracking_total", 0.0)),
-                    "stability_penalty": safe_scalar(reward_components.get("stability_penalty", 0.0)),
+                    "deviation_penalty": safe_scalar(reward_components.get("deviation_penalty", 0.0)),
                     "reward_total": safe_scalar(reward_components.get("total", 0.0)),
 
                     # --- Losses & Learning ---

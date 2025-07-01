@@ -60,7 +60,7 @@ class RLGui:
         self.zeroes = []
         
         self.tracking_total_data = []
-        self.stability_penalty_data = []
+        self.deviation_penalty_data = []
         self.reward_total_data = []
 
         self.fig2, (self.ax2, self.ax3) = plt.subplots(2, 1, figsize=(6, 2.5))
@@ -224,7 +224,7 @@ class RLGui:
             self.zeroes.append(metrics.get("zero", 0.0))
             
             self.tracking_total_data.append(metrics.get("tracking_total", 0.0))
-            self.stability_penalty_data.append(metrics.get("stability_penalty", 0.0))
+            self.deviation_penalty_data.append(metrics.get("deviation_penalty", 0.0))
             self.reward_total_data.append(metrics.get("reward_total", 0.0))
 
 
@@ -238,7 +238,7 @@ class RLGui:
                 self.td_mean_data, self.td_max_data, self.td_min_data,
                 self.actor_grad_norm_data, self.critic_grad_norm_data,
                 self.actor_weight_norm_data, self.critic_weight_norm_data,
-                self.zeroes, self.stability_penalty_data, self.tracking_total_data, self.reward_total_data, 
+                self.zeroes, self.deviation_penalty_data, self.tracking_total_data, self.reward_total_data, 
                 self.vx_goal_data, self.vy_goal_data, self.vz_goal_data, self.roll_goal_data, self.pitch_goal_data, self.yaw_goal_data
             ]
 
@@ -262,7 +262,7 @@ class RLGui:
             
 
             self.ax3.cla()
-            self.ax3.set_ylabel("rad/s")
+            self.ax3.set_ylabel("rad")
             self.ax3.set_xlabel("Episode")
             self.ax3.plot(self.roll_rate_data, label="roll", color="green")
             self.ax3.plot(self.pitch_rate_data, label="pitch", color="purple")
@@ -338,7 +338,7 @@ class RLGui:
             self.ax11.set_ylabel("Value")
             self.ax11.set_xlabel("Episode")
             self.ax11.plot(self.tracking_total_data, label="Tracking Total", color="blue")
-            self.ax11.plot(self.stability_penalty_data, label="Stability Penalty", color="orange")
+            self.ax11.plot(self.deviation_penalty_data, label="deviation Penalty", color="orange")
             self.ax11.plot(self.reward_total_data, label="Total Reward", color="green")
             self.ax11.axhline(y=0.0, color="gray", linestyle="dashed", linewidth=0.8)
             self.ax11.legend()
@@ -358,7 +358,7 @@ class RLGui:
             
 
             self.ax13.cla()
-            self.ax13.set_ylabel("rad/s")
+            self.ax13.set_ylabel("rad")
             self.ax13.set_xlabel("Episode")
             self.ax13.plot(self.roll_goal_data, label="roll", color="green")
             self.ax13.plot(self.pitch_goal_data, label="pitch", color="purple")
@@ -428,7 +428,7 @@ class RLGui:
         self.zeroes.clear()
         
         self.tracking_total_data.clear()
-        self.stability_penalty_data.clear()
+        self.deviation_penalty_data.clear()
         self.reward_total_data.clear()
 
 
