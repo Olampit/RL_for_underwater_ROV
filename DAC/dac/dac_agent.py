@@ -14,7 +14,7 @@ import os
 import datetime
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dims=(64,64)):
+    def __init__(self, input_dim, output_dim, hidden_dims=(128,128,128,128)):
         super().__init__()
         layers = []
         dims = [input_dim] + list(hidden_dims)
@@ -35,7 +35,7 @@ class MLP(nn.Module):
 class DeterministicGCActor(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
-        self.net = MLP(state_dim , action_dim, hidden_dims=(64, 64))
+        self.net = MLP(state_dim , action_dim, hidden_dims=(128,128,128,128))
 
     def forward(self, state):
         x = torch.cat([state], dim=-1)
@@ -46,7 +46,7 @@ class DeterministicGCActor(nn.Module):
 class DeterministicCritic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
-        self.q_net = MLP(state_dim + action_dim, 1, hidden_dims=(64, 64))
+        self.q_net = MLP(state_dim + action_dim, 1, hidden_dims=(128,128,128,128,64))
 
     def forward(self, state, action):
         x = torch.cat([state, action], dim=-1)

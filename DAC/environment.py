@@ -190,7 +190,9 @@ class ROVEnvironment:
         MAX_AGE = 0.02
         SCALE_VEL = 0.5
         SCALE_ANG = 1.0
+        SCALE_SPIN = 1.0
         COEFF = 1.0
+        SPIN_WEIGHT = 2.0
 
         def wrap(angle):
             return (angle + np.pi) % (2 * np.pi) - np.pi
@@ -227,6 +229,12 @@ class ROVEnvironment:
         pitch = np.mean([a.get("pitch", 0.0) for a in att_values])
         roll = np.mean([a.get("roll", 0.0) for a in att_values])
 
+        # Mean angular speeds for spin penalties
+        mean_yawspeed = np.mean([abs(a.get("yawspeed", 0.0)) for a in att_values])
+        mean_pitchspeed = np.mean([abs(a.get("pitchspeed", 0.0)) for a in att_values])
+        mean_rollspeed = np.mean([abs(a.get("rollspeed", 0.0)) for a in att_values])
+
+        # Errors
         vx_error = vx - goal_vx
         vy_error = vy - goal_vy
         vz_error = vz - goal_vz
@@ -234,14 +242,33 @@ class ROVEnvironment:
         pitch_error = wrap(pitch - goal_pitch)
         roll_error = wrap(roll - goal_roll)
 
+        # Scores: velocity
         vx_score = penalty(vx_error, SCALE_VEL)
         vy_score = penalty(vy_error, SCALE_VEL)
         vz_score = penalty(vz_error, SCALE_VEL)
-        yaw_score = penalty(yaw_error, SCALE_ANG)
-        pitch_score = penalty(pitch_error, SCALE_ANG)
-        roll_score = penalty(roll_error, SCALE_ANG)
 
-        total = vx_score + vy_score + vz_score + yaw_score + pitch_score + roll_score
+        # Scores: attitude with spin penalties inside
+        yaw_alignment = penalty(yaw_error, SCALE_ANG)
+        yaw_spin = penalty(mean_yawspeed, SCALE_SPIN)
+        yaw_score = yaw_alignment + SPIN_WEIGHT * yaw_spin
+
+        pitch_alignment = penalty(pitch_error, SCALE_ANG)
+        pitch_spin = penalty(mean_pitchspeed, SCALE_SPIN)
+        pitch_score = pitch_alignment + SPIN_WEIGHT * pitch_spin
+
+        roll_alignment = penalty(roll_error, SCALE_ANG)
+        roll_spin = penalty(mean_rollspeed, SCALE_SPIN)
+        roll_score = roll_alignment + SPIN_WEIGHT * roll_spin
+
+        # Total reward
+        total = (
+            vx_score +
+            vy_score +
+            vz_score +
+            yaw_score +
+            pitch_score +
+            roll_score
+        )
         total = np.clip(total, -CLIP, CLIP)
 
         return {
@@ -252,6 +279,12 @@ class ROVEnvironment:
             "yaw_score": yaw_score,
             "pitch_score": pitch_score,
             "roll_score": roll_score,
+            "yaw_alignment": yaw_alignment,
+            "yaw_spin": yaw_spin,
+            "pitch_alignment": pitch_alignment,
+            "pitch_spin": pitch_spin,
+            "roll_alignment": roll_alignment,
+            "roll_spin": roll_spin,
             "vx_error": vx_error,
             "vy_error": vy_error,
             "vz_error": vz_error,
