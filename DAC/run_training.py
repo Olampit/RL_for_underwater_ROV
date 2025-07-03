@@ -100,7 +100,7 @@ def train(
 
     env = make_env(conn, latest_imu)
     obs = env.reset(conn)
-    state_dim = len(obs)
+    state_dim = obs.shape[1] 
     action_dim = env.action_space.shape[0]
 
     agent = DeterministicGCAgent(
@@ -109,6 +109,7 @@ def train(
         device=device,
         use_writer=False
     )
+
 
   
     
@@ -172,6 +173,10 @@ def train(
 
                 reward = reward_components["total"]
 
+
+                obs = np.asarray(obs, dtype=np.float32).reshape(4, 15)
+                next_obs = np.asarray(next_obs, dtype=np.float32).reshape(4, 15)
+                action = np.asarray(action, dtype=np.float32).flatten()
                 agent.replay_buffer.push(obs, action, reward, next_obs, done)
 
                 obs = next_obs

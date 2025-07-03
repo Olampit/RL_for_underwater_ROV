@@ -49,6 +49,10 @@ class ROVEnvGymWrapper(gym.Env):
         done = self.rov.is_terminal()
         obs = self._state_to_obs()
         state = self.rov.get_state(start_of_action_time)
+        
+        self.state_history.append(state)
+        if len(self.state_history) > self.history_length:
+            self.state_history.pop(0)
 
         return obs, reward, done, {}, state
 

@@ -198,6 +198,7 @@ class ROVEnvironment:
             return (angle + np.pi) % (2 * np.pi) - np.pi
 
         def penalty(x, scale):
+            x = abs(x)
             return -COEFF * np.log1p((x / scale) ** 2)
 
         now = time.time()
@@ -238,7 +239,7 @@ class ROVEnvironment:
         vx_error = vx - goal_vx
         vy_error = vy - goal_vy
         vz_error = vz - goal_vz
-        yaw_error = wrap(yaw - goal_yaw)
+        yaw_error = abs(wrap(yaw - goal_yaw))
         pitch_error = wrap(pitch - goal_pitch)
         roll_error = wrap(roll - goal_roll)
 

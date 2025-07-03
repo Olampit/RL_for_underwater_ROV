@@ -49,6 +49,15 @@ class RLGui:
         self.orientation_align_data = []
         self.spin_penalty_data = []
         
+        
+         
+        # --- D2. Errors ---
+        self.vx_error_data = []
+        self.vy_error_data = []
+        self.vz_error_data = []
+        self.roll_error_data = []
+        self.pitch_error_data = []
+        self.yaw_error_data = []
 
         # --- E. Learning ---
         self.critic_loss_data = []
@@ -92,7 +101,7 @@ class RLGui:
         self.canvas8 = FigureCanvasTkAgg(self.fig8, master=root)
         self.canvas8.get_tk_widget().grid(row=10, column=2, columnspan=2, sticky="nsew")
 
-        self.fig9, (self.ax12, self.ax13) = plt.subplots(2, 1, figsize=(6, 2.5))
+        self.fig9, self.ax12 = plt.subplots(figsize=(6, 2.5))
         self.canvas9 = FigureCanvasTkAgg(self.fig9, master=root)
         self.canvas9.get_tk_widget().grid(row=9, column=2, sticky="nsew")
 
@@ -216,7 +225,16 @@ class RLGui:
             
             self.orientation_align_data.append(metrics.get("orientation_align",0.0))
             self.spin_penalty_data.append(metrics.get("orientation_align",0.0))
-                
+            
+            
+            # --- D2. Errors ---
+            self.vx_error_data.append(metrics.get("vx_error",0.0))
+            self.vy_error_data.append(metrics.get("vy_error",0.0))
+            self.vz_error_data.append(metrics.get("vz_error",0.0))
+            self.roll_error_data.append(metrics.get("roll_error",0.0))
+            self.pitch_error_data.append(metrics.get("pitch_error",0.0))
+            self.yaw_error_data.append(metrics.get("yaw_error",0.0))
+
                 
             # --- E. Learning ---
             self.critic_loss_data.append(metrics.get("critic_loss", 0.0))
@@ -253,6 +271,16 @@ class RLGui:
                 self.vx_score_data, self.vy_score_data, self.vz_score_data,
                 self.yaw_score_data, self.pitch_score_data, self.roll_score_data,
                 self.orientation_align_data, self.spin_penalty_data,
+
+
+                    
+                # --- D2. Errors ---
+                self.vx_error_data,
+                self.vy_error_data,
+                self.vz_error_data,
+                self.roll_error_data,
+                self.pitch_error_data,
+                self.yaw_error_data,
 
                 # --- E. Learning ---
                 self.critic_loss_data, self.actor_loss_data,
@@ -372,7 +400,18 @@ class RLGui:
             self.ax11.legend(loc = 'upper left')
             self.canvas8.draw()
             
-            
+            self.ax12.cla()
+            self.ax12.set_title("Tracking scores")
+            self.ax12.plot(self.vx_error_data, label="vx", color="red")
+            self.ax12.plot(self.vy_error_data, label="vy", color="orange")
+            self.ax12.plot(self.vz_error_data, label="vz", color="blue")
+            self.ax12.plot(self.yaw_error_data, label="yaw", color="green")
+            self.ax12.plot(self.pitch_error_data, label="pitch", color="grey")
+            self.ax12.plot(self.roll_error_data, label="roll", color="purple")
+            self.ax12.plot(self.orientation_align_data, label="orientation", color="yellow")
+            self.ax12.plot(self.spin_penalty_data, label="spin", color="black")
+            self.ax12.legend(loc='upper left')
+            self.canvas9.draw()
             
 
 
@@ -435,6 +474,15 @@ class RLGui:
         self.spin_penalty_data.clear()
         
         
+        # --- D2. Errors ---
+        self.vx_error_data.clear()
+        self.vy_error_data.clear()
+        self.vz_error_data.clear()
+        self.roll_error_data.clear()
+        self.pitch_error_data.clear()
+        self.yaw_error_data.clear()
+
+    
             
 
         # --- E. Learning ---

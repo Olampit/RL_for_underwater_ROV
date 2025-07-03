@@ -62,8 +62,11 @@ class DeterministicGCActor(nn.Module):
 
     def forward(self, state):
         if state.dim() == 2:
-            state = state.unsqueeze(1)  # (batch, seq_len=1, input_dim)
+            batch_size = state.shape[0]
+            seq_len = 4
+            state = state.view(batch_size, seq_len, 15)
         return torch.tanh(self.actor(state))
+
 
 
 
@@ -78,10 +81,13 @@ class DeterministicCritic(nn.Module):
         )
 
     def forward(self, state, action):
-        x = torch.cat([state, action], dim=-1)
-        if x.dim() == 2:
-            x = x.unsqueeze(1)  # (batch, seq_len=1, input_dim)
+        batch_size = state.shape[0]
+        seq_len = 4
+        state = state.view(batch_size, seq_len, 15)  # (B, T, 15)
+        action = action.unsqueeze(1).expand(-1, seq_len, -1)  # (B, T, 8)
+        x = torch.cat([state, action], dim=-1)  # (B, T, 23)
         return self.critic(x).view(-1)
+
 
 
 
@@ -188,12 +194,12 @@ class DeterministicGCAgent:
 
     
     def select_action(self, state, noise_std=0.01):
-        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-        if state_tensor.dim() == 2:
-            state_tensor = state_tensor.unsqueeze(1)  # (1, 1, input_dim)
+        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)  # (1, 4, 15)
+        state_tensor = state_tensor.view(1, 4, 15)
         action = self.actor(state_tensor).cpu().data.numpy()[0]
         action += np.random.normal(0, noise_std, size=action.shape)
         return np.clip(action, -1.0, 1.0)
+
 
 
 
