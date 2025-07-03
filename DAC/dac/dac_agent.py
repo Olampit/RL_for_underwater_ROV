@@ -14,7 +14,7 @@ import os
 import datetime
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dims=(64,64,32)):
+    def __init__(self, input_dim, output_dim, hidden_dims=(64,64)):
         super().__init__()
         layers = []
         dims = [input_dim] + list(hidden_dims)

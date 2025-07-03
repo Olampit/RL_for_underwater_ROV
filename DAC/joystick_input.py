@@ -18,7 +18,7 @@ class FakeJoystick:
         # Independent success tracking
         self.success_counter_v = 0
         self.success_counter_r = 0
-        self.success_threshold = 20
+        self.success_threshold = 50
         self.error_threshold_v = 0.1
         self.error_threshold_r = 0.05
 
@@ -30,7 +30,7 @@ class FakeJoystick:
             goal = {d: 0.0 for d in directions}
             active = random.sample(directions, k=random.choice([1, 1]))  # change to 2 if needed
             for axis in active:
-                goal[axis] = random.choice([0.2, 0.4, 0.6, 0.8]) * random.choice([1, -1])
+                goal[axis] = random.choice([0.1, 0.2, 0.3, 0.4, 0.5]) * random.choice([1, -1])
             schedule.append(goal)
 
         schedule.append({d: 0.0 for d in directions})

@@ -20,48 +20,53 @@ class RLGui:
         
 
 
+                # --- A. Reward ---
+        self.reward_total_data = []
+
+        # --- B. Velocity Tracking ---
+        self.vx_data = []
+        self.vy_data = []
+        self.vz_data = []
+        self.goal_vx_data = []
+        self.goal_vy_data = []
+        self.goal_vz_data = []
+
+        # --- C. Orientation Tracking ---
+        self.yaw_data = []
+        self.pitch_data = []
+        self.roll_data = []
+        self.goal_yaw_data = []
+        self.goal_pitch_data = []
+        self.goal_roll_data = []
+
+        # --- D. Tracking scores ---
         self.vx_score_data = []
         self.vy_score_data = []
         self.vz_score_data = []
-        self.roll_score_data = []
-        self.pitch_score_data = []
         self.yaw_score_data = []
+        self.pitch_score_data = []
+        self.roll_score_data = []
+        self.orientation_align_data = []
+        self.spin_penalty_data = []
+        
 
-        
-        
-        self.vx_rate_data = []
-        self.vy_rate_data = []
-        self.vz_rate_data = []
-        self.roll_rate_data = []
-        self.pitch_rate_data = []
-        self.yaw_rate_data = []
-        
-        self.vx_goal_data = []
-        self.vy_goal_data = []
-        self.vz_goal_data = []
-        self.roll_goal_data = []
-        self.pitch_goal_data = []
-        self.yaw_goal_data = []
-        
+        # --- E. Learning ---
         self.critic_loss_data = []
         self.actor_loss_data = []
         self.mean_step_time_data = []
-        self.q_value_data = []
-        
+        self.mean_q_value_data = []
+        self.lr_data = []
+
+        # --- F. TD & Grad Stats ---
         self.td_mean_data = []
         self.td_max_data = []
         self.td_min_data = []
-
         self.actor_grad_norm_data = []
         self.critic_grad_norm_data = []
         self.actor_weight_norm_data = []
         self.critic_weight_norm_data = []
-        self.lr_data = []
-        self.zeroes = []
-        
-        self.tracking_total_data = []
-        self.deviation_penalty_data = []
-        self.reward_total_data = []
+
+
 
         self.fig2, (self.ax2, self.ax3) = plt.subplots(2, 1, figsize=(6, 2.5))
         self.canvas2 = FigureCanvasTkAgg(self.fig2, master=root)
@@ -182,36 +187,45 @@ class RLGui:
         self.canvas.draw()
 
         if metrics:
-            self.vx_rate_data.append(metrics.get("vx", 0.0))
-            self.vy_rate_data.append(metrics.get("vy", 0.0))
-            self.vz_rate_data.append(metrics.get("vz", 0.0))
-            self.roll_rate_data.append(metrics.get("roll_rate", 0.0))
-            self.pitch_rate_data.append(metrics.get("pitch_rate", 0.0))
-            self.yaw_rate_data.append(metrics.get("yaw_rate", 0.0))
+            # --- A. Reward ---
+            self.reward_total_data.append(metrics.get("reward_total", 0.0))
 
-            
-            self.vx_goal_data.append(metrics.get("goal_vx", 0.0))
-            self.vy_goal_data.append(metrics.get("goal_vy", 0.0))
-            self.vz_goal_data.append(metrics.get("goal_vz", 0.0))
-            self.roll_goal_data.append(metrics.get("goal_roll", 0.0))
-            self.pitch_goal_data.append(metrics.get("goal_pitch", 0.0))
-            self.yaw_goal_data.append(metrics.get("goal_yaw", 0.0))
+            # --- B. Velocity Tracking ---
+            self.vx_data.append(metrics.get("vx", 0.0))
+            self.vy_data.append(metrics.get("vy", 0.0))
+            self.vz_data.append(metrics.get("vz", 0.0))
+            self.goal_vx_data.append(metrics.get("goal_vx", 0.0))
+            self.goal_vy_data.append(metrics.get("goal_vy", 0.0))
+            self.goal_vz_data.append(metrics.get("goal_vz", 0.0))
 
+            # --- C. Orientation Tracking ---
+            self.yaw_data.append(metrics.get("yaw", 0.0))
+            self.pitch_data.append(metrics.get("pitch", 0.0))
+            self.roll_data.append(metrics.get("roll", 0.0))
+            self.goal_yaw_data.append(metrics.get("goal_yaw", 0.0))
+            self.goal_pitch_data.append(metrics.get("goal_pitch", 0.0))
+            self.goal_roll_data.append(metrics.get("goal_roll", 0.0))
+
+            # --- D. scores ---
             self.vx_score_data.append(metrics.get("vx_score", 0.0))
             self.vy_score_data.append(metrics.get("vy_score", 0.0))
             self.vz_score_data.append(metrics.get("vz_score", 0.0))
-            self.roll_score_data.append(metrics.get("roll_score", 0.0))
-            self.pitch_score_data.append(metrics.get("pitch_score", 0.0))
             self.yaw_score_data.append(metrics.get("yaw_score", 0.0))
-
-
+            self.pitch_score_data.append(metrics.get("pitch_score", 0.0))
+            self.roll_score_data.append(metrics.get("roll_score", 0.0))
             
-            
+            self.orientation_align_data.append(metrics.get("orientation_align",0.0))
+            self.spin_penalty_data.append(metrics.get("orientation_align",0.0))
+                
+                
+            # --- E. Learning ---
             self.critic_loss_data.append(metrics.get("critic_loss", 0.0))
             self.actor_loss_data.append(metrics.get("actor_loss", 0.0))
+            self.mean_step_time_data.append(metrics.get("mean_step_time", 0.0))
+            self.mean_q_value_data.append(metrics.get("mean_q_value", 0.0))
+            self.lr_data.append(metrics.get("learning_rate", 0.0))
 
-            self.mean_step_time_data.append(metrics.get("mean_step_time"))
-            
+            # --- F. TD & Grad Stats ---
             self.td_mean_data.append(metrics.get("td_mean", 0.0))
             self.td_max_data.append(metrics.get("td_max", 0.0))
             self.td_min_data.append(metrics.get("td_min", 0.0))
@@ -219,28 +233,38 @@ class RLGui:
             self.critic_grad_norm_data.append(metrics.get("critic_grad_norm", 0.0))
             self.actor_weight_norm_data.append(metrics.get("actor_weight_norm", 0.0))
             self.critic_weight_norm_data.append(metrics.get("critic_weight_norm", 0.0))
-            self.lr_data.append(metrics.get("learning_rate", 0.0))
 
-            self.zeroes.append(metrics.get("zero", 0.0))
-            
-            self.tracking_total_data.append(metrics.get("tracking_total", 0.0))
-            self.deviation_penalty_data.append(metrics.get("deviation_penalty", 0.0))
-            self.reward_total_data.append(metrics.get("reward_total", 0.0))
+
 
 
             all_metrics = [
-                self.vx_rate_data, self.vy_rate_data, self.vz_rate_data,
-                self.roll_rate_data, self.pitch_rate_data, self.yaw_rate_data,
+                # --- A. Reward ---
+                self.reward_total_data,
+
+                # --- B. Velocity Tracking ---
+                self.vx_data, self.vy_data, self.vz_data,
+                self.goal_vx_data, self.goal_vy_data, self.goal_vz_data,
+
+                # --- C. Orientation Tracking ---
+                self.yaw_data, self.pitch_data, self.roll_data,
+                self.goal_yaw_data, self.goal_pitch_data, self.goal_roll_data,
+
+                # --- D. scores ---
                 self.vx_score_data, self.vy_score_data, self.vz_score_data,
-                self.roll_score_data, self.pitch_score_data, self.yaw_score_data,
+                self.yaw_score_data, self.pitch_score_data, self.roll_score_data,
+                self.orientation_align_data, self.spin_penalty_data,
+
+                # --- E. Learning ---
                 self.critic_loss_data, self.actor_loss_data,
-                self.mean_step_time_data,
+                self.mean_step_time_data, self.mean_q_value_data,
+                self.lr_data,
+
+                # --- F. TD & Grad Stats ---
                 self.td_mean_data, self.td_max_data, self.td_min_data,
                 self.actor_grad_norm_data, self.critic_grad_norm_data,
                 self.actor_weight_norm_data, self.critic_weight_norm_data,
-                self.zeroes, self.deviation_penalty_data, self.tracking_total_data, self.reward_total_data, 
-                self.vx_goal_data, self.vy_goal_data, self.vz_goal_data, self.roll_goal_data, self.pitch_goal_data, self.yaw_goal_data
             ]
+
 
 
             for data_list in all_metrics:
@@ -252,39 +276,45 @@ class RLGui:
                     
                     
             self.ax2.cla()
-            self.ax2.set_title("V_actual - V_goal")
-            self.ax2.set_ylabel("m/s")
-            self.ax2.plot(self.vx_rate_data, label="vx", color="blue")
-            self.ax2.plot(self.vy_rate_data, label="vy", color="red")
-            self.ax2.plot(self.vz_rate_data, label="vz", color="pink")
-            self.ax2.plot(self.zeroes, label="0", color="black", linestyle="dashed")
-            self.ax2.legend(loc = 'upper left')
+            self.ax2.set_title("Velocity Tracking")
+            self.ax2.plot(self.vx_data, label="vx", color="red")
+            self.ax2.plot(self.goal_vx_data, label="goal_vx", linestyle="dashed", color="red")
+            self.ax2.plot(self.vy_data, label="vy", color="orange")
+            self.ax2.plot(self.goal_vy_data, label="goal_vy", linestyle="dashed", color="orange")
+            self.ax2.plot(self.vz_data, label="vz", color="blue")
+            self.ax2.plot(self.goal_vz_data, label="goal_vz", linestyle="dashed", color="blue")
+            self.ax2.legend(loc='upper left')
+            self.canvas2.draw()
+
             
 
             self.ax3.cla()
-            self.ax3.set_ylabel("rad")
-            self.ax3.set_xlabel("Episode")
-            self.ax3.plot(self.roll_rate_data, label="roll", color="green")
-            self.ax3.plot(self.pitch_rate_data, label="pitch", color="purple")
-            self.ax3.plot(self.yaw_rate_data, label="yaw", color="orange")
-            self.ax3.legend(loc = 'upper left')
-            self.canvas2.draw()
+            self.ax3.set_title("Orientation Tracking")
+            self.ax3.plot(self.yaw_data, label="yaw", color="green")
+            self.ax3.plot(self.goal_yaw_data, label="goal_yaw", linestyle="dashed", color="green")
+            self.ax3.plot(self.pitch_data, label="pitch", color="grey")
+            self.ax3.plot(self.goal_pitch_data, label="goal_pitch", linestyle="dashed", color="grey")
+            self.ax3.plot(self.roll_data, label="roll", color="purple")
+            self.ax3.plot(self.goal_roll_data, label="goal_roll", linestyle="dashed", color="purple")
+            self.ax3.legend(loc='upper left')
+            self.canvas3.draw()
+
 
             
                     
             self.ax4.cla()
-            self.ax4.set_title("Reward Components")
-            self.ax4.set_ylabel("Value")
-            self.ax4.set_xlabel("Episode")
-            self.ax4.plot(self.vx_score_data, label="vx", color="blue")
-            self.ax4.plot(self.vy_score_data, label="vy", color="red")
-            self.ax4.plot(self.vz_score_data, label="vz", color="pink")
-            self.ax4.plot(self.roll_score_data, label="roll", color="green")
-            self.ax4.plot(self.pitch_score_data, label="pitch", color="purple")
-            self.ax4.plot(self.yaw_score_data, label="yaw", color="orange")
-            self.ax4.legend(loc = 'upper left')
+            self.ax4.set_title("Tracking scores")
+            self.ax4.plot(self.vx_score_data, label="vx", color="red")
+            self.ax4.plot(self.vy_score_data, label="vy", color="orange")
+            self.ax4.plot(self.vz_score_data, label="vz", color="blue")
+            self.ax4.plot(self.yaw_score_data, label="yaw", color="green")
+            self.ax4.plot(self.pitch_score_data, label="pitch", color="grey")
+            self.ax4.plot(self.roll_score_data, label="roll", color="purple")
+            self.ax4.plot(self.orientation_align_data, label="orientation", color="yellow")
+            self.ax4.plot(self.spin_penalty_data, label="spin", color="black")
+            self.ax4.legend(loc='upper left')
             self.canvas3.draw()
-            
+
             
 
             self.ax6.cla()
@@ -337,34 +367,14 @@ class RLGui:
             self.ax11.set_title("Reward Breakdown")
             self.ax11.set_ylabel("Value")
             self.ax11.set_xlabel("Episode")
-            self.ax11.plot(self.tracking_total_data, label="Tracking Total", color="blue")
-            self.ax11.plot(self.deviation_penalty_data, label="deviation Penalty", color="orange")
             self.ax11.plot(self.reward_total_data, label="Total Reward", color="green")
             self.ax11.axhline(y=0.0, color="gray", linestyle="dashed", linewidth=0.8)
-            self.ax11.legend()
+            self.ax11.legend(loc = 'upper left')
             self.canvas8.draw()
             
             
             
-            
-            self.ax12.cla()
-            self.ax12.set_title("V_goal")
-            self.ax12.set_ylabel("m/s")
-            self.ax12.plot(self.vx_goal_data, label="vx", color="blue")
-            self.ax12.plot(self.vy_goal_data, label="vy", color="red")
-            self.ax12.plot(self.vz_goal_data, label="vz", color="pink")
-            self.ax12.plot(self.zeroes, label="0", color="black", linestyle="dashed")
-            self.ax12.legend(loc = 'upper left')
-            
 
-            self.ax13.cla()
-            self.ax13.set_ylabel("rad")
-            self.ax13.set_xlabel("Episode")
-            self.ax13.plot(self.roll_goal_data, label="roll", color="green")
-            self.ax13.plot(self.pitch_goal_data, label="pitch", color="purple")
-            self.ax13.plot(self.yaw_goal_data, label="yaw", color="orange")
-            self.ax13.legend(loc = 'upper left')
-            self.canvas9.draw()
 
 
 
@@ -394,42 +404,55 @@ class RLGui:
 
 
     def launch_training(self):
-        
+                
+        # --- A. Reward ---
+        self.reward_total_data.clear()
+
+        # --- B. Velocity Tracking ---
+        self.vx_data.clear()
+        self.vy_data.clear()
+        self.vz_data.clear()
+        self.goal_vx_data.clear()
+        self.goal_vy_data.clear()
+        self.goal_vz_data.clear()
+
+        # --- C. Orientation Tracking ---
+        self.yaw_data.clear()
+        self.pitch_data.clear()
+        self.roll_data.clear()
+        self.goal_yaw_data.clear()
+        self.goal_pitch_data.clear()
+        self.goal_roll_data.clear()
+
+        # --- D. scores ---
         self.vx_score_data.clear()
         self.vy_score_data.clear()
         self.vz_score_data.clear()
-        self.roll_score_data.clear()
-        self.pitch_score_data.clear()
         self.yaw_score_data.clear()
+        self.pitch_score_data.clear()
+        self.roll_score_data.clear()
+        self.orientation_align_data.clear()
+        self.spin_penalty_data.clear()
+        
+        
+            
 
-        
-        
-        self.vx_rate_data.clear()
-        self.vy_rate_data.clear()
-        self.vz_rate_data.clear()
-        self.roll_rate_data.clear()
-        self.pitch_rate_data.clear()
-        self.yaw_rate_data.clear()
-        
-        
-        self.vx_goal_data.clear()
-        self.vy_goal_data.clear()
-        self.vz_goal_data.clear()
-        self.roll_goal_data.clear()
-        self.pitch_goal_data.clear()
-        self.yaw_goal_data.clear()
-        
-        
+        # --- E. Learning ---
         self.critic_loss_data.clear()
         self.actor_loss_data.clear()
         self.mean_step_time_data.clear()
-        self.q_value_data.clear()
-        
-        self.zeroes.clear()
-        
-        self.tracking_total_data.clear()
-        self.deviation_penalty_data.clear()
-        self.reward_total_data.clear()
+        self.mean_q_value_data.clear()
+        self.lr_data.clear()
+
+        # --- F. TD & Grad Stats ---
+        self.td_mean_data.clear()
+        self.td_max_data.clear()
+        self.td_min_data.clear()
+        self.actor_grad_norm_data.clear()
+        self.critic_grad_norm_data.clear()
+        self.actor_weight_norm_data.clear()
+        self.critic_weight_norm_data.clear()
+
 
 
         self.ax.cla()

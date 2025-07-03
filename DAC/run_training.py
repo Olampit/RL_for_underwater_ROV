@@ -168,8 +168,8 @@ def train(
                 else:
                     action = agent.select_action(obs)
 
-                current_state = env.rov.get_state()
-                next_obs, reward_components, done, _ = env.step(action, current_state, exploration_bool)
+                next_obs, reward_components, done, _, current_state = env.step(action, exploration_bool)
+
                 reward = reward_components["total"]
 
                 agent.replay_buffer.push(obs, action, reward, next_obs, done)
@@ -207,43 +207,46 @@ def train(
                 
                 c_goal = joystick.get_target()
 
+                
                 metrics = {
-                    # --- Velocity and targets ---
-                    "vx": safe_scalar(reward_components.get("vx_error", 0.0)),
-                    "vy": safe_scalar(reward_components.get("vy_error", 0.0)),
-                    "vz": safe_scalar(reward_components.get("vz_error", 0.0)),
-                    
-                    "goal_vx": safe_scalar(c_goal["vx"]["mean"]),
-                    "goal_vy": safe_scalar(c_goal["vy"]["mean"]),
-                    "goal_vz": safe_scalar(c_goal["vz"]["mean"]),
-                    "goal_yaw": safe_scalar(c_goal["yaw"]["mean"]),
-                    "goal_pitch": safe_scalar(c_goal["pitch"]["mean"]),
-                    "goal_roll": safe_scalar(c_goal["roll"]["mean"]),
+                    "reward_total": safe_scalar(reward_components.get("total", 0.0)),
 
+                    # --- Actual velocities/orientations from ROV ---
+                    "vx": safe_scalar(reward_components.get("vx", 0.0)),
+                    "vy": safe_scalar(reward_components.get("vy", 0.0)),
+                    "vz": safe_scalar(reward_components.get("vz", 0.0)),
+                    "yaw": safe_scalar(reward_components.get("yaw", 0.0)),
+                    "pitch": safe_scalar(reward_components.get("pitch", 0.0)),
+                    "roll": safe_scalar(reward_components.get("roll", 0.0)),
 
-                    # --- Angular motion ---
-                    "yaw_rate": safe_scalar(reward_components.get("yaw_error", 0.0)),
-                    "pitch_rate": safe_scalar(reward_components.get("pitch_error", 0.0)),
-                    "roll_rate": safe_scalar(reward_components.get("roll_error", 0.0)),
+                    # --- Goal targets from reward output ---
+                    "goal_vx": safe_scalar(reward_components.get("goal_vx", 0.0)),
+                    "goal_vy": safe_scalar(reward_components.get("goal_vy", 0.0)),
+                    "goal_vz": safe_scalar(reward_components.get("goal_vz", 0.0)),
+                    "goal_yaw": safe_scalar(reward_components.get("goal_yaw", 0.0)),
+                    "goal_pitch": safe_scalar(reward_components.get("goal_pitch", 0.0)),
+                    "goal_roll": safe_scalar(reward_components.get("goal_roll", 0.0)),
 
-                    # --- Reward breakdowns ---
+                    # --- Error signals ---
+                    "vx_error": safe_scalar(reward_components.get("vx_error", 0.0)),
+                    "vy_error": safe_scalar(reward_components.get("vy_error", 0.0)),
+                    "vz_error": safe_scalar(reward_components.get("vz_error", 0.0)),
+                    "yaw_error": safe_scalar(reward_components.get("yaw_error", 0.0)),
+                    "pitch_error": safe_scalar(reward_components.get("pitch_error", 0.0)),
+                    "roll_error": safe_scalar(reward_components.get("roll_error", 0.0)),
+
+                    # --- Individual reward scores ---
                     "vx_score": safe_scalar(reward_components.get("vx_score", 0.0)),
                     "vy_score": safe_scalar(reward_components.get("vy_score", 0.0)),
                     "vz_score": safe_scalar(reward_components.get("vz_score", 0.0)),
                     "yaw_score": safe_scalar(reward_components.get("yaw_score", 0.0)),
                     "pitch_score": safe_scalar(reward_components.get("pitch_score", 0.0)),
                     "roll_score": safe_scalar(reward_components.get("roll_score", 0.0)),
-                    "tracking_total": safe_scalar(reward_components.get("tracking_total", 0.0)),
-                    "deviation_penalty": safe_scalar(reward_components.get("deviation_penalty", 0.0)),
-                    "reward_total": safe_scalar(reward_components.get("total", 0.0)),
 
-                    # --- Losses & Learning ---
-                    "critic_loss": safe_scalar(critic_loss),
-                    "actor_loss": safe_scalar(actor_loss),
-                    "mean_step_time": safe_scalar(total_step_time) / max_steps,
-                    "mean_q_value": safe_scalar(q_val),
+                    # --- Learning rate ---
+                    "learning_rate": safe_scalar(update_info.get("learning_rate", 0.0)),
 
-                    # --- TD & Grad Stats ---
+                    # --- TD error & gradient stats ---
                     "td_mean": safe_scalar(update_info.get("td_mean", 0.0)),
                     "td_max": safe_scalar(update_info.get("td_max", 0.0)),
                     "td_min": safe_scalar(update_info.get("td_min", 0.0)),
@@ -252,12 +255,16 @@ def train(
                     "actor_weight_norm": safe_scalar(update_info.get("actor_weight_norm", 0.0)),
                     "critic_weight_norm": safe_scalar(update_info.get("critic_weight_norm", 0.0)),
 
-                    # --- Learning rate schedule tracking ---
-                    "learning_rate": safe_scalar(update_info.get("learning_rate", 0.0)),
-
-                    # --- For dashed centerline reference ---
-                    "zero": 0.0
+                    # --- Losses ---
+                    "critic_loss": safe_scalar(critic_loss),
+                    "actor_loss": safe_scalar(actor_loss),
+                    "mean_step_time": safe_scalar(total_step_time) / max_steps,
+                    "mean_q_value": safe_scalar(q_val),
                 }
+
+
+
+
 
 
                 progress_callback(ep, episodes, float(ep_reward), metrics)
