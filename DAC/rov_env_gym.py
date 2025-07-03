@@ -68,10 +68,11 @@ class ROVEnvGymWrapper(gym.Env):
         Convert list of recent state dicts to a flat observation vector.
         Each state dict must have the same keys and order.
         """
-        flat_obs = []
+        seq_obs = []
         for state in self.state_history:
-            for key in sorted(state.keys()):
-                flat_obs.append(state[key])
-        return np.array(flat_obs, dtype=np.float32)
+            seq_obs.append([state[k] for k in sorted(state.keys())])
+        return np.array(seq_obs, dtype=np.float32)  # (history_length, features)
+
+
 
 

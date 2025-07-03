@@ -13,44 +13,76 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 import os
 import datetime
 
-class MLP(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dims=(128,128,128,128)):
+# class MLP(nn.Module):
+#     def __init__(self, input_dim, output_dim, hidden_dims=(128,128,128,128)):
+#         super().__init__()
+#         layers = []
+#         dims = [input_dim] + list(hidden_dims)
+
+#         for i in range(len(dims) - 1):
+#             layers.append(nn.Linear(dims[i], dims[i+1]))
+#             # layers.append(nn.LayerNorm(dims[i+1]))  # Normalize before activation
+#             layers.append(nn.ReLU())
+
+#         layers.append(nn.Linear(dims[-1], output_dim))
+#         self.model = nn.Sequential(*layers)
+
+#     def forward(self, x):
+#         return self.model(x)
+
+class GRUNetwork(nn.Module):
+    def __init__(self, input_dim, output_dim, hidden_dim=128, num_layers=1):
         super().__init__()
-        layers = []
-        dims = [input_dim] + list(hidden_dims)
-
-        for i in range(len(dims) - 1):
-            layers.append(nn.Linear(dims[i], dims[i+1]))
-            # layers.append(nn.LayerNorm(dims[i+1]))  # Normalize before activation
-            layers.append(nn.ReLU())
-
-        layers.append(nn.Linear(dims[-1], output_dim))
-        self.model = nn.Sequential(*layers)
+        self.gru = nn.GRU(
+            input_size=input_dim,
+            hidden_size=hidden_dim,
+            num_layers=num_layers,
+            batch_first=True
+        )
+        self.out = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
-        return self.model(x)
+        # x shape: (batch_size, seq_len, input_dim)
+        _, h_n = self.gru(x)        # h_n: (num_layers, batch, hidden_dim)
+        h = h_n[-1]                 # (batch, hidden_dim)
+        return self.out(h)
+
 
 
 
 class DeterministicGCActor(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
-        self.net = MLP(state_dim , action_dim, hidden_dims=(128,128,128,128))
+        features_per_state = 15
+        self.actor = GRUNetwork(
+            input_dim=features_per_state,
+            output_dim=action_dim,
+            hidden_dim=128
+        )
 
     def forward(self, state):
-        x = torch.cat([state], dim=-1)
-        action = torch.tanh(self.net(x))
-        return action
+        if state.dim() == 2:
+            state = state.unsqueeze(1)  # (batch, seq_len=1, input_dim)
+        return torch.tanh(self.actor(state))
+
 
 
 class DeterministicCritic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
-        self.q_net = MLP(state_dim + action_dim, 1, hidden_dims=(128,128,128,128,64))
+        features_per_state = 15       
+        self.critic = GRUNetwork(
+            input_dim=features_per_state + action_dim,
+            output_dim=1,
+            hidden_dim=128
+        )
 
     def forward(self, state, action):
         x = torch.cat([state, action], dim=-1)
-        return self.q_net(x).view(-1)  # Replaces .squeeze(-1)
+        if x.dim() == 2:
+            x = x.unsqueeze(1)  # (batch, seq_len=1, input_dim)
+        return self.critic(x).view(-1)
+
 
 
 class PrioritizedGCReplayBuffer:
@@ -157,14 +189,12 @@ class DeterministicGCAgent:
     
     def select_action(self, state, noise_std=0.01):
         state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-        
-        # Optional sanity check
-        assert state_tensor.shape[1] == self.actor.net.model[0].in_features, \
-            f"Expected input dim {self.actor.net.model[0].in_features}, got {state_tensor.shape[1]}"
-        
+        if state_tensor.dim() == 2:
+            state_tensor = state_tensor.unsqueeze(1)  # (1, 1, input_dim)
         action = self.actor(state_tensor).cpu().data.numpy()[0]
         action += np.random.normal(0, noise_std, size=action.shape)
         return np.clip(action, -1.0, 1.0)
+
 
 
     def update(self, batch_size=128, beta=0.4, total_step = None):
