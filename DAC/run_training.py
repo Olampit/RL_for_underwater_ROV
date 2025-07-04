@@ -69,7 +69,7 @@ def train(
     episodes=500,
     max_steps=20,
     batch_size=1024,
-    start_steps=5,
+    start_steps=5000,
     gamma=0.99,
     learning_rate_start=5e-2,
     learning_rate_end=1e-4,
@@ -103,6 +103,9 @@ def train(
     state_dim = obs.shape[1] 
     action_dim = env.action_space.shape[0]
 
+    state_dimension = state_dim
+    sequence_dimension = 2
+    
     agent = DeterministicGCAgent(
         state_dim=state_dim,
         action_dim=action_dim,
@@ -174,8 +177,8 @@ def train(
                 reward = reward_components["total"]
 
 
-                obs = np.asarray(obs, dtype=np.float32).reshape(4, 15)
-                next_obs = np.asarray(next_obs, dtype=np.float32).reshape(4, 15)
+                obs = np.asarray(obs, dtype=np.float32).reshape(sequence_dimension, state_dimension)
+                next_obs = np.asarray(next_obs, dtype=np.float32).reshape(sequence_dimension, state_dimension)
                 action = np.asarray(action, dtype=np.float32).flatten()
                 agent.replay_buffer.push(obs, action, reward, next_obs, done)
 

@@ -21,7 +21,7 @@ class ROVEnvGymWrapper(gym.Env):
             shape=obs_sample.shape,
             dtype=np.float32
         )
-        self.history_length = 4  # or 5–10
+        self.history_length = 2  #! sequence dimension
 
 
 
@@ -43,11 +43,12 @@ class ROVEnvGymWrapper(gym.Env):
         
         self._apply_action_continuous(action)
         time.sleep(0.1 / SPEED_UP)
+        time.sleep(0.05) #!mavlink guaranteed update time to avoid missing values
         if no_update :
             time.sleep(0.01)
-        reward = self.rov.compute_reward(start_of_action_time)
+        reward = self.rov.compute_reward()
         done = self.rov.is_terminal()
-        obs = self._state_to_obs()
+        obs = self._state_to_obs()  
         state = self.rov.get_state(start_of_action_time)
         
         self.state_history.append(state)

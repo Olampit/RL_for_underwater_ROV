@@ -30,8 +30,12 @@ import datetime
 #     def forward(self, x):
 #         return self.model(x)
 
+
+state_dimension = 12
+sequence_dimension = 2
+
 class GRUNetwork(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dim=128, num_layers=1):
+    def __init__(self, input_dim, output_dim, hidden_dim=256, num_layers=1):
         super().__init__()
         self.gru = nn.GRU(
             input_size=input_dim,
@@ -39,7 +43,11 @@ class GRUNetwork(nn.Module):
             num_layers=num_layers,
             batch_first=True
         )
-        self.out = nn.Linear(hidden_dim, output_dim)
+        self.out = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim)
+        )
 
     def forward(self, x):
         # x shape: (batch_size, seq_len, input_dim)
@@ -50,21 +58,22 @@ class GRUNetwork(nn.Module):
 
 
 
+
 class DeterministicGCActor(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
-        features_per_state = 15
+        features_per_state = state_dim
         self.actor = GRUNetwork(
             input_dim=features_per_state,
             output_dim=action_dim,
-            hidden_dim=128
+            hidden_dim=256
         )
 
     def forward(self, state):
         if state.dim() == 2:
             batch_size = state.shape[0]
-            seq_len = 4
-            state = state.view(batch_size, seq_len, 15)
+            seq_len = sequence_dimension
+            state = state.view(batch_size, seq_len, state_dimension)
         return torch.tanh(self.actor(state))
 
 
@@ -73,17 +82,17 @@ class DeterministicGCActor(nn.Module):
 class DeterministicCritic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
-        features_per_state = 15       
+        features_per_state = state_dim       
         self.critic = GRUNetwork(
             input_dim=features_per_state + action_dim,
             output_dim=1,
-            hidden_dim=128
+            hidden_dim=256
         )
 
     def forward(self, state, action):
         batch_size = state.shape[0]
-        seq_len = 4
-        state = state.view(batch_size, seq_len, 15)  # (B, T, 15)
+        seq_len = sequence_dimension
+        state = state.view(batch_size, seq_len, state_dimension)  # (B, T, 15)
         action = action.unsqueeze(1).expand(-1, seq_len, -1)  # (B, T, 8)
         x = torch.cat([state, action], dim=-1)  # (B, T, 23)
         return self.critic(x).view(-1)
@@ -195,7 +204,7 @@ class DeterministicGCAgent:
     
     def select_action(self, state, noise_std=0.01):
         state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)  # (1, 4, 15)
-        state_tensor = state_tensor.view(1, 4, 15)
+        state_tensor = state_tensor.view(1, sequence_dimension, state_dimension)
         action = self.actor(state_tensor).cpu().data.numpy()[0]
         action += np.random.normal(0, noise_std, size=action.shape)
         return np.clip(action, -1.0, 1.0)

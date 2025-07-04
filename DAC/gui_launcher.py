@@ -568,7 +568,7 @@ class RLGui:
             
             
             if value >= 1000:
-                self.critic_loss_text.config(bg="#ffcccc")  # light red
+                self.critic_loss_text.config(bg="#ca3ca1")  # light red
             
             self.critic_loss_text.config(state="normal")
             self.critic_loss_text.insert("end", f"{value:.5f}\n", tag)
