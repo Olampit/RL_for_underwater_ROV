@@ -259,6 +259,23 @@ class ROVEnvironment:
             all(spin < SPIN_THRESHOLD for spin in [mean_yawspeed, mean_pitchspeed, mean_rollspeed])
         ):
             total += STILLNESS_BONUS
+            
+        # Directional reward bonus
+        v_vec = np.array([vx, vy, vz])
+        goal_vec = np.array([goal_vx, goal_vy, goal_vz])
+
+        v_norm = np.linalg.norm(v_vec)
+        g_norm = np.linalg.norm(goal_vec)
+
+        if v_norm > 0 and g_norm > 0:
+            cos_sim = np.dot(v_vec, goal_vec) / (v_norm * g_norm + 1e-6)
+        else:
+            cos_sim = 0.0
+
+        DIRECTION_WEIGHT = 2.0  # tune this experimentally
+        direction_bonus = DIRECTION_WEIGHT * cos_sim
+
+        total += direction_bonus
 
         total = np.clip(total, -CLIP, CLIP)
 
