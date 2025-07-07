@@ -104,7 +104,7 @@ def train(
     action_dim = env.action_space.shape[0]
 
     state_dimension = state_dim
-    sequence_dimension = 2
+    sequence_dimension = env.history_length
     
     agent = DeterministicGCAgent(
         state_dim=state_dim,
@@ -242,6 +242,7 @@ def train(
                     "yaw_error": safe_scalar(reward_components.get("yaw_error", 0.0)),
                     "pitch_error": safe_scalar(reward_components.get("pitch_error", 0.0)),
                     "roll_error": safe_scalar(reward_components.get("roll_error", 0.0)),
+                    "std_penalty": safe_scalar(reward_components.get("std_penalty", 0.0)),
 
                     # --- Individual reward scores ---
                     "vx_score": safe_scalar(reward_components.get("vx_score", 0.0)),

@@ -31,11 +31,11 @@ import datetime
 #         return self.model(x)
 
 
-state_dimension = 12
-sequence_dimension = 2
+state_dimension = 12 #! state
+sequence_dimension = 5 #! sequence
 
 class GRUNetwork(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dim=256, num_layers=1):
+    def __init__(self, input_dim, output_dim, hidden_dim=64, num_layers=2, batch_first=True):
         super().__init__()
         self.gru = nn.GRU(
             input_size=input_dim,
@@ -108,9 +108,9 @@ class PrioritizedGCReplayBuffer:
         self.alpha = alpha
         self.pos = 0
 
-    def push(self, state, action, reward, next_state, done):
+    def push(self, state_seq, action, reward, next_state_seq, done):
         max_prio = max(self.priorities, default=1.0)
-        data = (state, action, reward, next_state, done)
+        data = (state_seq, action, reward, next_state_seq, done)
 
         if len(self.buffer) < self.capacity:
             self.buffer.append(data)
@@ -119,6 +119,7 @@ class PrioritizedGCReplayBuffer:
             self.buffer[self.pos] = data
             self.priorities[self.pos] = max_prio
         self.pos = (self.pos + 1) % self.capacity
+
 
     def sample(self, batch_size, beta=0.4):
         if len(self.buffer) == 0:

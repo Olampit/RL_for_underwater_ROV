@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "GRUNetwork, better state. Network to do but some results (although inexpressive functions)"
+git commit --author="Olampit <olampit@gmail.com>" -m "GRU, full acceleration for state, IMU sequencing problem remain"
 git push -u origin imu-based
 
 # Increment and save back

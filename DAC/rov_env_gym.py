@@ -21,7 +21,7 @@ class ROVEnvGymWrapper(gym.Env):
             shape=obs_sample.shape,
             dtype=np.float32
         )
-        self.history_length = 2  #! sequence dimension
+        self.history_length = 5  #! sequence dimension
 
 
 

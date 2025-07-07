@@ -46,6 +46,7 @@ class RLGui:
         self.yaw_score_data = []
         self.pitch_score_data = []
         self.roll_score_data = []
+        self.std_penalty_data = []
         self.orientation_align_data = []
         self.spin_penalty_data = []
         
@@ -271,6 +272,7 @@ class RLGui:
                 self.vx_score_data, self.vy_score_data, self.vz_score_data,
                 self.yaw_score_data, self.pitch_score_data, self.roll_score_data,
                 self.orientation_align_data, self.spin_penalty_data,
+                self.std_penalty_data,
 
 
                     
@@ -338,8 +340,8 @@ class RLGui:
             self.ax4.plot(self.yaw_score_data, label="yaw", color="green")
             self.ax4.plot(self.pitch_score_data, label="pitch", color="grey")
             self.ax4.plot(self.roll_score_data, label="roll", color="purple")
-            self.ax4.plot(self.orientation_align_data, label="orientation", color="yellow")
-            self.ax4.plot(self.spin_penalty_data, label="spin", color="black")
+            self.ax4.plot(self.std_penalty_data, label="std", color="black")
+
             self.ax4.legend(loc='upper left')
             self.canvas3.draw()
 
@@ -470,6 +472,7 @@ class RLGui:
         self.yaw_score_data.clear()
         self.pitch_score_data.clear()
         self.roll_score_data.clear()
+        self.std_penalty_data.clear()
         self.orientation_align_data.clear()
         self.spin_penalty_data.clear()
         

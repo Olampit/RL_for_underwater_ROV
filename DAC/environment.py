@@ -108,7 +108,7 @@ class ROVEnvironment:
     def reset(self):
         time_before_reset = time.time()
 
-        px, py, pz = 0, 5000, 30
+        px, py, pz = 0, 5000, 50
 
         odom_seq = velocity_buffer.get_last_n(1)
         if odom_seq:
@@ -149,10 +149,10 @@ class ROVEnvironment:
         CLIP = 100.0
         MAX_AGE = 0.1
 
-        SCALE_VEL = 0.5
+        SCALE_VEL = 1.0
         SCALE_SPIN = 1.0
         COEFF = 1.0
-        SPIN_WEIGHT = 5.0
+        SPIN_WEIGHT = 1.0
         STD_WEIGHT = 0.5
         STILLNESS_BONUS = 1.0
         SPIN_THRESHOLD = 0.05
@@ -180,28 +180,29 @@ class ROVEnvironment:
         att_values = [a for _, a in att_seq]
         goal_values = [g for _, g in goal_seq]
 
-        # Compute means
-        goal_vx = sum(g.get("vx", 0.0) for g in goal_values) / len(goal_values)
-        goal_vy = sum(g.get("vy", 0.0) for g in goal_values) / len(goal_values)
-        goal_vz = sum(g.get("vz", 0.0) for g in goal_values) / len(goal_values)
-        goal_yaw = sum(g.get("yaw", 0.0) for g in goal_values) / len(goal_values)
-        goal_pitch = sum(g.get("pitch", 0.0) for g in goal_values) / len(goal_values)
-        goal_roll = sum(g.get("roll", 0.0) for g in goal_values) / len(goal_values)
+        # Sum of squared goal values
+        goal_vx = sum(g.get("vx", 0.0) ** 2 for g in goal_values)
+        goal_vy = sum(g.get("vy", 0.0) ** 2 for g in goal_values)
+        goal_vz = sum(g.get("vz", 0.0) ** 2 for g in goal_values)
+        goal_yaw = sum(g.get("yaw", 0.0) ** 2 for g in goal_values)
+        goal_pitch = sum(g.get("pitch", 0.0) ** 2 for g in goal_values)
+        goal_roll = sum(g.get("roll", 0.0) ** 2 for g in goal_values)
 
-        vx = sum(v.get("vx", 0.0) for v in vel_values) / len(vel_values)
-        vy = sum(v.get("vy", 0.0) for v in vel_values) / len(vel_values)
-        vz = sum(v.get("vz", 0.0) for v in vel_values) / len(vel_values)
+        # Sum of squared observed values
+        vx = sum(v.get("vx", 0.0) ** 2 for v in vel_values)
+        vy = sum(v.get("vy", 0.0) ** 2 for v in vel_values)
+        vz = sum(v.get("vz", 0.0) ** 2 for v in vel_values)
 
-        yaw = sum(a.get("yaw", 0.0) for a in att_values) / len(att_values)
-        pitch = sum(a.get("pitch", 0.0) for a in att_values) / len(att_values)
-        roll = sum(a.get("roll", 0.0) for a in att_values) / len(att_values)
+        yaw = sum(a.get("yaw", 0.0) ** 2 for a in att_values)
+        pitch = sum(a.get("pitch", 0.0) ** 2 for a in att_values)
+        roll = sum(a.get("roll", 0.0) ** 2 for a in att_values)
 
-        # Angular rates
-        mean_yawspeed = sum(abs(a.get("yawspeed", 0.0)) for a in att_values) / len(att_values)
-        mean_pitchspeed = sum(abs(a.get("pitchspeed", 0.0)) for a in att_values) / len(att_values)
-        mean_rollspeed = sum(abs(a.get("rollspeed", 0.0)) for a in att_values) / len(att_values)
+        # Angular rates squared
+        mean_yawspeed = sum(abs(a.get("yawspeed", 0.0)) ** 2 for a in att_values)
+        mean_pitchspeed = sum(abs(a.get("pitchspeed", 0.0)) ** 2 for a in att_values)
+        mean_rollspeed = sum(abs(a.get("rollspeed", 0.0)) ** 2 for a in att_values)
 
-        # Std penalties (for smoothness/stability)
+        # Std penalties
         vx_std = compute_std(vel_values, "vx")
         vy_std = compute_std(vel_values, "vy")
         vz_std = compute_std(vel_values, "vz")
@@ -219,9 +220,18 @@ class ROVEnvironment:
         pitch_spin = penalty(mean_pitchspeed, SCALE_SPIN)
         roll_spin = penalty(mean_rollspeed, SCALE_SPIN)
 
-        yaw_score = yaw_spin * SPIN_WEIGHT
-        pitch_score = pitch_spin * SPIN_WEIGHT
-        roll_score = roll_spin * SPIN_WEIGHT
+        # Angular alignment errors
+        yaw_error = abs(wrap(yaw - goal_yaw))
+        pitch_error = abs(wrap(pitch - goal_pitch))
+        roll_error = abs(wrap(roll - goal_roll))
+
+        yaw_alignment = penalty(yaw_error, SCALE_SPIN)
+        pitch_alignment = penalty(pitch_error, SCALE_SPIN)
+        roll_alignment = penalty(roll_error, SCALE_SPIN)
+
+        yaw_score = yaw_alignment + yaw_spin * SPIN_WEIGHT
+        pitch_score = pitch_alignment + pitch_spin * SPIN_WEIGHT
+        roll_score = roll_alignment + roll_spin * SPIN_WEIGHT
 
         # Velocity tracking error
         vx_error = vx - goal_vx
@@ -243,22 +253,24 @@ class ROVEnvironment:
             std_penalty
         )
 
-        if all(spin < SPIN_THRESHOLD for spin in [mean_yawspeed, mean_pitchspeed, mean_rollspeed]):
+        # Stillness bonus when goal is to be still and spin is low
+        if (
+            abs(goal_vx) < 0.1 and abs(goal_vy) < 0.1 and abs(goal_vz) < 0.1 and
+            all(spin < SPIN_THRESHOLD for spin in [mean_yawspeed, mean_pitchspeed, mean_rollspeed])
+        ):
             total += STILLNESS_BONUS
 
         total = np.clip(total, -CLIP, CLIP)
-        total /= CLIP
-
-        if not hasattr(self, "prev_reward"):
-            self.prev_reward = 0.0
-        total = 0.9 * self.prev_reward + 0.1 * total
-        self.prev_reward = total
 
         return {
             "total": total,
+            "vx_score": vx_score,
+            "vy_score": vy_score,
+            "vz_score": vz_score,
             "yaw_score": yaw_score,
             "pitch_score": pitch_score,
             "roll_score": roll_score,
+            "std_penalty": std_penalty,
             "yaw_spin": yaw_spin,
             "pitch_spin": pitch_spin,
             "roll_spin": roll_spin,
@@ -280,13 +292,14 @@ class ROVEnvironment:
             "yaw": yaw,
             "pitch": pitch,
             "roll": roll,
-            "vx_error": wrap(vx - goal_vx),
-            "vy_error": wrap(vy - goal_vy),
-            "vz_error": wrap(vz - goal_vz),
-            "roll_error": wrap(roll - goal_roll),
-            "pitch_error": wrap(pitch - goal_pitch),
-            "yaw_error": wrap(yaw - goal_yaw),
-    }
+            "vx_error": vx_error,
+            "vy_error": vy_error,
+            "vz_error": vz_error,
+            "roll_error": roll_error,
+            "pitch_error": pitch_error,
+            "yaw_error": yaw_error,
+        }
+
 
     def is_terminal(self):
         return False
