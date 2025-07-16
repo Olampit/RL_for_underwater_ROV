@@ -110,7 +110,7 @@ class RLGui:
         ttk.Label(root, text="Agent Type:").grid(row=0, column=0, sticky="w")
         ttk.Combobox(root, textvariable=self.agent_type, values=["sac"]).grid(row=0, column=1)
 
-        self.episodes_var = tk.IntVar(value=120_000)
+        self.episodes_var = tk.IntVar(value=1_200_000)
         self.max_steps_var = tk.IntVar(value=50)
         self.lr_var = tk.DoubleVar(value=3e-4)
         self.lr_var_end = tk.DoubleVar(value=1e-4)

@@ -66,7 +66,6 @@ class DeterministicGCActor(nn.Module):
         self.actor = GRUNetwork(
             input_dim=features_per_state,
             output_dim=action_dim,
-            hidden_dim=256
         )
 
     def forward(self, state):
@@ -86,7 +85,6 @@ class DeterministicCritic(nn.Module):
         self.critic = GRUNetwork(
             input_dim=features_per_state + action_dim,
             output_dim=1,
-            hidden_dim=256
         )
 
     def forward(self, state, action):
@@ -170,11 +168,15 @@ class DeterministicGCAgent:
         self.gamma = gamma
         self.tau = tau
         self.use_writer = use_writer
-        self.actor = DeterministicGCActor(state_dim, action_dim).to(device)
-        self.critic = DeterministicCritic(state_dim, action_dim).to(device)
+        self.actor = DeterministicGCActor(state_dim, action_dim)
+        self.actor.to(device)
+        self.critic = DeterministicCritic(state_dim, action_dim)
+        self.critic.to(device)
 
-        self.target_actor = DeterministicGCActor(state_dim, action_dim).to(device)
-        self.target_critic = DeterministicCritic(state_dim, action_dim).to(device)
+        self.target_actor = DeterministicGCActor(state_dim, action_dim)
+        self.target_actor.to(device)
+        self.target_critic = DeterministicCritic(state_dim, action_dim)
+        self.target_critic.to(device)
 
         self.target_actor.load_state_dict(self.actor.state_dict())
         self.target_critic.load_state_dict(self.critic.state_dict())

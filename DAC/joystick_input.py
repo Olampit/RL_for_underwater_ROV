@@ -2,7 +2,7 @@ import numpy as np
 import random
 
 class FakeJoystick:
-    def __init__(self, seed=42, total_phases=1000, evaluation_mode=False):
+    def __init__(self, seed=42, total_phases=100000, evaluation_mode=False):
         self.episode = 0
         self.total_phases = total_phases
         self.evaluation_mode = evaluation_mode

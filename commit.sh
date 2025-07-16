@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "GRU, full acceleration for state, IMU sequencing problem remain"
+git commit --author="Olampit <olampit@gmail.com>" -m "working but no results yet (run_policy not working)"
 git push -u origin imu-based
 
 # Increment and save back

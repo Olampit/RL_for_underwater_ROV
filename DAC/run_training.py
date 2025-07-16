@@ -69,7 +69,7 @@ def train(
     episodes=500,
     max_steps=20,
     batch_size=1024,
-    start_steps=5000,
+    start_steps=500_000,
     gamma=0.99,
     learning_rate_start=5e-2,
     learning_rate_end=1e-4,

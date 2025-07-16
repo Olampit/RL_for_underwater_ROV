@@ -64,15 +64,29 @@ def run_policy(
     obs = env.reset(conn)
     print("[RUN] Starting policy rollout...")
 
+
+
+    SEQ_LEN = 5
+    state_buffer = []
+            
     for step in range(max_steps):
         current_state = env.rov.get_state()
         print(current_state)
 
         # Get action from policy (no exploration)
         with torch.no_grad():
-            state_tensor = torch.FloatTensor(obs).unsqueeze(0).to(device)
-            action = agent.actor(state_tensor).cpu().numpy()[0]
-            action = np.clip(action, -1.0, 1.0)
+            
+
+            state_buffer.append(obs)
+            if len(state_buffer) > SEQ_LEN:
+                state_buffer.pop(0)
+
+            if len(state_buffer) < SEQ_LEN:
+                action = np.zeros(action_dim)  # wait for enough context
+            else:
+                state_seq = np.array(state_buffer).astype(np.float32)  # shape: (5, state_dim)
+                state_tensor = torch.FloatTensor(state_seq).unsqueeze(0).to(device)  # (1, 5, state_dim)
+                action = agent.actor(state_tensor).cpu().numpy()[0]
 
         # Apply action
         obs, reward_components, done, _ = env.step(action, current_state)

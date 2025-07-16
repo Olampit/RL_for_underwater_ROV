@@ -108,7 +108,7 @@ class ROVEnvironment:
     def reset(self):
         time_before_reset = time.time()
 
-        px, py, pz = 0, 5000, 50
+        px, py, pz = 0, 5000,60
 
         odom_seq = velocity_buffer.get_last_n(1)
         if odom_seq:
