@@ -69,7 +69,7 @@ def train(
     episodes=500,
     max_steps=20,
     batch_size=1024,
-    start_steps=500_000,
+    start_steps=100_000,
     gamma=0.99,
     learning_rate_start=5e-2,
     learning_rate_end=1e-4,
@@ -119,7 +119,7 @@ def train(
     episode_rewards = []
     total_steps = 0
     
-    restart_countdown = 1000
+    restart_countdown = 0000
     url = "http://localhost/ardupilot-manager/v1.0/restart"
 
     for i in range(1, 9):
@@ -145,7 +145,7 @@ def train(
                 print("resetting firmware")
                 response = requests.post(url)
                 time.sleep(120)
-                for i in range(1, 9):
+                for i in range(1, 5): #! ICI CHANGER SINON PAS DE MOTEURS EN Z
                     set_servo_function(i, conn, 0)
                 restart_countdown = 1000
             else : 

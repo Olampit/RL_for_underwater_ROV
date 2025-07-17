@@ -193,11 +193,20 @@ class DeterministicGCAgent:
         self.current_lr = lr
         self.lr_start = lr
         self.lr_end = lr_end
+        
+        self.state_dim = state_dim
+        self.sequence_dim = sequence_dimension
+
 
         self.replay_buffer = PrioritizedGCReplayBuffer(capacity=10_000)
 
         
-        
+    def load_actor(self, path):
+        """Load a trained actor model from a .pth file."""
+        self.actor.load_state_dict(torch.load(path, map_location=self.device))
+        self.actor.eval()
+        print(f"[LOAD] Actor model loaded from {path}")
+
 
 
     def soft_update(self, source, target, tau):
@@ -206,11 +215,23 @@ class DeterministicGCAgent:
 
     
     def select_action(self, state, noise_std=0.01):
-        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)  # (1, 4, 15)
-        state_tensor = state_tensor.view(1, sequence_dimension, state_dimension)
-        action = self.actor(state_tensor).cpu().data.numpy()[0]
+        # Convert state to tensor if it's not already
+        if not torch.is_tensor(state):
+            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+        else:
+            state_tensor = state.unsqueeze(0).to(self.device)
+
+        # Ensure correct shape: (batch, seq, state_dim)
+        state_tensor = state_tensor.view(1, self.sequence_dim, self.state_dim)
+
+        with torch.no_grad():
+            action = self.actor(state_tensor).cpu().numpy()[0]
+
+        # Add small noise (disabled in policy mode if noise_std=0)
         action += np.random.normal(0, noise_std, size=action.shape)
+
         return np.clip(action, -1.0, 1.0)
+
 
 
 

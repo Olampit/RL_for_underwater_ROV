@@ -152,19 +152,23 @@ class ROVEnvironment:
         SCALE_VEL = 1.0
         SCALE_SPIN = 1.0
         COEFF = 1.0
-        SPIN_WEIGHT = 1.0
+        SPIN_WEIGHT = 0.5
         STD_WEIGHT = 0.5
         STILLNESS_BONUS = 1.0
         SPIN_THRESHOLD = 0.05
+        DIRECTION_WEIGHT = 2.0
 
         def wrap(angle):
             return (angle + np.pi) % (2 * np.pi) - np.pi
 
         def penalty(x, scale):
-            return -COEFF * np.log1p((abs(x) / scale) ** 2)
+            x_scaled = x / scale
+            return -COEFF * (x_scaled ** 2 + np.log1p(x_scaled ** 2))  # strong penalty + smooth decay
 
-        def compute_std(values, key):
+        def compute_std(values, key, deg_to_rad=False):
             data = [v.get(key, 0.0) for v in values]
+            if deg_to_rad:
+                data = [np.deg2rad(d) for d in data]
             return np.std(data) if data else 0.0
 
         now = time.time()
@@ -180,35 +184,36 @@ class ROVEnvironment:
         att_values = [a for _, a in att_seq]
         goal_values = [g for _, g in goal_seq]
 
-        # Sum of squared goal values
-        goal_vx = sum(g.get("vx", 0.0) ** 2 for g in goal_values)
-        goal_vy = sum(g.get("vy", 0.0) ** 2 for g in goal_values)
-        goal_vz = sum(g.get("vz", 0.0) ** 2 for g in goal_values)
-        goal_yaw = sum(g.get("yaw", 0.0) ** 2 for g in goal_values)
-        goal_pitch = sum(g.get("pitch", 0.0) ** 2 for g in goal_values)
-        goal_roll = sum(g.get("roll", 0.0) ** 2 for g in goal_values)
+        # Use only most recent values
+        vx = vel_values[-1].get("vx", 0.0)
+        vy = vel_values[-1].get("vy", 0.0)
+        vz = vel_values[-1].get("vz", 0.0)
 
-        # Sum of squared observed values
-        vx = sum(v.get("vx", 0.0) ** 2 for v in vel_values)
-        vy = sum(v.get("vy", 0.0) ** 2 for v in vel_values)
-        vz = sum(v.get("vz", 0.0) ** 2 for v in vel_values)
+        # Convert degrees to radians for orientation
+        yaw = np.deg2rad(att_values[-1].get("yaw", 0.0))
+        pitch = np.deg2rad(att_values[-1].get("pitch", 0.0))
+        roll = np.deg2rad(att_values[-1].get("roll", 0.0))
 
-        yaw = sum(a.get("yaw", 0.0) ** 2 for a in att_values)
-        pitch = sum(a.get("pitch", 0.0) ** 2 for a in att_values)
-        roll = sum(a.get("roll", 0.0) ** 2 for a in att_values)
+        goal_yaw = np.deg2rad(goal_values[-1].get("yaw", 0.0))
+        goal_pitch = np.deg2rad(goal_values[-1].get("pitch", 0.0))
+        goal_roll = np.deg2rad(goal_values[-1].get("roll", 0.0))
 
-        # Angular rates squared
-        mean_yawspeed = sum(abs(a.get("yawspeed", 0.0)) ** 2 for a in att_values)
-        mean_pitchspeed = sum(abs(a.get("pitchspeed", 0.0)) ** 2 for a in att_values)
-        mean_rollspeed = sum(abs(a.get("rollspeed", 0.0)) ** 2 for a in att_values)
+        goal_vx = goal_values[-1].get("vx", 0.0)
+        goal_vy = goal_values[-1].get("vy", 0.0)
+        goal_vz = goal_values[-1].get("vz", 0.0)
 
-        # Std penalties
+        # Convert angular speed from deg/s to rad/s before squaring
+        mean_yawspeed = sum(np.deg2rad(abs(a.get("yawspeed", 0.0))) ** 2 for a in att_values)
+        mean_pitchspeed = sum(np.deg2rad(abs(a.get("pitchspeed", 0.0))) ** 2 for a in att_values)
+        mean_rollspeed = sum(np.deg2rad(abs(a.get("rollspeed", 0.0))) ** 2 for a in att_values)
+
+        # Std penalties (convert orientation std to radians)
         vx_std = compute_std(vel_values, "vx")
         vy_std = compute_std(vel_values, "vy")
         vz_std = compute_std(vel_values, "vz")
-        yaw_std = compute_std(att_values, "yaw")
-        pitch_std = compute_std(att_values, "pitch")
-        roll_std = compute_std(att_values, "roll")
+        yaw_std = compute_std(att_values, "yaw", deg_to_rad=True)
+        pitch_std = compute_std(att_values, "pitch", deg_to_rad=True)
+        roll_std = compute_std(att_values, "roll", deg_to_rad=True)
 
         std_penalty = -STD_WEIGHT * (
             vx_std + vy_std + vz_std +
@@ -221,9 +226,9 @@ class ROVEnvironment:
         roll_spin = penalty(mean_rollspeed, SCALE_SPIN)
 
         # Angular alignment errors
-        yaw_error = abs(wrap(yaw - goal_yaw))
-        pitch_error = abs(wrap(pitch - goal_pitch))
-        roll_error = abs(wrap(roll - goal_roll))
+        yaw_error = wrap(yaw - goal_yaw)
+        pitch_error = wrap(pitch - goal_pitch)
+        roll_error = wrap(roll - goal_roll)
 
         yaw_alignment = penalty(yaw_error, SCALE_SPIN)
         pitch_alignment = penalty(pitch_error, SCALE_SPIN)
@@ -235,31 +240,22 @@ class ROVEnvironment:
 
         # Velocity tracking error
         vx_error = vx - goal_vx
-        vy_error = vy - goal_vy
+        vy_error = vy - goal_vy 
         vz_error = vz - goal_vz
 
         vx_score = penalty(vx_error, SCALE_VEL)
-        vy_score = penalty(vy_error, SCALE_VEL)
+        vy_score = penalty(vy_error, SCALE_VEL) - 2.0 * abs(vy)  # penalty for side drift
         vz_score = penalty(vz_error, SCALE_VEL)
 
-        # Total reward
-        total = (
-            vx_score +
-            vy_score +
-            vz_score +
-            yaw_score +
-            pitch_score +
-            roll_score +
-            std_penalty
-        )
-
-        # Stillness bonus when goal is to be still and spin is low
+        # Stillness bonus
         if (
             abs(goal_vx) < 0.1 and abs(goal_vy) < 0.1 and abs(goal_vz) < 0.1 and
             all(spin < SPIN_THRESHOLD for spin in [mean_yawspeed, mean_pitchspeed, mean_rollspeed])
         ):
-            total += STILLNESS_BONUS
-            
+            total = STILLNESS_BONUS
+        else:
+            total = 0.0
+
         # Directional reward bonus
         v_vec = np.array([vx, vy, vz])
         goal_vec = np.array([goal_vx, goal_vy, goal_vz])
@@ -272,10 +268,17 @@ class ROVEnvironment:
         else:
             cos_sim = 0.0
 
-        DIRECTION_WEIGHT = 2.0  # tune this experimentally
         direction_bonus = DIRECTION_WEIGHT * cos_sim
-
-        total += direction_bonus
+        total += (
+            vx_score +
+            vy_score +
+            vz_score +
+            yaw_score +
+            pitch_score +
+            roll_score +
+            std_penalty +
+            direction_bonus
+        )
 
         total = np.clip(total, -CLIP, CLIP)
 
@@ -316,6 +319,8 @@ class ROVEnvironment:
             "pitch_error": pitch_error,
             "yaw_error": yaw_error,
         }
+
+
 
 
     def is_terminal(self):

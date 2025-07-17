@@ -2,9 +2,10 @@ import numpy as np
 import random
 
 class FakeJoystick:
-    def __init__(self, seed=42, total_phases=100000, evaluation_mode=False):
+    def __init__(self, seed=42, total_phases=100000, transition_phase=5000, evaluation_mode=False):
         self.episode = 0
         self.total_phases = total_phases
+        self.transition_phase = transition_phase  # NEW: when to start orientation goals
         self.evaluation_mode = evaluation_mode
         self.manual_goal = None
         random.seed(seed)
@@ -20,7 +21,7 @@ class FakeJoystick:
         self.success_counter_r = 0
         self.success_threshold = 50
         self.error_threshold_v = 0.1
-        self.error_threshold_r = 0.05
+        self.error_threshold_r = 0.0 #! retablish higher or wont work
 
     def _generate_velocity_schedule(self):
         directions = ["vx", "vy", "vz"]
@@ -40,15 +41,18 @@ class FakeJoystick:
         directions = ["roll", "pitch", "yaw"]
         schedule = []
 
-        for _ in range(self.total_phases):
+        for i in range(self.total_phases):
             goal = {d: 0.0 for d in directions}
-            active = random.sample(directions, k=1)
-            for axis in active:
-                goal[axis] = random.uniform(-np.pi / 2, np.pi / 2)
+            if i >= self.transition_phase:
+                active = random.sample(directions, k=1)
+                for axis in active:
+                    goal[axis] = random.uniform(-np.pi / 2, np.pi / 2)
             schedule.append(goal)
 
-        schedule.append({d: 0.0 for d in ["yaw", "pitch", "roll"]})
+        schedule.append({d: 0.0 for d in directions})
         return schedule
+
+
 
     def _generate_goal(self):
         if self.evaluation_mode and self.manual_goal is not None:
