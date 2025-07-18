@@ -24,18 +24,23 @@ class FakeJoystick:
         self.error_threshold_r = 0.0 #! retablish higher or wont work
 
     def _generate_velocity_schedule(self):
-        directions = ["vx", "vy"]
         schedule = []
 
         for _ in range(self.total_phases):
-            goal = {d: 0.0 for d in directions}
-            active = random.sample(directions, k=random.choice([1, 1]))  # change to 2 if needed
+            # Always include vz as 0.0
+            goal = {"vx": 0.0, "vy": 0.0, "vz": 0.0}
+            
+            # Only randomly activate vx or vy
+            active = random.sample(["vx", "vy"], k=1)  # set k=2 if you want combos
             for axis in active:
                 goal[axis] = random.choice([0.1, 0.2, 0.3, 0.4, 0.5]) * random.choice([1, -1])
+            
             schedule.append(goal)
 
-        schedule.append({d: 0.0 for d in directions})
+        # Add final zero goal
+        schedule.append({"vx": 0.0, "vy": 0.0, "vz": 0.0})
         return schedule
+
 
     def _generate_orientation_schedule(self):
         directions = ["roll", "pitch", "yaw"]

@@ -163,7 +163,7 @@ class ROVEnvironment:
 
         def penalty(x, scale):
             x_scaled = x / scale
-            return -COEFF * (x_scaled ** 2 + np.log1p(x_scaled ** 2))  # strong penalty + smooth decay
+            return -COEFF * (np.log1p(x_scaled ** 2))
 
         def compute_std(values, key, deg_to_rad=False):
             data = [v.get(key, 0.0) for v in values]
@@ -203,9 +203,9 @@ class ROVEnvironment:
         goal_vz = goal_values[-1].get("vz", 0.0)
 
         # Convert angular speed from deg/s to rad/s before squaring
-        mean_yawspeed = sum(np.deg2rad(abs(a.get("yawspeed", 0.0))) ** 2 for a in att_values)
-        mean_pitchspeed = sum(np.deg2rad(abs(a.get("pitchspeed", 0.0))) ** 2 for a in att_values)
-        mean_rollspeed = sum(np.deg2rad(abs(a.get("rollspeed", 0.0))) ** 2 for a in att_values)
+        mean_yawspeed = sum(np.deg2rad(abs(a.get("yawspeed", 0.0))) for a in att_values)
+        mean_pitchspeed = sum(np.deg2rad(abs(a.get("pitchspeed", 0.0))) for a in att_values)
+        mean_rollspeed = sum(np.deg2rad(abs(a.get("rollspeed", 0.0)))for a in att_values)
 
         # Std penalties (convert orientation std to radians)
         vx_std = compute_std(vel_values, "vx")

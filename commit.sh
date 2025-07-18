@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "without the vz goal... and working !"
+git commit --author="Olampit <olampit@gmail.com>" -m "reward function changes + save before removing the gru network for the critic only."
 git push -u origin imu-based
 
 # Increment and save back
