@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "with only 4 motors to test"
+git commit --author="Olampit <olampit@gmail.com>" -m "without the vz goal... and working !"
 git push -u origin imu-based
 
 # Increment and save back

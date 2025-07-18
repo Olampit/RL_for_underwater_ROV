@@ -24,7 +24,7 @@ class FakeJoystick:
         self.error_threshold_r = 0.0 #! retablish higher or wont work
 
     def _generate_velocity_schedule(self):
-        directions = ["vx", "vy", "vz"]
+        directions = ["vx", "vy"]
         schedule = []
 
         for _ in range(self.total_phases):

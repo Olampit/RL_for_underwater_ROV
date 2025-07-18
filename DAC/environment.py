@@ -152,7 +152,7 @@ class ROVEnvironment:
         SCALE_VEL = 1.0
         SCALE_SPIN = 1.0
         COEFF = 1.0
-        SPIN_WEIGHT = 0.5
+        SPIN_WEIGHT = 5.0
         STD_WEIGHT = 0.5
         STILLNESS_BONUS = 1.0
         SPIN_THRESHOLD = 0.05
@@ -244,7 +244,7 @@ class ROVEnvironment:
         vz_error = vz - goal_vz
 
         vx_score = penalty(vx_error, SCALE_VEL)
-        vy_score = penalty(vy_error, SCALE_VEL) - 2.0 * abs(vy)  # penalty for side drift
+        vy_score = penalty(vy_error, SCALE_VEL)
         vz_score = penalty(vz_error, SCALE_VEL)
 
         # Stillness bonus
