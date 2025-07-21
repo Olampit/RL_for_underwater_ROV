@@ -19,8 +19,8 @@ class FakeJoystick:
         # Independent success tracking
         self.success_counter_v = 0
         self.success_counter_r = 0
-        self.success_threshold = 50
-        self.error_threshold_v = 0.1
+        self.success_threshold = 100
+        self.error_threshold_v = 0.05
         self.error_threshold_r = 0.0 #! retablish higher or wont work
 
     def _generate_velocity_schedule(self):
@@ -95,6 +95,7 @@ class FakeJoystick:
         if self.evaluation_mode:
             return
 
+        # Extract per-axis errors
         vx_e = abs(reward_components.get("vx_error", 1.0))
         vy_e = abs(reward_components.get("vy_error", 1.0))
         vz_e = abs(reward_components.get("vz_error", 1.0))
@@ -102,15 +103,26 @@ class FakeJoystick:
         pitch_e = abs(reward_components.get("pitch_error", 1.0))
         roll_e = abs(reward_components.get("roll_error", 1.0))
 
-        # Smooth moving averages for errors
+        # === NEW: only consider errors for active goal axes ===
+        active_v_axes = [k for k in ["vx", "vy", "vz"] if abs(self.goal[k]["mean"]) > 1e-4]
+        active_r_axes = [k for k in ["yaw", "pitch", "roll"] if abs(self.goal[k]["mean"]) > 1e-4]
+
+        v_errors = [abs(reward_components.get(f"{k}_error", 1.0)) for k in active_v_axes]
+        r_errors = [abs(reward_components.get(f"{k}_error", 1.0)) for k in active_r_axes]
+
+        v_error_max = max(v_errors) if v_errors else 1.0
+        r_error_max = max(r_errors) if r_errors else 1.0
+
+        # === Update exponential moving average of errors ===
         if not hasattr(self, "error_avg_v"):
             self.error_avg_v = 1.0
         if not hasattr(self, "error_avg_r"):
             self.error_avg_r = 1.0
 
-        self.error_avg_v = 0.9 * self.error_avg_v + 0.1 * max(vx_e, vy_e, vz_e)
-        self.error_avg_r = 0.9 * self.error_avg_r + 0.1 * max(yaw_e, pitch_e, roll_e)
+        self.error_avg_v = 0.9 * self.error_avg_v + 0.1 * v_error_max
+        self.error_avg_r = 0.9 * self.error_avg_r + 0.1 * r_error_max
 
+        # === Track success over time ===
         if self.error_avg_v < self.error_threshold_v:
             self.success_counter_v += 1
         else:
@@ -128,3 +140,4 @@ class FakeJoystick:
         if self.success_counter_r >= self.success_threshold:
             self.success_counter_r = 0
             self._switch_orientation_goal()
+
