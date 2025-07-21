@@ -34,6 +34,25 @@ import datetime
 state_dimension = 12 #! state
 sequence_dimension = 5 #! sequence
 
+class MLPCritic(nn.Module):
+    def __init__(self, input_dim, action_dim, output_dim=1, hidden_dim=256):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),  # ← input_dim already includes state + action
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim)
+        )
+
+    def forward(self, x):  # x shape: (B, T, state+action)
+        last = x[:, -1, :]  # Use only the last frame
+        return self.net(last)  # returns shape (B, 1)
+
+
+
+
+
 class GRUNetwork(nn.Module):
     def __init__(self, input_dim, output_dim, hidden_dim=64, num_layers=2, batch_first=True):
         super().__init__()
@@ -69,6 +88,8 @@ class DeterministicGCActor(nn.Module):
         )
 
     def forward(self, state):
+        assert state.dim() == 3, "Expected (B, seq_len, state_dim)"
+
         if state.dim() == 2:
             batch_size = state.shape[0]
             seq_len = sequence_dimension
@@ -82,8 +103,9 @@ class DeterministicCritic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
         features_per_state = state_dim       
-        self.critic = GRUNetwork(
+        self.critic = MLPCritic(
             input_dim=features_per_state + action_dim,
+            action_dim=action_dim,
             output_dim=1,
         )
 
@@ -262,8 +284,8 @@ class DeterministicGCAgent:
         q_val = self.critic(s, a).unsqueeze(1)
         
         
-        td_error = (q_val - q_target).abs().detach().cpu().numpy()
-        td_error = np.clip(td_error, 1e-6, 1e2)
+        td_error = (q_target - q_val).detach().cpu().numpy()
+        # td_error = np.clip(td_error, 1e-6, 1e2)
         
         #!change here for the weights on monday ? 
         if total_step % 1000 == 0:
