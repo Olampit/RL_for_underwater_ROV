@@ -173,8 +173,11 @@ class PrioritizedGCReplayBuffer:
                 scalar = float(np.ravel(p)[0])
             else:
                 scalar = float(p)
-            #self.priorities[i] = scalar + 1e-5
-            self.priorities[i] = 1e-4
+            scalar = float(np.abs(scalar))
+            scalar = np.clip(scalar, 1e-6, 1e3)  # clamp to avoid NaNs or exploding gradients
+            self.priorities[i] = scalar
+
+            # self.priorities[i] = 1e-4
 
 
     def __len__(self):

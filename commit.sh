@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "kinda working with mlp and stuff. Put back PER !"
+git commit --author="Olampit <olampit@gmail.com>" -m "DDPG with PER, Working. Reward function isnt quite perfect"
 git push -u origin imu-based
 
 # Increment and save back

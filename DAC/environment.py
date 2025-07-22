@@ -234,7 +234,7 @@ class ROVEnvironment:
         pitch_alignment = penalty(pitch_error, SCALE_SPIN)
         roll_alignment = penalty(roll_error, SCALE_SPIN)
 
-        yaw_score = yaw_alignment + yaw_spin * SPIN_WEIGHT
+        yaw_score = yaw_alignment + yaw_spin * SPIN_WEIGHT + DIRECTION_WEIGHT * yaw_error * mean_yawspeed
         pitch_score = pitch_alignment + pitch_spin * SPIN_WEIGHT
         roll_score = roll_alignment + roll_spin * SPIN_WEIGHT
 
