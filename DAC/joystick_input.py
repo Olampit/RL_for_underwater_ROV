@@ -19,7 +19,7 @@ class FakeJoystick:
         # Independent success tracking
         self.success_counter_v = 0
         self.success_counter_r = 0
-        self.success_threshold = 100
+        self.success_threshold = 1000
         self.error_threshold_v = 0.05
         self.error_threshold_r = 0.0 #! retablish higher or wont work
 

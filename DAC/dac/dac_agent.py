@@ -174,8 +174,8 @@ class PrioritizedGCReplayBuffer:
             else:
                 scalar = float(p)
             scalar = float(np.abs(scalar))
-            scalar = np.clip(scalar, 1e-6, 1e3)  # clamp to avoid NaNs or exploding gradients
-            self.priorities[i] = scalar
+        scalar = np.clip(scalar, 1e-6, 1e3)  # clamp to avoid NaNs or exploding gradients
+        self.priorities[i] = scalar
 
             # self.priorities[i] = 1e-4
 
