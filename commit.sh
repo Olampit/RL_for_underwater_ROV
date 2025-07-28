@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "Properly working with some results"
+git commit --author="Olampit <olampit@gmail.com>" -m "with small random exploration while learning, before run_policy"
 git push -u origin imu-based
 
 # Increment and save back

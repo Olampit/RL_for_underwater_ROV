@@ -165,8 +165,9 @@ def train(
                     return
 
                 t0 = time.time()
-
-                if exploration_bool:
+                
+                epsilon = max(0.01, 0.1 * np.exp(-total_steps / 500000))
+                if exploration_bool or np.random.rand() < epsilon:
                     action = agent.sample_random_structured()
                     
                 else:
