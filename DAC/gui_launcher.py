@@ -343,7 +343,6 @@ class RLGui:
             self.ax4.plot(self.pitch_score_data, label="pitch", color="grey")
             self.ax4.plot(self.roll_score_data, label="roll", color="purple")
             self.ax4.plot(self.std_penalty_data, label="std", color="black")
-            self.ax4.plot(self.direction_bonus_data, label="direction", color="black")
 
             self.ax4.legend(loc='upper left')
             self.canvas3.draw()
@@ -401,6 +400,7 @@ class RLGui:
             self.ax11.set_ylabel("Value")
             self.ax11.set_xlabel("Episode")
             self.ax11.plot(self.reward_total_data, label="Total Reward", color="green")
+            self.ax11.plot(self.direction_bonus_data, label="direction", color="teal")
             self.ax11.axhline(y=0.0, color="gray", linestyle="dashed", linewidth=0.8)
             self.ax11.legend(loc = 'upper left')
             self.canvas8.draw()

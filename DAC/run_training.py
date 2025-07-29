@@ -90,7 +90,7 @@ def train(
     time.sleep(1)
     
     
-    update_every = 10 #! maybe 10 ??
+    update_every = 100  #! update needs to be large (~1000 - 5000 maybe)
     
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu" 
@@ -190,7 +190,7 @@ def train(
 
 
                 if total_steps % update_every == 0 : 
-                    update_info = agent.update(batch_size=batch_size, total_step=total_steps)
+                    update_info = agent.update(batch_size=batch_size, total_step=total_steps) #! however many updates needed (check if we update more than once every time we need to update)
                     critic_loss = update_info.get("critic_loss", 0.0)
                     actor_loss = update_info.get("actor_loss", 0.0)
 

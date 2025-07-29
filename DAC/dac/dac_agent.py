@@ -1,5 +1,24 @@
 #dac/dac_agent.py
 
+
+"""
+dac_agent.py
+
+This module defines the core agent used for training a deterministic actor-critic 
+policy to control an underwater ROV. It includes the actor and critic networks,
+experience replay (with optional prioritized replay), and the main update logic.
+
+Key Components:
+- Actor: outputs deterministic continuous actions given a state sequence.
+- Critic: estimates Q-values for (state, action) pairs.
+- GRU or MLP critic architectures supported.
+- Prioritized Experience Replay (PER): optional buffer weighting based on TD error.
+- Update method: implements policy gradient and critic loss with soft target updates.
+
+Author: OLAMPI Terry
+Date: 2025-07-29
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -31,54 +50,81 @@ import datetime
 #         return self.model(x)
 
 
-state_dimension = 12 #! state
-sequence_dimension = 5 #! sequence
+state_dimension = 12      #! Number of features per timestep in state
+sequence_dimension = 5    #! Number of timesteps (sequence length)
 
+
+# -----------------------------
+# Basic MLP-based Critic Network
+# -----------------------------
 class MLPCritic(nn.Module):
+    """
+    Critic model using a simple 3-layer MLP.
+    Expects a combined input of state and action (per timestep).
+    Only the last timestep of the input sequence is used.
+    """
     def __init__(self, input_dim, action_dim, output_dim=1, hidden_dim=256):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),  # ← input_dim already includes state + action
+            nn.Linear(input_dim, hidden_dim),  # input: (state + action)
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, output_dim)
+            nn.Linear(hidden_dim, output_dim)  # output: scalar Q-value
         )
 
-    def forward(self, x):  # x shape: (B, T, state+action)
-        last = x[:, -1, :]  # Use only the last frame
-        return self.net(last)  # returns shape (B, 1)
+    def forward(self, x):
+        # x shape: (B, T, state+action) → only keep the last timestep
+        last = x[:, -1, :]  # (B, state+action)
+        return self.net(last)  # (B, 1)
 
 
 
 
 
+# -----------------------------
+# GRU-based Feature Extractor
+# -----------------------------
 class GRUNetwork(nn.Module):
+    """
+    Generic GRU block for temporal sequence processing.
+    Outputs a latent feature vector for the full input sequence.
+    Used in actor or critic (but best in actor).
+    """
     def __init__(self, input_dim, output_dim, hidden_dim=64, num_layers=2, batch_first=True):
         super().__init__()
         self.gru = nn.GRU(
             input_size=input_dim,
             hidden_size=hidden_dim,
             num_layers=num_layers,
-            batch_first=True
+            batch_first=batch_first
         )
         self.out = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, output_dim)
+            nn.Linear(hidden_dim, output_dim)  # final projection
         )
 
     def forward(self, x):
-        # x shape: (batch_size, seq_len, input_dim)
-        _, h_n = self.gru(x)        # h_n: (num_layers, batch, hidden_dim)
-        h = h_n[-1]                 # (batch, hidden_dim)
-        return self.out(h)
+        # x: (B, T, input_dim) → process full sequence
+        _, h_n = self.gru(x)       # h_n: (num_layers, B, hidden_dim)
+        h = h_n[-1]                # last layer hidden state: (B, hidden_dim)
+        return self.out(h)         # output shape: (B, output_dim)
 
 
 
 
 
+
+# -----------------------------
+# Deterministic Actor using GRU
+# -----------------------------
 class DeterministicGCActor(nn.Module):
+    """
+    Actor network that maps sequence of states to actions.
+    Uses GRU to handle temporal dependencies in observations.
+    Output is squashed using tanh (for bounded control).
+    """
     def __init__(self, state_dim, action_dim):
         super().__init__()
         features_per_state = state_dim
@@ -88,47 +134,68 @@ class DeterministicGCActor(nn.Module):
         )
 
     def forward(self, state):
-        assert state.dim() == 3, "Expected (B, seq_len, state_dim)"
-
-        if state.dim() == 2:
-            batch_size = state.shape[0]
-            seq_len = sequence_dimension
-            state = state.view(batch_size, seq_len, state_dimension)
-        return torch.tanh(self.actor(state))
+        # state: (B, T, state_dim)
+        assert state.dim() == 3, "Expected shape (B, seq_len, state_dim)"
+        return torch.tanh(self.actor(state))  # tanh to bound action in [-1, 1]
 
 
 
 
+
+# -----------------------------
+# Deterministic Critic using MLP
+# -----------------------------
 class DeterministicCritic(nn.Module):
+    """
+    Critic that uses a standard MLP to estimate Q-value.
+    Takes a full sequence of states + current action.
+    The action is broadcast across time and concatenated with each state.
+    Only the last timestep of the sequence is used for evaluation.
+    """
     def __init__(self, state_dim, action_dim):
         super().__init__()
-        features_per_state = state_dim       
+        features_per_state = state_dim
         self.critic = MLPCritic(
-            input_dim=features_per_state + action_dim,
+            input_dim=features_per_state + action_dim,  # concatenated input
             action_dim=action_dim,
             output_dim=1,
         )
 
     def forward(self, state, action):
         batch_size = state.shape[0]
-        seq_len = sequence_dimension
-        state = state.view(batch_size, seq_len, state_dimension)  # (B, T, 15)
-        action = action.unsqueeze(1).expand(-1, seq_len, -1)  # (B, T, 8)
-        x = torch.cat([state, action], dim=-1)  # (B, T, 23)
-        return self.critic(x).view(-1)
+        seq_len = sequence_dimension  # global var or passed in context
+        state = state.view(batch_size, seq_len, state_dimension)      # (B, T, D)
+        action = action.unsqueeze(1).expand(-1, seq_len, -1)          # (B, T, A)
+        x = torch.cat([state, action], dim=-1)                        # (B, T, D+A)
+        return self.critic(x).view(-1)                                # (B,)
 
 
 
 
+# -----------------------------
+# Buffer with priority Queue
+# -----------------------------
 class PrioritizedGCReplayBuffer:
+    """
+    Replay buffer with prioritized sampling for goal-conditioned actor-critic.
+    Stores sequences of states and supports importance-sampling correction.
+
+    Parameters:
+    - capacity (int): max number of transitions to store.
+    - alpha (float): prioritization exponent (0 = uniform, 1 = full prioritization).
+    """
     def __init__(self, capacity, alpha=0.6):
         self.capacity = capacity
-        self.buffer = []
-        self.priorities = []
-        self.alpha = alpha
-        self.pos = 0
+        self.buffer = []        # list of (s_seq, a, r, s'_seq, done)
+        self.priorities = []    # same size as buffer
+        self.alpha = alpha      # controls how much prioritization matters
+        self.pos = 0            # position for circular overwrite
 
     def push(self, state_seq, action, reward, next_state_seq, done):
+        """
+        Add a new transition tuple to the buffer.
+        Assign max priority so it is sampled quickly.
+        """
         max_prio = max(self.priorities, default=1.0)
         data = (state_seq, action, reward, next_state_seq, done)
 
@@ -138,53 +205,61 @@ class PrioritizedGCReplayBuffer:
         else:
             self.buffer[self.pos] = data
             self.priorities[self.pos] = max_prio
-        self.pos = (self.pos + 1) % self.capacity
 
+        self.pos = (self.pos + 1) % self.capacity  # wrap around
 
     def sample(self, batch_size, beta=0.4):
+        """
+        Sample a batch of transitions with importance-sampling weights.
+        Returns tensors for training: (s, a, r, s', done, weight, idx).
+        """
         if len(self.buffer) == 0:
             raise ValueError("Buffer is empty.")
 
-        prios = np.array(self.priorities)
-        probs = prios ** self.alpha
-        probs /= probs.sum()
+        prios = np.array(self.priorities, dtype=np.float32)
+        probs = prios ** self.alpha           # priority → probability
+        probs /= probs.sum()                  # normalize
 
         indices = np.random.choice(len(self.buffer), batch_size, p=probs)
         samples = [self.buffer[i] for i in indices]
 
+        # Importance-sampling weights
         weights = (len(self.buffer) * probs[indices]) ** (-beta)
-        weights /= weights.max()
+        weights /= weights.max()  # normalize for stability
 
+        # Format into tensors
         states, actions, rewards, next_states, dones = map(np.stack, zip(*samples))
 
         return (
-            torch.FloatTensor(states),
-            torch.FloatTensor(actions),
-            torch.FloatTensor(rewards).unsqueeze(1),
-            torch.FloatTensor(next_states),
-            torch.FloatTensor(dones).unsqueeze(1),
-            torch.FloatTensor(weights).unsqueeze(1),
-            indices,
+            torch.FloatTensor(states),                    # (B, T, D)
+            torch.FloatTensor(actions),                   # (B, A)
+            torch.FloatTensor(rewards).unsqueeze(1),      # (B, 1)
+            torch.FloatTensor(next_states),               # (B, T, D)
+            torch.FloatTensor(dones).unsqueeze(1),        # (B, 1)
+            torch.FloatTensor(weights).unsqueeze(1),      # (B, 1)
+            indices                                       # for priority update
         )
 
     def update_priorities(self, indices, priorities):
+        """
+        Update priorities after learning from a sampled batch.
+        Usually called using TD errors.
+        """
         for i, p in zip(indices, priorities):
+            # Handle different formats (scalars, arrays, etc.)
             if isinstance(p, (np.ndarray, list)):
                 scalar = float(np.ravel(p)[0])
             else:
                 scalar = float(p)
             scalar = float(np.abs(scalar))
-        scalar = np.clip(scalar, 1e-6, 1e3)  # clamp to avoid NaNs or exploding gradients
-        self.priorities[i] = scalar
-
-            # self.priorities[i] = 1e-4
-
+            scalar = np.clip(scalar, 1e-6, 1e3)  # clip to prevent NaNs/explosions
+            self.priorities[i] = scalar
 
     def __len__(self):
         return len(self.buffer)
 
 
-class DeterministicGCAgent:
+class DeterministicGCAgent:     
     def __init__(self, state_dim=0, action_dim=0, device="cpu", gamma=0.99, lr=3e-4, lr_end=1e-5, tau=0.005, use_writer=False):
         
         print(f"[Agent Init] state_dim={state_dim}, action_dim={action_dim}")
@@ -298,7 +373,7 @@ class DeterministicGCAgent:
                         self.writer.add_embedding(param.data, tag=f"actor/weights/{name}", global_step=total_step)
 
 
-        critic_loss = (F.mse_loss(q_val, q_target, reduction='none') * w).mean()
+        critic_loss = (F.mse_loss(q_val, q_target, reduction='none') * w).mean() 
 
         self.critic_opt.zero_grad()
         critic_loss.backward()
@@ -316,6 +391,8 @@ class DeterministicGCAgent:
         self.soft_update(self.critic, self.target_critic, self.tau)
         self.soft_update(self.actor, self.target_actor, self.tau)
 
+        
+        #! virer soft update et utiliser adam opt a la place (les betas)
         
         
         

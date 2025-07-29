@@ -24,6 +24,17 @@ def make_env(connection, latest_imu):
     return ROVEnvGymWrapper(rov_env)
 
 
+goal_sequence = [
+    {"vx": 0.2, "vy": 0.0, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+    {"vx": 0.0, "vy": 0.2, "vz": 0.0, "yaw": 0.2, "pitch": 0.0, "roll": 0.0},
+    {"vx": 0.0, "vy": 0.0, "vz": 0.0, "yaw": 0.0, "pitch": 0.1, "roll": -0.1},
+]
+
+
+
+
+
+
 def run_policy(
     actor_path="policy_actor.pth",
     mavlink_endpoint="udp:127.0.0.1:14550",
@@ -36,8 +47,14 @@ def run_policy(
     conn = mavutil.mavlink_connection(mavlink_endpoint)
     wait_for_heartbeat(conn)
 
+    GOAL_DURATION = 5.0  # seconds  
+    goal_idx = 0
+    goal_start_time = time.time()
     joystick = FakeJoystick()
-
+    
+    joystick.set_manual_goal(goal_sequence[goal_idx])
+    
+    
     latest_imu = {}
     start_imu_listener(conn, latest_imu, joystick)
     time.sleep(1)
@@ -74,7 +91,12 @@ def run_policy(
             if done:
                 print("[DONE] Episode ended.")
                 break
-
+            
+            if time.time() - goal_start_time > GOAL_DURATION:
+                goal_idx = (goal_idx + 1) % len(goal_sequence)  # loop or stop
+                joystick.set_manual_goal(goal_sequence[goal_idx])
+                goal_start_time = time.time()
+                
     finally:
         print("[CLEANUP] Stopping threads and motors.")
         stop_event.set()
