@@ -252,6 +252,7 @@ def train(
                     "yaw_score": safe_scalar(reward_components.get("yaw_score", 0.0)),
                     "pitch_score": safe_scalar(reward_components.get("pitch_score", 0.0)),
                     "roll_score": safe_scalar(reward_components.get("roll_score", 0.0)),
+                    "direction_bonus": safe_scalar(reward_components.get("direction_bonus", 0.0)),
 
                     # --- Learning rate ---
                     "learning_rate": safe_scalar(update_info.get("learning_rate", 0.0)),

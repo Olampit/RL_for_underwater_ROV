@@ -163,7 +163,10 @@ class ROVEnvironment:
 
         def sharp_velocity_score(obs, target, scale=1.0, gain=10.0, threshold=0.1):
             error = abs(obs - target) / scale
-            return 1.0 / (1.0 + np.exp(gain * (error - threshold))) - 1.0
+            sigmoid = 1.0 / (1.0 + np.exp(gain * (error - threshold)))
+            center = 1.0 / (1.0 + np.exp(-gain * threshold))  # value when error=0
+            return sigmoid - center  # now zero at perfect match
+
 
         def sharp_angle_score(obs, target, spin, scale=1.0, gain=8.0, threshold=0.05):
             angle_error = abs(wrap(obs - target)) / scale
@@ -271,7 +274,7 @@ class ROVEnvironment:
         total = np.clip(total, -CLIP, CLIP)
 
         return {
-            "total": total,
+            "total": total-direction_bonus,
             "vx_score": vx_score,
             "vy_score": vy_score,
             "vz_score": vz_score,
@@ -279,6 +282,7 @@ class ROVEnvironment:
             "pitch_score": pitch_score,
             "roll_score": roll_score,
             "std_penalty": std_penalty,
+            "direction_bonus":direction_bonus,
             "yaw_spin": mean_yawspeed,
             "pitch_spin": mean_pitchspeed,
             "roll_spin": mean_rollspeed,

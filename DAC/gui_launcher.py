@@ -49,6 +49,7 @@ class RLGui:
         self.std_penalty_data = []
         self.orientation_align_data = []
         self.spin_penalty_data = []
+        self.direction_bonus_data = []
         
         
          
@@ -224,9 +225,10 @@ class RLGui:
             self.pitch_score_data.append(metrics.get("pitch_score", 0.0))
             self.roll_score_data.append(metrics.get("roll_score", 0.0))
             
-            self.orientation_align_data.append(metrics.get("orientation_align",0.0))
-            self.spin_penalty_data.append(metrics.get("orientation_align",0.0))
+            self.orientation_align_data.append(metrics.get("orientation_align", 0.0))
+            self.spin_penalty_data.append(metrics.get("orientation_align", 0.0))
             
+            self.direction_bonus_data.append(metrics.get("direction_bonus", 0.0))
             
             # --- D2. Errors ---
             self.vx_error_data.append(metrics.get("vx_error",0.0))
@@ -272,7 +274,7 @@ class RLGui:
                 self.vx_score_data, self.vy_score_data, self.vz_score_data,
                 self.yaw_score_data, self.pitch_score_data, self.roll_score_data,
                 self.orientation_align_data, self.spin_penalty_data,
-                self.std_penalty_data,
+                self.std_penalty_data, self.direction_bonus_data,
 
 
                     
@@ -341,6 +343,7 @@ class RLGui:
             self.ax4.plot(self.pitch_score_data, label="pitch", color="grey")
             self.ax4.plot(self.roll_score_data, label="roll", color="purple")
             self.ax4.plot(self.std_penalty_data, label="std", color="black")
+            self.ax4.plot(self.direction_bonus_data, label="direction", color="black")
 
             self.ax4.legend(loc='upper left')
             self.canvas3.draw()

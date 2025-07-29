@@ -104,8 +104,8 @@ class FakeJoystick:
         roll_e = abs(reward_components.get("roll_error", 1.0))
 
         # === NEW: only consider errors for active goal axes ===
-        active_v_axes = [k for k in ["vx", "vy", "vz"] if abs(self.goal[k]["mean"]) > 1e-4]
-        active_r_axes = [k for k in ["yaw", "pitch", "roll"] if abs(self.goal[k]["mean"]) > 1e-4]
+        active_v_axes = ["vx", "vy"]
+        active_r_axes = ["yaw", "pitch", "roll"]
 
         v_errors = [abs(reward_components.get(f"{k}_error", 1.0)) for k in active_v_axes]
         r_errors = [abs(reward_components.get(f"{k}_error", 1.0)) for k in active_r_axes]
