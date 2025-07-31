@@ -13,6 +13,7 @@ from dac.dac_agent import DeterministicGCAgent
 from joystick_input import FakeJoystick
 
 
+
 def wait_for_heartbeat(conn, timeout=30):
     print("[WAIT] Waiting for MAVLink heartbeat…")
     conn.wait_heartbeat(timeout=timeout)
@@ -80,7 +81,7 @@ def run_policy(
         for step in range(max_steps):
             obs_tensor = torch.tensor(obs, dtype=torch.float32).to(device)
             with torch.no_grad():
-                action = agent.select_action(obs_tensor)
+                action = agent.select_action(obs_tensor, noise_std=0.0)
 
             next_obs, reward_components, done, _, _ = env.step(action)
 

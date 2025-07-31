@@ -314,6 +314,16 @@ class DeterministicGCAgent:
         self.target_actor.load_state_dict(self.actor.state_dict())
         self.target_critic.load_state_dict(self.critic.state_dict())
 
+
+        # Lowering B1 results in : 
+        # More reactive updates (less momentum smoothing)
+        # Slightly more noise in learning
+        
+        # B2 is more about stoping gradients from exploding, shouldnt be an issue here. 
+        
+        # Should probably try betas=(0.5, 0.99) for critic at first
+        # Dont touch actor too much ?
+        
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=lr, maximize=True)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=lr)
 
@@ -409,7 +419,7 @@ class DeterministicGCAgent:
 
         with torch.no_grad():
             a2 = self.actor(s2)
-            q_target = r + self.gamma * self.target_critic(s2, a2).unsqueeze(1)
+            q_target = r + self.gamma + (1-d) * self.target_critic(s2, a2).unsqueeze(1)
 
 
         q_val = self.critic(s, a).unsqueeze(1)

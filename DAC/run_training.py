@@ -76,9 +76,9 @@ def set_servo_function(servo_number, connection, value=0):
 def train(
     episodes=500,
     max_steps=20,
-    batch_size=128,
-    update_every = 50,
-    start_steps=000000,
+    batch_size=108,
+    update_every = 5,
+    start_steps=000000,  #exploration
     gamma=0.99,
     learning_rate_start=5e-2,
     learning_rate_end=1e-4,
@@ -248,6 +248,8 @@ def train(
                 action = np.asarray(action, dtype=np.float32).flatten()
                 
                 
+                
+                done = (step == max_steps - 1) or done # since we reset right after, we should NOT predict on this particular step
                 # Store transition in replay buffer
                 agent.replay_buffer.push(obs, action, reward, next_obs, done)
 
