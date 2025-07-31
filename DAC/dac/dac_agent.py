@@ -15,8 +15,6 @@ Key Components:
 - Prioritized Experience Replay (PER): optional buffer weighting based on TD error.
 - Update method: implements policy gradient and critic loss with soft target updates.
 
-Author: OLAMPI Terry
-Date: 2025-07-29
 """
 
 import torch
@@ -260,7 +258,42 @@ class PrioritizedGCReplayBuffer:
 
 
 class DeterministicGCAgent:     
-    def __init__(self, state_dim=0, action_dim=0, device="cpu", gamma=0.99, lr=3e-4, lr_end=1e-5, tau=0.005, use_writer=False):
+    
+    """
+    Main reinforcement learning agent implementing a deterministic actor-critic architecture
+    with soft target updates and optional prioritized experience replay.
+
+    This agent controls a robotic underwater vehicle by learning to map sequences of
+    recent observations to low-level motor commands using deep networks:
+    
+    - Actor: GRU-based deterministic policy network that outputs an 8-dimensional motor command.
+    - Critic: GRU-based or MLP-based Q-function approximator.
+    - Replay Buffer: Prioritized buffer for experience sampling and TD-error-driven replay.
+    
+    The agent uses:
+    - Policy gradient to improve the actor.
+    - Temporal-Difference learning (TD error) to update the critic.
+    - Polyak averaging (soft updates) to update target networks.
+    - Optional TensorBoard logging for training insights. (takes a lot of space on the pc)
+    """
+    
+    
+    def __init__(self, state_dim=0, action_dim=0, device="cpu", gamma=0.99, lr=3e-4, lr_end=1e-5, tau=0.005 , use_writer=False):
+        
+        """
+        Initializes the agent and its components.
+
+        Args:
+            state_dim (int): number of features per state (e.g., 12 for IMU readings).
+            action_dim (int): number of output action dimensions (e.g., 8 for motors).
+            device (str): "cpu" or "cuda".
+            gamma (float): discount factor for future rewards.
+            lr (float): initial learning rate.
+            lr_end (float): final learning rate (for decay).
+            tau (float): soft update coefficient for target networks.
+            use_writer (bool): if True, enables TensorBoard logging.
+        """
+        
         
         print(f"[Agent Init] state_dim={state_dim}, action_dim={action_dim}")
 
@@ -281,7 +314,7 @@ class DeterministicGCAgent:
         self.target_actor.load_state_dict(self.actor.state_dict())
         self.target_critic.load_state_dict(self.critic.state_dict())
 
-        self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=lr)
+        self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=lr, maximize=True)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=lr)
 
         if self.use_writer:
@@ -309,12 +342,26 @@ class DeterministicGCAgent:
 
 
 
-    def soft_update(self, source, target, tau):
+    def soft_update(self, source, target, tau): #!
+        """Performs a soft (Polyak) update from source to target network."""
         for param, target_param in zip(source.parameters(), target.parameters()):
             target_param.data.copy_(tau * param.data + (1.0 - tau) * target_param.data)
 
     
     def select_action(self, state, noise_std=0.01):
+        
+        """
+        Selects an action from the current policy for a given state.
+
+        Args:
+            state (np.ndarray): current state sequence (flattened or shaped).
+            noise_std (float): standard deviation of exploration noise.
+
+        Returns:
+            action (np.ndarray): clipped action vector in [-1, 1].
+        """
+        
+        
         # Convert state to tensor if it's not already
         if not torch.is_tensor(state):
             state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
@@ -337,6 +384,12 @@ class DeterministicGCAgent:
 
 
     def update(self, batch_size=128, beta=0.4, total_step = None):
+        """
+        Performs a single actor-critic update step using replayed experience.
+
+        Returns a dictionary of loss values and training stats.
+        """
+        
         if len(self.replay_buffer) < batch_size:
             return {
             "critic_loss": 0.0,
@@ -377,22 +430,25 @@ class DeterministicGCAgent:
 
         self.critic_opt.zero_grad()
         critic_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0)
+        # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0)
         self.critic_opt.step()
 
         pred_action = self.actor(s)
-        actor_loss = -self.critic(s, pred_action).mean()
+        actor_loss = self.critic(s, pred_action).mean()  #No - for the ascent because we put maximize = true in adam
 
         self.actor_opt.zero_grad()
         actor_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)
+        # torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)
         self.actor_opt.step()
 
         self.soft_update(self.critic, self.target_critic, self.tau)
         self.soft_update(self.actor, self.target_actor, self.tau)
 
         
-        #! virer soft update et utiliser adam opt a la place (les betas)
+        #! Adam uses exponential moving averages internally to adapt gradients 
+        #! for optimization, but it does not perform soft updates between two 
+        #! networks. In RL, soft_update() is essential to smoothly copy weights 
+        #! from the main network to the target network, which Adam cannot do.
         
         
         
@@ -455,6 +511,13 @@ class DeterministicGCAgent:
 
 
     def lr_step(self, total_step, lr_start=3e-4, lr_end=1e-6):
+        """
+        Decays learning rate linearly after warmup steps.
+
+        Helps stabilize late training.
+        """
+        
+        
         warmup_steps = 5000
         lr_start = lr_start
         lr_end = lr_end
@@ -476,6 +539,11 @@ class DeterministicGCAgent:
     
     @torch.no_grad()
     def sample_random_structured(self, batch_size=1):
+        """
+        Generates a random but physically plausible motor command pattern
+        to be used during exploration or initialization.
+        """
+        
         device = self.device
         B = batch_size
 

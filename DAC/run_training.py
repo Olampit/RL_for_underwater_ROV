@@ -22,18 +22,21 @@ from joystick_input import FakeJoystick
 
 
 def wait_for_heartbeat(conn, timeout=30):
+    """Block until a MAVLink heartbeat is received, indicating the ROV is ready."""
     print("[WAIT] Waiting for MAVLink heartbeat…")
     conn.wait_heartbeat(timeout=timeout)
     print(f"[INFO] Connected: system={conn.target_system}, component={conn.target_component}")
 
-def make_env(connection, latest_imu):
-    rov_env = ROVEnvironment(action_map=[], connection=connection, latest_imu=latest_imu)
+def make_env(connection):
+    """Create the Gym-style ROV environment with wrapping."""
+    rov_env = ROVEnvironment(action_map=[], connection=connection)
     return ROVEnvGymWrapper(rov_env)
 
 def safe_scalar(x):
-    import numpy as np
-    import torch
-
+    """
+    Convert tensors, arrays or scalars to a safe float.
+    Useful for logging with TensorBoard or UI, avoids shape/format issues.
+    """
     if isinstance(x, (np.ndarray, list, tuple)):
         if len(x) == 1:
             return float(x[0])
@@ -52,6 +55,11 @@ def safe_scalar(x):
         return float(x)
     
 def set_servo_function(servo_number, connection, value=0):
+    """
+    Set the function of a specific servo channel on the ROV.
+    This is often used to disable/enable motors during setup or reset.
+    """
+    
     param_name = f"SERVO{servo_number}_FUNCTION"
     param_name = param_name.encode("utf-8")
 
@@ -68,7 +76,8 @@ def set_servo_function(servo_number, connection, value=0):
 def train(
     episodes=500,
     max_steps=20,
-    batch_size=1024,
+    batch_size=128,
+    update_every = 50,
     start_steps=000000,
     gamma=0.99,
     learning_rate_start=5e-2,
@@ -79,58 +88,102 @@ def train(
     pause_flag=None,
     shutdown_flag=None
 ):
+    
+    """
+    Main training loop:
+    - Connects to the ROV over MAVLink
+    - Initializes agent and environment
+    - Runs episodes, collects experience
+    - Performs training updates on the actor-critic
+    """
+    
+    # Connect to ROV and wait for MAVLink readiness
     conn = mavutil.mavlink_connection(mavlink_endpoint)
     wait_for_heartbeat(conn)
     
+    
+    # Create joystick goal generator
     joystick = FakeJoystick()
     
     
-    latest_imu = {}
-    start_imu_listener(conn, latest_imu, joystick)
-    time.sleep(1)
+    # Start listener for IMU and sensor data collection
+    start_imu_listener(conn, joystick)
+    time.sleep(1) # Give sensor thread time to warm up
     
     
-    update_every = 100  #! update needs to be large (~1000 - 5000 maybe)
+    # Frequency of updates in environment steps (can be tuned in the function call)
+    update_every = update_every  #! update needs to be large (~1000 - 5000 maybe)
     
+    
+    # Set device if not specified
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu" 
 
-    env = make_env(conn, latest_imu)
     
-
-    env = make_env(conn, latest_imu)
+    # Initialize environment and get dimensions
+    env = make_env(conn)
     obs = env.reset(conn)
     state_dim = obs.shape[1] 
     action_dim = env.action_space.shape[0]
 
+
+    # Set shared/global dimensions
     state_dimension = state_dim
     sequence_dimension = env.history_length
     
+    # Instantiate the agent
     agent = DeterministicGCAgent(
         state_dim=state_dim,
         action_dim=action_dim,
         device=device,
         use_writer=False
     )
-
-
-  
     
-    episode_rewards = []
-    total_steps = 0
     
-    restart_countdown = 0000
+    episode_rewards = []    # Logs episode return for debugging
+    total_steps = 0         # Total env steps (global counter)
+    
+    
+    # --- Firmware restart configuration (blueos restart) ---
+    restart_countdown = 1000
     url = "http://localhost/ardupilot-manager/v1.0/restart"
 
-    for i in range(1, 9):
+
+    # enable motors initially to permit movement
+    for i in range(1, 5): # set only the first 4 motors currently
         set_servo_function(i, conn, 0)
         
+    
+    # Initialize placeholders for losses and logging
+    critic_loss = 0.0
+    actor_loss = 0.0
+    
+    update_info = {
+        "critic_loss": 0.0,
+        "actor_loss": 0.0,
+        "td_mean": 0.0, 
+        "td_max": 0.0,
+        "td_min": 0.0,
+        "actor_grad_norm": 0.0,
+        "critic_grad_norm": 0.0,
+        "actor_weight_norm": 0.0,
+        "critic_weight_norm": 0.0,
+        "learning_rate": 0.0
+    }
+    
+        
+    # ------------------- Training Loop -------------------
     try:
-        for ep in range(5, episodes + 6):
+        for ep in range(5, episodes + 6): # Start at episode 5 for safety
+            
+            
+            # Exit if shutdown triggered
             if shutdown_flag and shutdown_flag.is_set():
                 print("[STOP] Shutdown flag detected. Ending training...")
                 break
 
+
+            # Pause loop if pause flag is active
             if pause_flag and pause_flag.is_set():
                 print("[PAUSED] Waiting to resume...")
                 while pause_flag.is_set():
@@ -140,25 +193,31 @@ def train(
                     time.sleep(0.5)
 
     
-            
+            # restart firmware to avoid blueos crashes
             if restart_countdown == 0:
                 print("resetting firmware")
                 response = requests.post(url)
-                time.sleep(120)
-                for i in range(1, 5): #! ICI CHANGER SINON PAS DE MOTEURS EN Z
+                time.sleep(120) # Give blueos time to reboot
+                for i in range(1, 5): #! only 4 motors here too
                     set_servo_function(i, conn, 0)
                 restart_countdown = 1000
             else : 
                 restart_countdown -= 1 
             
             
+            # Periodically reset the environment
             if ep%5 == 0:
                 obs = env.reset(conn)
             ep_reward = 0.0
             total_step_time = 0
             
-            exploration_bool = total_steps < start_steps
+            
+            # === Epsilon-Greedy Exploration ===
+            exploration_bool = total_steps < start_steps # Use random actions before buffer fills
 
+
+            
+                
             for step in range(max_steps):
                 if shutdown_flag and shutdown_flag.is_set():
                     print("[STOP] Shutdown during episode.")
@@ -166,45 +225,73 @@ def train(
 
                 t0 = time.time()
                 
+                # Epsilon decay strategy
                 epsilon = max(0.01, 0.1 * np.exp(-total_steps / 500000))
+                
+                
                 if exploration_bool or np.random.rand() < epsilon:
-                    action = agent.sample_random_structured()
+                    action = agent.sample_random_structured() # semi-Random motor-wise command
                     
                 else:
-                    action = agent.select_action(obs)
+                    action = agent.select_action(obs) # Policy inference
 
+
+                # Step
                 next_obs, reward_components, done, _, current_state = env.step(action, exploration_bool)
 
                 reward = reward_components["total"]
+                
 
-
+                # Convert observations and action to appropriate format
                 obs = np.asarray(obs, dtype=np.float32).reshape(sequence_dimension, state_dimension)
                 next_obs = np.asarray(next_obs, dtype=np.float32).reshape(sequence_dimension, state_dimension)
                 action = np.asarray(action, dtype=np.float32).flatten()
+                
+                
+                # Store transition in replay buffer
                 agent.replay_buffer.push(obs, action, reward, next_obs, done)
 
+
+                # Update episode state
                 obs = next_obs
                 ep_reward += reward
                 total_steps += 1
+                
+                
+                 # Update joystick target if success is reached
                 joystick.update_success_tracking(reward_components)
 
 
+
+                # === Perform periodic training update ===
                 if total_steps % update_every == 0 : 
                     update_info = agent.update(batch_size=batch_size, total_step=total_steps) #! however many updates needed (check if we update more than once every time we need to update)
+                    
+                    
+                    # Extract losses for logging
                     critic_loss = update_info.get("critic_loss", 0.0)
                     actor_loss = update_info.get("actor_loss", 0.0)
 
+
+                # === Learning rate decay over time ===
                 agent.lr_step(total_steps, lr_start=learning_rate_start, lr_end=learning_rate_end)
                 
+                
+                # Measure time taken for this step (for diagnostics)
                 total_step_time += time.time() - t0
                 
 
-
+            # === End of episode ===
             episode_rewards.append(ep_reward)
+            
+            
+            # Immediately stop all motors to prevent drift or accidents
             env.rov.stop_motors(conn)
 
             
+            # === report metrics to GUI ===
             if progress_callback:
+                # Recompute state and Q-value for latest transition
                 obs = env._state_to_obs()
                 obs = np.asarray(obs).astype(np.float32).flatten()
                 action = np.asarray(action).astype(np.float32).flatten()
@@ -216,7 +303,7 @@ def train(
                 
                 c_goal = joystick.get_target()
 
-                
+                # === Metrics Dictionary ===
                 metrics = {
                     "reward_total": safe_scalar(reward_components.get("total", 0.0)),
 
@@ -274,19 +361,22 @@ def train(
                 }
 
 
-
-
-
-
+                # Push all metrics to UI
                 progress_callback(ep, episodes, float(ep_reward), metrics)
-                
+        
+        
+        # === End of training: Save models ===
         torch.save(agent.actor.state_dict(), "policy_actor.pth")
         torch.save(agent.critic.state_dict(), "policy_critic.pth")
 
+
+    # --- Error handling ---
     except Exception as e:
         print(f"[ERROR] Exception in training: {e}")
         traceback.print_exc()
 
+
+    # === Cleanup (always run) ===
     finally:
         print("[CLEANUP] Stopping imu listener threads...")
         stop_event.set()
@@ -308,8 +398,12 @@ def train(
     
     
 
-
+# === Wrapper for UI (Tkinter) ===
 def run_training(self, agent_type, config):
+    """
+    Wrapper to launch training based on selected agent type.
+    Catches and reports any error to GUI and log.
+    """
     try:
         if agent_type == "sac":
             train(**config)

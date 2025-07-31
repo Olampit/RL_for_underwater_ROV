@@ -67,7 +67,7 @@ def synchronized_logging_loop():
         time.sleep(1 / 400.0)  # match logging frequency
 
 
-def start_imu_listener(connection, latest_imu, joystick):
+def start_imu_listener(connection, joystick):
     """
     Starts MAVLink and ROS 2 listeners and launches synchronized logger.
     """
