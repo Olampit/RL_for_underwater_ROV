@@ -76,9 +76,9 @@ def set_servo_function(servo_number, connection, value=0):
 def train(
     episodes=500,
     max_steps=20,
-    batch_size=108,
-    update_every = 5,
-    start_steps=000000,  #exploration
+    batch_size=32,
+    update_every = 30,
+    start_steps=2_000,  #exploration
     gamma=0.99,
     learning_rate_start=5e-2,
     learning_rate_end=1e-4,
@@ -120,7 +120,7 @@ def train(
         device = "cuda" if torch.cuda.is_available() else "cpu" 
 
     
-    # Initialize environment and get dimensions
+    # Initialize environment and get dimensionsq
     env = make_env(conn)
     obs = env.reset(conn)
     state_dim = obs.shape[1] 
@@ -150,7 +150,7 @@ def train(
 
 
     # enable motors initially to permit movement
-    for i in range(1, 5): # set only the first 4 motors currently
+    for i in range(1, 9): # set only the first 8 motors currently
         set_servo_function(i, conn, 0)
         
     
@@ -198,7 +198,7 @@ def train(
                 print("resetting firmware")
                 response = requests.post(url)
                 time.sleep(120) # Give blueos time to reboot
-                for i in range(1, 5): #! only 4 motors here too
+                for i in range(1, 9): #! only 8 motors here too
                     set_servo_function(i, conn, 0)
                 restart_countdown = 1000
             else : 
@@ -229,7 +229,7 @@ def train(
                 epsilon = max(0.01, 0.1 * np.exp(-total_steps / 500000))
                 
                 
-                if exploration_bool or np.random.rand() < epsilon:
+                if exploration_bool or np.random.rand() < (epsilon - 42): # -42 so that it is never the case (disabled random exploration)
                     action = agent.sample_random_structured() # semi-Random motor-wise command
                     
                 else:
@@ -266,7 +266,7 @@ def train(
 
 
                 # === Perform periodic training update ===
-                if total_steps % update_every == 0 : 
+                if total_steps % update_every == 0 and not exploration_bool: 
                     update_info = agent.update(batch_size=batch_size, total_step=total_steps) #! however many updates needed (check if we update more than once every time we need to update)
                     
                     

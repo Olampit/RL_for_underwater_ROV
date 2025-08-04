@@ -325,7 +325,7 @@ class DeterministicGCAgent:
         # Dont touch actor too much ?
         
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=lr, maximize=True)
-        self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=lr)
+        self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=lr, betas=(0.5, 0.99))
 
         if self.use_writer:
             self.log_dir = os.path.join("runs", "dac_agent", datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))

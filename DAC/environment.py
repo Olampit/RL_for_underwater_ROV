@@ -18,6 +18,14 @@ SERVO_MIN = 1100     # Minimum PWM signal sent to ESC (full reverse)
 SERVO_MAX = 1900     # Maximum PWM signal (full forward)
 SERVO_IDLE = 1500    # Neutral signal 
 
+
+
+
+
+RADIAN_SCALING = 57.2958  # Matches np.deg2rad(1), used here purely for scaling effect
+
+
+
 # --------------------------
 # Function: input_to_pwm
 # Converts a normalized float [-1.0, 1.0] to PWM signal
@@ -192,7 +200,7 @@ class ROVEnvironment:
                 1500,
                 0, 0, 0, 0, 0
             )
-
+            
 
     # --------------------------
     # Function: compute_reward
@@ -200,7 +208,7 @@ class ROVEnvironment:
     # --------------------------
     def compute_reward(self):
         
-         # ------------- Constants for Reward Weighting and Limits -------------
+            # ------------- Constants for Reward Weighting and Limits -------------
         CLIP = 100.0               # Max absolute reward value
         MAX_AGE = 0.1              # Time window (in seconds) to sample observations
         SCALE_VEL = 1.0            # Normalization factor for velocity error

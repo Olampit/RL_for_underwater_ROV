@@ -34,11 +34,12 @@ class FakeJoystick:
         self.goal = self._generate_goal()
 
         # Success tracking for both velocity and orientation goals
+        self.changes_counter_v = 0
         self.success_counter_v = 0
         self.success_counter_r = 0
         self.success_threshold = 1000 # Unused now, kept for backward compatibility
-        self.error_threshold_v = 0.05 # Tolerance for velocity error
-        self.error_threshold_r = 0.0 # Tolerance for orientation error #! retablish higher when using orientation goals or wont work 
+        self.error_threshold_v = 0.03 # Tolerance for velocity error #! was 0.05, but too many where accepted
+        self.error_threshold_r = 0.01 # Tolerance for orientation error #! retablish higher when using orientation goals or wont work 
 
     def _generate_velocity_schedule(self):
         """
@@ -145,47 +146,63 @@ class FakeJoystick:
     def update_success_tracking(self, reward_components):
         """
         Monitors how well the ROV is matching its current goal. If it's been successful
-        on active axes for 20 consecutive steps, the goal is switched.
+        on all active axes for 20 consecutive steps, the goal is switched.
 
         Args:
             reward_components (dict): Output from the reward function, including *_error values.
         """
-        
         if self.evaluation_mode:
-            return # Do not update goal in evaluation mode
+            return  # Do not update goal in evaluation mode
 
-
-        # --- ACTIVE AXES ONLY ---
-        # Axes we care about
+        # Define axes of interest (always checked)
         active_v_axes = ["vx", "vy"]
         active_r_axes = ["yaw", "pitch", "roll"]
 
-        # Velocity success tracking
+        # --- Velocity success ---
+        v_errors = []
         for axis in active_v_axes:
-            if abs(self.goal[axis]["mean"]) < 1e-4:
-                continue
-            error = abs(reward_components.get(f"{axis}_error", 1.0))
-            if error < self.error_threshold_v:
-                self.success_counter_v += 1
-            else:
-                self.success_counter_v = 0  # must be consecutive!
+            err = reward_components.get(f"{axis}_error", None)
+            if err is None:
+                v_success = False
+                break
+            v_errors.append(abs(err))
+        else:
+            v_success = all(e < self.error_threshold_v for e in v_errors)
 
-        # Orientation success tracking
+        # --- Orientation success ---
+        r_errors = []
         for axis in active_r_axes:
-            if abs(self.goal[axis]["mean"]) < 1e-4:
-                continue
-            error = abs(reward_components.get(f"{axis}_error", 1.0))
-            if error < self.error_threshold_r:
-                self.success_counter_r += 1
-            else:
-                self.success_counter_r = 0
+            err = reward_components.get(f"{axis}_error", None)
+            if err is None:
+                r_success = False
+                break
+            r_errors.append(abs(err))
+        else:
+            r_success = all(e < self.error_threshold_r for e in r_errors)
 
-        # --- Switch when 20 consecutive successes observed ---
-        if self.success_counter_v >= 20:
+        # --- Update counters ---
+        if v_success:
+            self.success_counter_v += 1
+        else:
+            self.success_counter_v = 0
+
+        if r_success:
+            self.success_counter_r += 1
+        else:
+            self.success_counter_r = 0
+
+        # --- Log if needed ---
+        if v_success and self.success_counter_v>100:
+            print(f"[TRACKING] Velocity step successful ({self.success_counter_v}/250). This is the {self.changes_counter_v}-th change")
+        # if r_success:
+        #     print(f"[TRACKING] Orientation step successful ({self.success_counter_r}/500)")
+
+        # --- Trigger goal change ---
+        if self.success_counter_v >= 250: #since we add 1 thrice every time for some reason, might as well multiply requirements by 3
             self.success_counter_v = 0
             self._switch_velocity_goal()
+            self.changes_counter_v += 1 
 
-        if self.success_counter_r >= 20:
+        if self.success_counter_r >= 250:
             self.success_counter_r = 0
             self._switch_orientation_goal()
-
