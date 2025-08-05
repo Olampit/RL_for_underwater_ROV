@@ -43,33 +43,32 @@ class FakeJoystick:
 
     def _generate_velocity_schedule(self):
         """
-        Randomly generates a list of velocity targets (vx, vy, vz) for each phase.
-        Only one axis is activated per goal for training simplicity.
+        Generates a more varied and exploration-like schedule of velocity goals.
+        Multiple axes can be active with realistic random speeds.
         """
-        
         schedule = []
 
         for _ in range(self.total_phases):
-            # Always include vz as 0.0
-            goal = {"vx": 0.0, "vy": 0.0, "vz": 0.0}
-            
-            # Only randomly activate vx or vy
-            active = random.sample(["vx", "vy"], k=1)  # set k=2 if you want combos
-            for axis in active:
-                goal[axis] = random.choice([0.1, 0.2, 0.3, 0.4, 0.5]) * random.choice([1, -1])
-            
+            goal = {
+                "vx": np.random.choice([0.0, np.random.uniform(-0.5, 0.5)]),
+                "vy": np.random.choice([0.0, np.random.uniform(-0.5, 0.5)]),
+                "vz": np.random.choice([0.0, np.random.uniform(-0.3, 0.3)])  # less powerful z maybe
+            }
+
+            # Optional: Avoid all-zero goal
+            if goal["vx"] == 0.0 and goal["vy"] == 0.0 and goal["vz"] == 0.0:
+                axis = random.choice(["vx", "vy", "vz"])
+                goal[axis] = np.random.uniform(-0.5, 0.5)
+
             schedule.append(goal)
 
-        schedule.append({"vx": 0.0, "vy": 0.0, "vz": 0.0}) # Final stop goal    
+        # Final "stop" goal
+        schedule.append({"vx": 0.0, "vy": 0.0, "vz": 0.0})
         return schedule
 
 
+
     def _generate_orientation_schedule(self):
-        """
-        Randomly generates a list of orientation goals (roll, pitch, yaw) for each phase.
-        Only activates after `transition_phase` has been reached.
-        """
-        
         directions = ["roll", "pitch", "yaw"]
         schedule = []
 
@@ -78,11 +77,12 @@ class FakeJoystick:
             if i >= self.transition_phase:
                 active = random.sample(directions, k=1)
                 for axis in active:
-                    goal[axis] = random.uniform(-np.pi / 2, np.pi / 2)
+                    goal[axis] = random.uniform(-np.pi / 6, np.pi / 6)  # ~±30°
             schedule.append(goal)
 
-        schedule.append({d: 0.0 for d in directions}) # Final neutral orientation
+        schedule.append({d: 0.0 for d in directions})
         return schedule
+
 
 
 
@@ -143,6 +143,37 @@ class FakeJoystick:
         self.goal = self._generate_goal()
         print(f"[GOAL] Orientation updated: {self.orientation_schedule[self.orientation_index]}")
 
+
+    def switch_goal_randomly(self):
+        """
+        Updates the goal with small deltas to simulate realistic joystick movement.
+        Prevents abrupt changes like full-forward to full-backward instantly.
+        Handles both float and dict-based goal formats.
+        """
+        MAX_DELTA_LINEAR = 0.2
+        MAX_DELTA_ANGULAR = np.pi / 30
+
+        if self.goal is None:
+            self.goal = {
+                "vx": 0.0, "vy": 0.0, "vz": 0.0,
+                "yaw": 0.0, "pitch": 0.0, "roll": 0.0
+            }
+
+        def get_mean(val):
+            if isinstance(val, dict):
+                return val.get("mean", 0.0)
+            return val
+
+        self.goal = {
+            "vx": np.clip(get_mean(self.goal.get("vx", 0.0)) + np.random.uniform(-MAX_DELTA_LINEAR, MAX_DELTA_LINEAR), -0.5, 0.5),
+            "vy": np.clip(get_mean(self.goal.get("vy", 0.0)) + np.random.uniform(-MAX_DELTA_LINEAR, MAX_DELTA_LINEAR), -0.5, 0.5),
+            "vz": np.clip(get_mean(self.goal.get("vz", 0.0)) + np.random.uniform(-MAX_DELTA_LINEAR, MAX_DELTA_LINEAR), -0.5, 0.5),
+            "yaw": np.clip(get_mean(self.goal.get("yaw", 0.0)) + np.random.uniform(-MAX_DELTA_ANGULAR, MAX_DELTA_ANGULAR), -np.pi, np.pi),
+            "pitch": np.clip(get_mean(self.goal.get("pitch", 0.0)) + np.random.uniform(-MAX_DELTA_ANGULAR, MAX_DELTA_ANGULAR), -np.pi/6, np.pi/6),
+            "roll": np.clip(get_mean(self.goal.get("roll", 0.0)) + np.random.uniform(-MAX_DELTA_ANGULAR, MAX_DELTA_ANGULAR), -np.pi/6, np.pi/6)
+        }
+
+        
     def update_success_tracking(self, reward_components):
         """
         Monitors how well the ROV is matching its current goal. If it's been successful
@@ -193,16 +224,16 @@ class FakeJoystick:
 
         # --- Log if needed ---
         if v_success and self.success_counter_v>100:
-            print(f"[TRACKING] Velocity step successful ({self.success_counter_v}/250). This is the {self.changes_counter_v}-th change")
+            print(f"[TRACKING] Velocity step successful ({self.success_counter_v}/200). This is the {self.changes_counter_v}-th change")
         # if r_success:
         #     print(f"[TRACKING] Orientation step successful ({self.success_counter_r}/500)")
 
         # --- Trigger goal change ---
-        if self.success_counter_v >= 250: #since we add 1 thrice every time for some reason, might as well multiply requirements by 3
+        if self.success_counter_v >= 200: #since we add 1 thrice every time for some reason, might as well multiply requirements by 3
             self.success_counter_v = 0
             self._switch_velocity_goal()
             self.changes_counter_v += 1 
 
-        if self.success_counter_r >= 250:
+        if self.success_counter_r >= 200:
             self.success_counter_r = 0
             self._switch_orientation_goal()

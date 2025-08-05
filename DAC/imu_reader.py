@@ -40,18 +40,24 @@ def log_synchronized_frame(att_data, vel_data, raw_data, joystick):
     velocity_buffer.add(t, vel_data)
     raw_buffer.add(t, raw_data)
 
-    
+    # Safe unwrap
+    def get_mean(val):
+        if isinstance(val, dict):
+            return val.get("mean", 0.0)
+        return val  # already a float
+
     # Log goal
     goal = joystick.get_target()
     goal_data = {
-        "vx": goal["vx"]["mean"],
-        "vy": goal["vy"]["mean"],
-        "vz": goal["vz"]["mean"],
-        "yaw": goal["yaw"]["mean"],
-        "pitch": goal["pitch"]["mean"],
-        "roll": goal["roll"]["mean"],
+        "vx": get_mean(goal.get("vx")),
+        "vy": get_mean(goal.get("vy")),
+        "vz": get_mean(goal.get("vz")),
+        "yaw": get_mean(goal.get("yaw")),
+        "pitch": get_mean(goal.get("pitch")),
+        "roll": get_mean(goal.get("roll")),
     }
     goal_buffer.add(t, goal_data)
+    
 
 
 def synchronized_logging_loop():

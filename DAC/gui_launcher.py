@@ -111,9 +111,9 @@ class RLGui:
         ttk.Label(root, text="Agent Type:").grid(row=0, column=0, sticky="w")
         ttk.Combobox(root, textvariable=self.agent_type, values=["sac"]).grid(row=0, column=1)
 
-        self.episodes_var = tk.IntVar(value=1_200_000)
+        self.episodes_var = tk.IntVar(value=500_000)
         self.max_steps_var = tk.IntVar(value=50)
-        self.lr_var = tk.DoubleVar(value=3e-4)
+        self.lr_var = tk.DoubleVar(value=3e-3)
         self.lr_var_end = tk.DoubleVar(value=1e-4)
 
         ttk.Label(root, text="Episodes:").grid(row=1, column=0, sticky="w")
@@ -307,29 +307,29 @@ class RLGui:
                 self.lr_data.pop(0)
                     
                     
-            self.ax2.cla()
-            self.ax2.set_title("Velocity Tracking")
-            self.ax2.plot(self.vx_data, label="vx", color="red")
-            self.ax2.plot(self.goal_vx_data, label="goal_vx", linestyle="dashed", color="red")
-            self.ax2.plot(self.vy_data, label="vy", color="orange")
-            self.ax2.plot(self.goal_vy_data, label="goal_vy", linestyle="dashed", color="orange")
-            self.ax2.plot(self.vz_data, label="vz", color="blue")
-            self.ax2.plot(self.goal_vz_data, label="goal_vz", linestyle="dashed", color="blue")
-            self.ax2.legend(loc='upper left')
-            self.canvas2.draw()
+            self.ax6.cla()
+            self.ax6.set_title("Velocity Tracking")
+            self.ax6.plot(self.vx_data, label="vx", color="red")
+            self.ax6.plot(self.goal_vx_data, label="goal_vx", linestyle="dashed", color="red")
+            self.ax6.plot(self.vy_data, label="vy", color="orange")
+            self.ax6.plot(self.goal_vy_data, label="goal_vy", linestyle="dashed", color="orange")
+            self.ax6.plot(self.vz_data, label="vz", color="blue")
+            self.ax6.plot(self.goal_vz_data, label="goal_vz", linestyle="dashed", color="blue")
+            self.ax6.legend(loc='upper left')
+            self.canvas5.draw()
 
             
 
-            self.ax3.cla()
-            self.ax3.set_title("Orientation Tracking")
-            self.ax3.plot(self.yaw_data, label="yaw", color="green")
-            self.ax3.plot(self.goal_yaw_data, label="goal_yaw", linestyle="dashed", color="green")
-            self.ax3.plot(self.pitch_data, label="pitch", color="grey")
-            self.ax3.plot(self.goal_pitch_data, label="goal_pitch", linestyle="dashed", color="grey")
-            self.ax3.plot(self.roll_data, label="roll", color="purple")
-            self.ax3.plot(self.goal_roll_data, label="goal_roll", linestyle="dashed", color="purple")
-            self.ax3.legend(loc='upper left')
-            self.canvas3.draw()
+            self.ax11.cla()
+            self.ax11.set_title("Orientation Tracking")
+            self.ax11.plot(self.yaw_data, label="yaw", color="green")
+            self.ax11.plot(self.goal_yaw_data, label="goal_yaw", linestyle="dashed", color="green")
+            self.ax11.plot(self.pitch_data, label="pitch", color="grey")
+            self.ax11.plot(self.goal_pitch_data, label="goal_pitch", linestyle="dashed", color="grey")
+            self.ax11.plot(self.roll_data, label="roll", color="purple")
+            self.ax11.plot(self.goal_roll_data, label="goal_roll", linestyle="dashed", color="purple")
+            self.ax11.legend(loc='upper left')
+            self.canvas8.draw()
 
 
             
@@ -349,14 +349,14 @@ class RLGui:
 
             
 
-            self.ax6.cla()
-            self.ax6.set_title("Training Diagnostics")
-            self.ax6.set_ylabel("Value")
-            self.ax6.set_xlabel("Episode")
-            self.ax6.plot(self.critic_loss_data, label="Critic Loss", color="red")
-            self.ax6.plot(self.actor_loss_data, label="Actor Loss", color="blue")
-            self.ax6.legend(loc = 'upper left')
-            self.canvas5.draw()
+            self.ax2.cla()
+            self.ax2.set_title("Training Diagnostics")
+            self.ax2.set_ylabel("Value")
+            self.ax2.set_xlabel("Episode")
+            self.ax2.plot(self.critic_loss_data, label="Critic Loss", color="red")
+            self.ax2.plot(self.actor_loss_data, label="Actor Loss", color="blue")
+            self.ax2.legend(loc = 'upper left')
+            self.canvas2.draw()
             
             
             
@@ -395,15 +395,15 @@ class RLGui:
 
             self.canvas7.draw()
             
-            self.ax11.cla()
-            self.ax11.set_title("Reward Breakdown")
-            self.ax11.set_ylabel("Value")
-            self.ax11.set_xlabel("Episode")
-            self.ax11.plot(self.reward_total_data, label="Total Reward", color="green")
-            self.ax11.plot(self.direction_bonus_data, label="direction", color="teal")
-            self.ax11.axhline(y=0.0, color="gray", linestyle="dashed", linewidth=0.8)
-            self.ax11.legend(loc = 'upper left')
-            self.canvas8.draw()
+            self.ax3.cla()
+            self.ax3.set_title("Reward Breakdown")
+            self.ax3.set_ylabel("Value")
+            self.ax3.set_xlabel("Episode")
+            self.ax3.plot(self.reward_total_data, label="Total Reward", color="green")
+            self.ax3.plot(self.direction_bonus_data, label="direction", color="teal")
+            self.ax3.axhline(y=0.0, color="gray", linestyle="dashed", linewidth=0.8)
+            self.ax3.legend(loc = 'upper left')
+            self.canvas2.draw()
             
             self.ax12.cla()
             self.ax12.set_title("Tracking scores")

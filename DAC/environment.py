@@ -159,7 +159,7 @@ class ROVEnvironment:
     def reset(self):
         time_before_reset = time.time()
 
-        px, py, pz = 0, 5000,30  # Fixed position in simulation world
+        px, py, pz = 0, 5000,50  # Fixed position in simulation world
 
         odom_seq = velocity_buffer.get_last_n(1)
         if odom_seq:
@@ -242,11 +242,12 @@ class ROVEnvironment:
             return alignment_score + spin_penalty
 
 
-        def compute_std(values, key, deg_to_rad=False):
+        def compute_std(values, key, apply_scaling=False):
             data = [v.get(key, 0.0) for v in values]
-            if deg_to_rad:
-                data = [np.deg2rad(d) for d in data]
+            if apply_scaling:
+                data = [d / RADIAN_SCALING for d in data]
             return np.std(data) if data else 0.0
+
 
 
 
@@ -269,13 +270,14 @@ class ROVEnvironment:
         vy = vel_values[-1].get("vy", 0.0)
         vz = vel_values[-1].get("vz", 0.0)
 
-        yaw = np.deg2rad(att_values[-1].get("yaw", 0.0))
-        pitch = np.deg2rad(att_values[-1].get("pitch", 0.0))
-        roll = np.deg2rad(att_values[-1].get("roll", 0.0))
+        yaw = att_values[-1].get("yaw", 0.0) / RADIAN_SCALING
+        pitch = att_values[-1].get("pitch", 0.0) / RADIAN_SCALING
+        roll = att_values[-1].get("roll", 0.0) / RADIAN_SCALING
 
-        goal_yaw = np.deg2rad(goal_values[-1].get("yaw", 0.0))
-        goal_pitch = np.deg2rad(goal_values[-1].get("pitch", 0.0))
-        goal_roll = np.deg2rad(goal_values[-1].get("roll", 0.0))
+        goal_yaw = goal_values[-1].get("yaw", 0.0) / RADIAN_SCALING
+        goal_pitch = goal_values[-1].get("pitch", 0.0) / RADIAN_SCALING
+        goal_roll = goal_values[-1].get("roll", 0.0) / RADIAN_SCALING
+
 
         goal_vx = goal_values[-1].get("vx", 0.0)
         goal_vy = goal_values[-1].get("vy", 0.0)
@@ -283,18 +285,19 @@ class ROVEnvironment:
         
 
         # ------------- Angular Speeds for Spin Penalty -------------        
-        mean_yawspeed = sum(np.deg2rad(abs(a.get("yawspeed", 0.0))) for a in att_values)
-        mean_pitchspeed = sum(np.deg2rad(abs(a.get("pitchspeed", 0.0))) for a in att_values)
-        mean_rollspeed = sum(np.deg2rad(abs(a.get("rollspeed", 0.0))) for a in att_values)
+        mean_yawspeed = sum(abs(a.get("yawspeed", 0.0)) / RADIAN_SCALING for a in att_values)
+        mean_pitchspeed = sum(abs(a.get("pitchspeed", 0.0)) / RADIAN_SCALING for a in att_values)
+        mean_rollspeed = sum(abs(a.get("rollspeed", 0.0)) / RADIAN_SCALING for a in att_values)
 
 
         # ------------- Stability Penalty (Standard Deviations) -------------
         vx_std = compute_std(vel_values, "vx")
         vy_std = compute_std(vel_values, "vy")
         vz_std = compute_std(vel_values, "vz")
-        yaw_std = compute_std(att_values, "yaw", deg_to_rad=True)
-        pitch_std = compute_std(att_values, "pitch", deg_to_rad=True)
-        roll_std = compute_std(att_values, "roll", deg_to_rad=True)
+        yaw_std = compute_std(att_values, "yaw", apply_scaling=True)
+        pitch_std = compute_std(att_values, "pitch", apply_scaling=True)
+        roll_std = compute_std(att_values, "roll", apply_scaling=True)
+
 
         std_penalty = -STD_WEIGHT * (
             vx_std + vy_std + vz_std +
@@ -359,35 +362,41 @@ class ROVEnvironment:
             "pitch_score": pitch_score,
             "roll_score": roll_score,
             "std_penalty": std_penalty,
-            "direction_bonus":direction_bonus,
-            "yaw_spin": mean_yawspeed,
-            "pitch_spin": mean_pitchspeed,
-            "roll_spin": mean_rollspeed,
+            "direction_bonus": direction_bonus,
+
+            "yaw_spin": mean_yawspeed * RADIAN_SCALING,
+            "pitch_spin": mean_pitchspeed * RADIAN_SCALING,
+            "roll_spin": mean_rollspeed * RADIAN_SCALING,
+
             "vx_std": vx_std,
             "vy_std": vy_std,
             "vz_std": vz_std,
-            "yaw_std": yaw_std,
-            "pitch_std": pitch_std,
-            "roll_std": roll_std,
+            "yaw_std": yaw_std * RADIAN_SCALING,
+            "pitch_std": pitch_std * RADIAN_SCALING,
+            "roll_std": roll_std * RADIAN_SCALING,
+
             "goal_vx": goal_vx,
             "goal_vy": goal_vy,
             "goal_vz": goal_vz,
-            "goal_yaw": goal_yaw,
-            "goal_pitch": goal_pitch,
-            "goal_roll": goal_roll,
+            "goal_yaw": goal_yaw * RADIAN_SCALING,
+            "goal_pitch": goal_pitch * RADIAN_SCALING,
+            "goal_roll": goal_roll * RADIAN_SCALING,
+
             "vx": vx,
             "vy": vy,
             "vz": vz,
-            "yaw": yaw,
-            "pitch": pitch,
-            "roll": roll,
+            "yaw": yaw * RADIAN_SCALING,
+            "pitch": pitch * RADIAN_SCALING,
+            "roll": roll * RADIAN_SCALING,
+
             "vx_error": vx - goal_vx,
             "vy_error": vy - goal_vy,
             "vz_error": vz - goal_vz,
-            "yaw_error": wrap(yaw - goal_yaw),
-            "pitch_error": wrap(pitch - goal_pitch),
-            "roll_error": wrap(roll - goal_roll),
+            "yaw_error": wrap(yaw - goal_yaw) * RADIAN_SCALING,
+            "pitch_error": wrap(pitch - goal_pitch) * RADIAN_SCALING,
+            "roll_error": wrap(roll - goal_roll) * RADIAN_SCALING,
         }
+
 
 
     def is_terminal(self):

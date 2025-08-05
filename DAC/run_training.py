@@ -20,6 +20,9 @@ import requests
 
 from joystick_input import FakeJoystick
 
+import os
+
+
 
 def wait_for_heartbeat(conn, timeout=30):
     """Block until a MAVLink heartbeat is received, indicating the ROV is ready."""
@@ -78,7 +81,7 @@ def train(
     max_steps=20,
     batch_size=32,
     update_every = 30,
-    start_steps=2_000,  #exploration
+    start_steps=10_000,  #exploration
     gamma=0.99,
     learning_rate_start=5e-2,
     learning_rate_end=1e-4,
@@ -96,6 +99,21 @@ def train(
     - Runs episodes, collects experience
     - Performs training updates on the actor-critic
     """
+    
+    
+    os.makedirs("checkpoints", exist_ok=True)
+    
+    exploration_steps = start_steps * max_steps                   # Phase 1: e.g., 2000 steps
+    actor_learning_steps = 200_000  * max_steps                    # Phase 2: after exploration, before noisy validation
+
+    def get_training_phase(step):
+        if step < exploration_steps:
+            return "exploration"
+        elif step < actor_learning_steps:
+            return "actor_learning"
+        else:
+            return "noisy_learning"
+
     
     # Connect to ROV and wait for MAVLink readiness
     conn = mavutil.mavlink_connection(mavlink_endpoint)
@@ -141,7 +159,7 @@ def train(
     
     
     episode_rewards = []    # Logs episode return for debugging
-    total_steps = 0         # Total env steps (global counter)
+    total_steps = 1         # Total env steps (global counter)
     
     
     # --- Firmware restart configuration (blueos restart) ---
@@ -177,6 +195,12 @@ def train(
         for ep in range(5, episodes + 6): # Start at episode 5 for safety
             
             
+            if ep % 10_000 == 0:  # Save every 10_000 episodes
+                torch.save(agent.actor.state_dict(), f"checkpoints/actor_ep{ep}.pth")
+                torch.save(agent.critic.state_dict(), f"checkpoints/critic_ep{ep}.pth")
+            
+            phase = get_training_phase(total_steps)
+            
             # Exit if shutdown triggered
             if shutdown_flag and shutdown_flag.is_set():
                 print("[STOP] Shutdown flag detected. Ending training...")
@@ -208,6 +232,20 @@ def train(
             # Periodically reset the environment
             if ep%5 == 0:
                 obs = env.reset(conn)
+                
+                
+                
+            # Update joystick target 
+            if phase in ["exploration"]:
+                joystick.switch_goal_randomly()
+                
+            if phase in ["actor_learning"] and ep%update_every == 0 :
+                joystick.switch_goal_randomly()
+                
+            
+
+
+
             ep_reward = 0.0
             total_step_time = 0
             
@@ -225,15 +263,14 @@ def train(
 
                 t0 = time.time()
                 
-                # Epsilon decay strategy
-                epsilon = max(0.01, 0.1 * np.exp(-total_steps / 500000))
                 
-                
-                if exploration_bool or np.random.rand() < (epsilon - 42): # -42 so that it is never the case (disabled random exploration)
-                    action = agent.sample_random_structured() # semi-Random motor-wise command
-                    
-                else:
-                    action = agent.select_action(obs) # Policy inference
+                if phase == "exploration":
+                    action = agent.sample_random_structured()  # Random action
+                elif phase == "actor_learning":
+                    action = agent.select_action(obs)          # Deterministic actor (no noise)
+                else:  # "noisy_learning"
+                    action = agent.select_action(obs, noise_std=0.05)  # Add noise for robustness
+
 
 
                 # Step
@@ -258,19 +295,15 @@ def train(
                 obs = next_obs
                 ep_reward += reward
                 total_steps += 1
-                
-                
-                 # Update joystick target if success is reached
-                joystick.update_success_tracking(reward_components)
-
-
-
+            
+            
                 # === Perform periodic training update ===
-                if total_steps % update_every == 0 and not exploration_bool: 
-                    update_info = agent.update(batch_size=batch_size, total_step=total_steps) #! however many updates needed (check if we update more than once every time we need to update)
-                    
-                    
-                    # Extract losses for logging
+                if total_steps % update_every == 0:
+                    if phase == "exploration":
+                        update_info = agent.update_critic_only(batch_size=batch_size)
+                    else:
+                        update_info = agent.update(batch_size=batch_size, total_step=total_steps)
+
                     critic_loss = update_info.get("critic_loss", 0.0)
                     actor_loss = update_info.get("actor_loss", 0.0)
 
@@ -285,6 +318,11 @@ def train(
 
             # === End of episode ===
             episode_rewards.append(ep_reward)
+            
+            
+            #update goal from third part here so we can have the reward_components 
+            if phase in ["noisy_learning"]:
+                joystick.update_success_tracking()
             
             
             # Immediately stop all motors to prevent drift or accidents
@@ -417,3 +455,6 @@ def run_training(self, agent_type, config):
         messagebox.showerror("Training Error", f"An error occurred:\n\n{str(e)}\n\nCheck log for full traceback.")
     finally:
         self.notify_training_finished()
+
+
+

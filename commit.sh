@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "test adam 1, no evaluation on z axis, no random action"
+git commit --author="Olampit <olampit@gmail.com>" -m "with correct weights, sizes, parameters, should work and be definitive version 1"
 git push -u origin main
 
 # Increment and save back

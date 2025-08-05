@@ -61,14 +61,14 @@ class MLPCritic(nn.Module):
     Expects a combined input of state and action (per timestep).
     Only the last timestep of the input sequence is used.
     """
-    def __init__(self, input_dim, action_dim, output_dim=1, hidden_dim=256):
+    def __init__(self, input_dim, action_dim, output_dim=2, hidden_dim=32):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),  # input: (state + action)
+            nn.Linear(input_dim, 64),  # input: (state + action)
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
+            nn.Linear(64, 32),
             nn.ReLU(),
-            nn.Linear(hidden_dim, output_dim)  # output: scalar Q-value
+            nn.Linear(32, output_dim)  # output: scalar Q-value
         )
 
     def forward(self, x):
@@ -89,7 +89,7 @@ class GRUNetwork(nn.Module):
     Outputs a latent feature vector for the full input sequence.
     Used in actor or critic (but best in actor).
     """
-    def __init__(self, input_dim, output_dim, hidden_dim=64, num_layers=2, batch_first=True):
+    def __init__(self, input_dim, output_dim, hidden_dim=32, num_layers=2, batch_first=True):
         super().__init__()
         self.gru = nn.GRU(
             input_size=input_dim,
@@ -278,7 +278,7 @@ class DeterministicGCAgent:
     """
     
     
-    def __init__(self, state_dim=0, action_dim=0, device="cpu", gamma=0.99, lr=3e-4, lr_end=1e-5, tau=0.005 , use_writer=False):
+    def __init__(self, state_dim=0, action_dim=0, device="cpu", gamma=0.99, lr=3e-4, lr_end=1e-5, tau=0.01 , use_writer=False):
         
         """
         Initializes the agent and its components.
@@ -358,7 +358,7 @@ class DeterministicGCAgent:
             target_param.data.copy_(tau * param.data + (1.0 - tau) * target_param.data)
 
     
-    def select_action(self, state, noise_std=0.01):
+    def select_action(self, state, noise_std=0.0):
         
         """
         Selects an action from the current policy for a given state.
@@ -547,6 +547,70 @@ class DeterministicGCAgent:
         self.current_lr = lr
         
     
+    
+    
+    def update_critic_only(self, batch_size=128, beta=0.4):
+        """
+        Performs only a critic update step (no actor update).
+        Used during exploration phase where policy shouldn't change yet.
+        """
+        if len(self.replay_buffer) < batch_size:
+            return {
+                "critic_loss": 0.0,
+                "actor_loss": 0.0,  # no actor update
+                "td_mean": 0.0,
+                "td_max": 0.0,
+                "td_min": 0.0,
+                "actor_grad_norm": 0.0,
+                "critic_grad_norm": 0.0,
+                "actor_weight_norm": 0.0,
+                "critic_weight_norm": 0.0,
+                "learning_rate": self.current_lr
+            }
+
+        # Sample batch
+        s, a, r, s2, d, w, idx = self.replay_buffer.sample(batch_size, beta=beta)
+        s, a, r, s2, d, w = s.to(self.device), a.to(self.device), r.to(self.device), s2.to(self.device), d.to(self.device), w.to(self.device)
+
+        # Target Q
+        with torch.no_grad():
+            a2 = self.actor(s2)
+            q_target = r + self.gamma * (1 - d) * self.target_critic(s2, a2).unsqueeze(1)
+
+        # Current Q
+        q_val = self.critic(s, a).unsqueeze(1)
+
+        td_error = (q_target - q_val).detach().cpu().numpy()
+
+        critic_loss = (F.mse_loss(q_val, q_target, reduction='none') * w).mean()
+
+        self.critic_opt.zero_grad()
+        critic_loss.backward()
+        self.critic_opt.step()
+
+        self.soft_update(self.critic, self.target_critic, self.tau)
+
+        self.replay_buffer.update_priorities(idx, td_error)
+
+        # Only critic stats
+        critic_grad_norm = sum(p.grad.data.norm(2).item() for p in self.critic.parameters() if p.grad is not None)
+        critic_weight_norm = sum(p.data.norm(2).item() for p in self.critic.parameters())
+
+        actor_weight_norm = sum(p.data.norm(2).item() for p in self.actor.parameters())  # Useful for tracking even if no update
+
+        return {
+            "critic_loss": critic_loss.item(),
+            "actor_loss": 0.0,  # No actor update
+            "td_mean": float(td_error.mean()),
+            "td_max": float(td_error.max()),
+            "td_min": float(td_error.min()),
+            "actor_grad_norm": 0.0,
+            "critic_grad_norm": critic_grad_norm,
+            "actor_weight_norm": actor_weight_norm,
+            "critic_weight_norm": critic_weight_norm,
+            "learning_rate": self.current_lr
+        }
+
     @torch.no_grad()
     def sample_random_structured(self, batch_size=1):
         """
