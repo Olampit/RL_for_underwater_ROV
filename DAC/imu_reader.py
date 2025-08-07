@@ -57,7 +57,7 @@ def log_synchronized_frame(att_data, vel_data, raw_data, joystick):
         "roll": get_mean(goal.get("roll")),
     }
     goal_buffer.add(t, goal_data)
-    
+
 
 
 def synchronized_logging_loop():

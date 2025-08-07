@@ -143,29 +143,29 @@ class DeterministicGCActor(nn.Module):
 # -----------------------------
 # Deterministic Critic using MLP
 # -----------------------------
-class DeterministicCritic(nn.Module):
+class GRUCritic(nn.Module):
     """
-    Critic that uses a standard MLP to estimate Q-value.
-    Takes a full sequence of states + current action.
-    The action is broadcast across time and concatenated with each state.
-    Only the last timestep of the sequence is used for evaluation.
+    GRU-based critic model that processes (state, action) sequences.
+    Matches the architecture and dimensions of the actor's GRUNetwork.
     """
     def __init__(self, state_dim, action_dim):
         super().__init__()
-        features_per_state = state_dim
-        self.critic = MLPCritic(
-            input_dim=features_per_state + action_dim,  # concatenated input
-            action_dim=action_dim,
-            output_dim=1,
+        input_dim = state_dim + action_dim
+        output_dim = 1  # single Q-value output
+
+        self.gru_net = GRUNetwork(
+            input_dim=input_dim,
+            output_dim=output_dim,
         )
 
-    def forward(self, state, action):
-        batch_size = state.shape[0]
-        seq_len = sequence_dimension  # global var or passed in context
-        state = state.view(batch_size, seq_len, state_dimension)      # (B, T, D)
-        action = action.unsqueeze(1).expand(-1, seq_len, -1)          # (B, T, A)
-        x = torch.cat([state, action], dim=-1)                        # (B, T, D+A)
-        return self.critic(x).view(-1)                                # (B,)
+    def forward(self, state_seq, action):
+        # state_seq: (B, T, state_dim)
+        # action: (B, action_dim) → need to repeat across time to concat
+        B, T, _ = state_seq.shape
+        action_seq = action.unsqueeze(1).repeat(1, T, 1)  # (B, T, action_dim)
+        x = torch.cat([state_seq, action_seq], dim=-1)    # (B, T, state+action)
+        return self.gru_net(x)                            # (B, 1)
+
 
 
 
@@ -303,12 +303,12 @@ class DeterministicGCAgent:
         self.use_writer = use_writer
         self.actor = DeterministicGCActor(state_dim, action_dim)
         self.actor.to(device)
-        self.critic = DeterministicCritic(state_dim, action_dim)
+        self.critic = GRUCritic(state_dim, action_dim)
         self.critic.to(device)
 
         self.target_actor = DeterministicGCActor(state_dim, action_dim)
         self.target_actor.to(device)
-        self.target_critic = DeterministicCritic(state_dim, action_dim)
+        self.target_critic = GRUCritic(state_dim, action_dim)
         self.target_critic.to(device)
 
         self.target_actor.load_state_dict(self.actor.state_dict())
@@ -325,7 +325,7 @@ class DeterministicGCAgent:
         # Dont touch actor too much ?
         
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=lr, maximize=True)
-        self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=lr, betas=(0.5, 0.99))
+        self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=lr)
 
         if self.use_writer:
             self.log_dir = os.path.join("runs", "dac_agent", datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
@@ -358,13 +358,13 @@ class DeterministicGCAgent:
             target_param.data.copy_(tau * param.data + (1.0 - tau) * target_param.data)
 
     
-    def select_action(self, state, noise_std=0.0):
+    def select_action(self, obs, noise_std=0.0):
         
         """
-        Selects an action from the current policy for a given state.
+        Selects an action from the current policy for a given obs.
 
         Args:
-            state (np.ndarray): current state sequence (flattened or shaped).
+            obs (np.ndarray): current obs sequence (flattened or shaped).
             noise_std (float): standard deviation of exploration noise.
 
         Returns:
@@ -372,17 +372,17 @@ class DeterministicGCAgent:
         """
         
         
-        # Convert state to tensor if it's not already
-        if not torch.is_tensor(state):
-            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+        # Convert obs to tensor if it's not already
+        if not torch.is_tensor(obs):
+            obs_tensor = torch.FloatTensor(obs).unsqueeze(0).to(self.device)
         else:
-            state_tensor = state.unsqueeze(0).to(self.device)
+            obs_tensor = obs.unsqueeze(0).to(self.device)
 
-        # Ensure correct shape: (batch, seq, state_dim)
-        state_tensor = state_tensor.view(1, self.sequence_dim, self.state_dim)
+        # Ensure correct shape: (batch, seq, obs_dim)
+        obs_tensor = obs_tensor.view(1, self.sequence_dim, self.state_dim)
 
         with torch.no_grad():
-            action = self.actor(state_tensor).cpu().numpy()[0]
+            action = self.actor(obs_tensor).cpu().numpy()[0]
 
         # Add small noise (disabled in policy mode if noise_std=0)
         action += np.random.normal(0, noise_std, size=action.shape)
@@ -419,10 +419,10 @@ class DeterministicGCAgent:
 
         with torch.no_grad():
             a2 = self.actor(s2)
-            q_target = r + self.gamma + (1-d) * self.target_critic(s2, a2).unsqueeze(1)
+            q_target = r + self.gamma + (1-d) * self.target_critic(s2, a2)
 
 
-        q_val = self.critic(s, a).unsqueeze(1)
+        q_val = self.critic(s, a)
         
         
         td_error = (q_target - q_val).detach().cpu().numpy()
@@ -528,10 +528,10 @@ class DeterministicGCAgent:
         """
         
         
-        warmup_steps = 5000
+        warmup_steps = 150_000
         lr_start = lr_start
         lr_end = lr_end
-        decay_steps = 100_000
+        decay_steps = 1_000_000
 
         if total_step < warmup_steps:
             lr = lr_start * (total_step / warmup_steps)
@@ -575,10 +575,10 @@ class DeterministicGCAgent:
         # Target Q
         with torch.no_grad():
             a2 = self.actor(s2)
-            q_target = r + self.gamma * (1 - d) * self.target_critic(s2, a2).unsqueeze(1)
+            q_target = r + self.gamma * (1 - d) * self.target_critic(s2, a2)
 
         # Current Q
-        q_val = self.critic(s, a).unsqueeze(1)
+        q_val = self.critic(s, a)
 
         td_error = (q_target - q_val).detach().cpu().numpy()
 

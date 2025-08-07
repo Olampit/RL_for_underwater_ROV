@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "with correct weights, sizes, parameters, should work and be definitive version 1"
+git commit --author="Olampit <olampit@gmail.com>" -m "doing the pipeline, tring to figure out where the issue is and if it is not a sequence/state shape issue"
 git push -u origin main
 
 # Increment and save back
