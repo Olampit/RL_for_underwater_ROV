@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "doing the pipeline, tring to figure out where the issue is and if it is not a sequence/state shape issue"
+git commit --author="Olampit <olampit@gmail.com>" -m "corrected a reward error using dots on euler angles"
 git push -u origin main
 
 # Increment and save back

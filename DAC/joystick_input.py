@@ -166,11 +166,11 @@ class FakeJoystick:
 
         self.goal = {
             "vx": np.clip(get_mean(self.goal.get("vx", 0.0)) + np.random.uniform(-MAX_DELTA_LINEAR, MAX_DELTA_LINEAR), -0.5, 0.5),
-            "vy": np.clip(get_mean(self.goal.get("vy", 0.0)) + np.random.uniform(-MAX_DELTA_LINEAR, MAX_DELTA_LINEAR), -0.5, 0.5),
-            "vz": np.clip(get_mean(self.goal.get("vz", 0.0)) + np.random.uniform(-MAX_DELTA_LINEAR, MAX_DELTA_LINEAR), -0.5, 0.5),
-            "yaw": np.clip(get_mean(self.goal.get("yaw", 0.0)) + np.random.uniform(-MAX_DELTA_ANGULAR, MAX_DELTA_ANGULAR), -np.pi, np.pi),
-            "pitch": np.clip(get_mean(self.goal.get("pitch", 0.0)) + np.random.uniform(-MAX_DELTA_ANGULAR, MAX_DELTA_ANGULAR), -np.pi/6, np.pi/6),
-            "roll": np.clip(get_mean(self.goal.get("roll", 0.0)) + np.random.uniform(-MAX_DELTA_ANGULAR, MAX_DELTA_ANGULAR), -np.pi/6, np.pi/6)
+            "vy": 0, #np.clip(get_mean(self.goal.get("vy", 0.0)) + np.random.uniform(-MAX_DELTA_LINEAR, MAX_DELTA_LINEAR), -0.5, 0.5),
+            "vz": 0, #np.clip(get_mean(self.goal.get("vz", 0.0)) + np.random.uniform(-MAX_DELTA_LINEAR, MAX_DELTA_LINEAR), -0.5, 0.5),
+            "yaw":0, # np.clip(get_mean(self.goal.get("yaw", 0.0)) + np.random.uniform(-MAX_DELTA_ANGULAR, MAX_DELTA_ANGULAR), -np.pi, np.pi),
+            "pitch":0, # np.clip(get_mean(self.goal.get("pitch", 0.0)) + np.random.uniform(-MAX_DELTA_ANGULAR, MAX_DELTA_ANGULAR), -np.pi/6, np.pi/6),
+            "roll":0,# np.clip(get_mean(self.goal.get("roll", 0.0)) + np.random.uniform(-MAX_DELTA_ANGULAR, MAX_DELTA_ANGULAR), -np.pi/6, np.pi/6)
         }
 
         

@@ -254,27 +254,29 @@ class ROVEnvironment:
                 goal.get("vz", 0.0),
             ])
 
-            att_vec = np.array([
-                att.get("roll", 0.0),
-                att.get("pitch", 0.0),
-                att.get("yaw", 0.0),
-            ])
-            goal_att_vec = np.array([
-                goal.get("roll", 0.0),
-                goal.get("pitch", 0.0),
-                goal.get("yaw", 0.0),
-            ])
+            roll_error = wrap(att.get("roll", 0.0) - goal.get("roll", 0.0))
+            pitch_error = wrap(att.get("pitch", 0.0) - goal.get("pitch", 0.0))
+            yaw_error = wrap(att.get("yaw", 0.0) - goal.get("yaw", 0.0))
+
+            orientation_score = (
+                - (roll_error ** 2) 
+                - (pitch_error ** 2) 
+                - (yaw_error ** 2)
+            )
+
+            orientation_scores.append(orientation_score)
+
 
             vel_align = dot_alignment(vel_vec, goal_vel_vec)
-            att_align = dot_alignment(att_vec, goal_att_vec)
 
             velocity_scores.append(vel_align)
-            orientation_scores.append(att_align)
 
         # ------------- Reward Composition -------------
         velocity_penalty = sum([(-1.0 + s) ** 2 for s in velocity_scores]) #be careful that this isnt getting smaller with the **2 then it should be
-        orientation_penalty = sum([(-1.0 + s) ** 2 for s in orientation_scores])
-        total = -velocity_penalty - orientation_penalty
+        orientation_penalty = -sum(orientation_scores)
+        
+        #since vel is [-2,0] and ori is [-30, 0]
+        total = -velocity_penalty - (1/15 * orientation_penalty)
         total = total/100
         total = np.clip(total, -CLIP, CLIP)
         
