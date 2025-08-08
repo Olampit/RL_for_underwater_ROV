@@ -253,9 +253,9 @@ class ROVEnvironment:
 
 
 
-            roll_error = wrap(att.get("roll", 0.0) - goal.get("roll", 0.0))
-            pitch_error = wrap(att.get("pitch", 0.0) - goal.get("pitch", 0.0))
-            yaw_error = wrap(att.get("yaw", 0.0) - goal.get("yaw", 0.0))
+            roll_error = wrap(att.get("roll", 0.0) - goal.get("roll", 0.0)) / np.pi
+            pitch_error = wrap(att.get("pitch", 0.0) - goal.get("pitch", 0.0)) / np.pi
+            yaw_error = wrap(att.get("yaw", 0.0) - goal.get("yaw", 0.0)) / np.pi
 
             angle_penalty = roll_error**2 + pitch_error**2 + yaw_error**2
 
