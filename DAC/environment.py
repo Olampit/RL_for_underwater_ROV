@@ -207,25 +207,23 @@ class ROVEnvironment:
     # Computes the score that we want to give the state we are in.
     # --------------------------
     def compute_reward(self):
-        CLIP = 100.0  # Max reward cap
-        MAX_AGE = 0.1  # Time window in seconds
-
-        # ------------- Helpers -------------
-        def normalize(vec):
-            norm = np.linalg.norm(vec)
-            if norm < 1e-6:
-                return np.zeros_like(vec)
-            return vec / norm
-
-        def dot_alignment(vec1, vec2):
-            v1 = normalize(vec1)
-            v2 = normalize(vec2)
-            return float(np.dot(v1, v2))
+        CLIP = 100.0
+        MAX_AGE = 0.1
+        VMAX = 1.5
+        HUBER_DELTA = 1.0
+        VELOCITY_WEIGHT = 5.0
+        ORIENTATION_WEIGHT = 1.0
+        ANGULAR_SPEED_WEIGHT = 0.2
 
         def wrap(angle):
             return (angle + np.pi) % (2 * np.pi) - np.pi
 
-        # ------------- Extract Buffered Sequences -------------
+        def huber(x, delta):
+            abs_x = np.abs(x)
+            return np.where(abs_x < delta,
+                            0.5 * x**2,
+                            delta * (abs_x - 0.5 * delta))
+
         now = time.time()
         vel_seq = velocity_buffer.get_since(now - MAX_AGE, max_age=MAX_AGE)
         att_seq = attitude_buffer.get_since(now - MAX_AGE, max_age=MAX_AGE)
@@ -238,50 +236,51 @@ class ROVEnvironment:
         att_values = [a for _, a in att_seq]
         goal_values = [g for _, g in goal_seq]
 
-        # ------------- Per-Sample Reward Aggregation -------------
-        velocity_scores = []
-        orientation_scores = []
+        velocity_penalties = []
+        orientation_penalties = []
+
 
         for vel, att, goal in zip(vel_values, att_values, goal_values):
-            vel_vec = np.array([
-                vel.get("vx", 0.0),
-                vel.get("vy", 0.0),
-                vel.get("vz", 0.0),
-            ])
-            goal_vel_vec = np.array([
-                goal.get("vx", 0.0),
-                goal.get("vy", 0.0),
-                goal.get("vz", 0.0),
-            ])
+            vx_err = (vel.get("vx", 0.0) - goal.get("vx", 0.0)) / VMAX
+            vy_err = (vel.get("vy", 0.0) - goal.get("vy", 0.0)) / VMAX
+            vz_err = (vel.get("vz", 0.0) - goal.get("vz", 0.0)) / VMAX
+
+            velocity_penalties.append(
+                huber(vx_err, HUBER_DELTA) +
+                huber(vy_err, HUBER_DELTA) +
+                huber(vz_err, HUBER_DELTA)
+            )
+
+
 
             roll_error = wrap(att.get("roll", 0.0) - goal.get("roll", 0.0))
             pitch_error = wrap(att.get("pitch", 0.0) - goal.get("pitch", 0.0))
             yaw_error = wrap(att.get("yaw", 0.0) - goal.get("yaw", 0.0))
 
-            orientation_score = (
-                - (roll_error ** 2) 
-                - (pitch_error ** 2) 
-                - (yaw_error ** 2)
+            angle_penalty = roll_error**2 + pitch_error**2 + yaw_error**2
+
+            rollspeed = att.get("rollspeed", 0.0)
+            pitchspeed = att.get("pitchspeed", 0.0)
+            yawspeed = att.get("yawspeed", 0.0)
+
+            angular_penalty = rollspeed**2 + pitchspeed**2 + yawspeed**2
+
+
+            orientation_penalties.append(
+                angle_penalty + ANGULAR_SPEED_WEIGHT * angular_penalty
             )
+            
+            
+            
+        velocity_penalty = np.mean(velocity_penalties)
+        orientation_penalty = np.mean(orientation_penalties)
 
-            orientation_scores.append(orientation_score)
+        velocity_penalty *= VELOCITY_WEIGHT
+        orientation_penalty *= ORIENTATION_WEIGHT
 
-
-            vel_align = dot_alignment(vel_vec, goal_vel_vec)
-
-            velocity_scores.append(vel_align)
-
-        # ------------- Reward Composition -------------
-        velocity_penalty = sum([(-1.0 + s) ** 2 for s in velocity_scores]) #be careful that this isnt getting smaller with the **2 then it should be
-        orientation_penalty = -sum(orientation_scores)
-        
-        #since vel is [-2,0] and ori is [-30, 0]
-        total = -velocity_penalty - (1/15 * orientation_penalty)
-        total = total/100
+        total = -velocity_penalty - orientation_penalty
         total = np.clip(total, -CLIP, CLIP)
-        
 
-        # ------------- Latest Observation for Debug Info -------------
         vx = vel_values[-1].get("vx", 0.0)
         vy = vel_values[-1].get("vy", 0.0)
         vz = vel_values[-1].get("vz", 0.0)
@@ -298,11 +297,10 @@ class ROVEnvironment:
         goal_pitch = goal_values[-1].get("pitch", 0.0)
         goal_roll = goal_values[-1].get("roll", 0.0)
 
-        # ------------- Return Reward and Debug Info -------------
         return {
             "total": total,
-            "velocity_alignment": velocity_scores[-1] - 1.0,
-            "orientation_alignment": orientation_scores[-1] - 1.0,
+            "velocity_alignment": velocity_penalty,
+            "orientation_alignment": orientation_penalty,
 
             "goal_vx": goal_vx,
             "goal_vy": goal_vy,
@@ -325,6 +323,7 @@ class ROVEnvironment:
             "pitch_error": wrap(pitch - goal_pitch),
             "roll_error": wrap(roll - goal_roll),
         }
+
 
 
 

@@ -590,7 +590,7 @@ class DeterministicGCAgent:
 
         self.soft_update(self.critic, self.target_critic, self.tau)
 
-        self.replay_buffer.update_priorities(idx, td_error)
+        # self.replay_buffer.update_priorities(idx, td_error)
 
         # Only critic stats
         critic_grad_norm = sum(p.grad.data.norm(2).item() for p in self.critic.parameters() if p.grad is not None)

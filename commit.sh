@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "corrected a reward error using dots on euler angles"
+git commit --author="Olampit <olampit@gmail.com>" -m "no more dots as it did not seem to work"
 git push -u origin main
 
 # Increment and save back

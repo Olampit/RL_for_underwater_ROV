@@ -81,7 +81,7 @@ def train(
     max_steps=20,
     batch_size=32,
     update_every = 30,
-    start_steps=100,  #exploration, make it bigger...
+    start_steps=1000,  #exploration, make it bigger...
     gamma=0.99,
     learning_rate_start=5e-2,
     learning_rate_end=1e-4,
