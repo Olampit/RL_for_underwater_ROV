@@ -144,7 +144,7 @@ class FakeJoystick:
         print(f"[GOAL] Orientation updated: {self.orientation_schedule[self.orientation_index]}")
 
 
-    def switch_goal_randomly(self):
+    def switch_goal_randomly_temp_banned(self):
         """
         Updates the goal with small deltas to simulate realistic joystick movement.
         Prevents abrupt changes like full-forward to full-backward instantly.
@@ -166,12 +166,33 @@ class FakeJoystick:
 
         self.goal = {
             "vx": np.clip(get_mean(self.goal.get("vx", 0.0)) + np.random.uniform(-MAX_DELTA_LINEAR, MAX_DELTA_LINEAR), -0.5, 0.5),
-            "vy": 0, #np.clip(get_mean(self.goal.get("vy", 0.0)) + np.random.uniform(-MAX_DELTA_LINEAR, MAX_DELTA_LINEAR), -0.5, 0.5),
+            "vy": np.clip(get_mean(self.goal.get("vy", 0.0)) + np.random.uniform(-MAX_DELTA_LINEAR, MAX_DELTA_LINEAR), -0.5, 0.5),
             "vz": 0, #np.clip(get_mean(self.goal.get("vz", 0.0)) + np.random.uniform(-MAX_DELTA_LINEAR, MAX_DELTA_LINEAR), -0.5, 0.5),
             "yaw":0, # np.clip(get_mean(self.goal.get("yaw", 0.0)) + np.random.uniform(-MAX_DELTA_ANGULAR, MAX_DELTA_ANGULAR), -np.pi, np.pi),
             "pitch":0, # np.clip(get_mean(self.goal.get("pitch", 0.0)) + np.random.uniform(-MAX_DELTA_ANGULAR, MAX_DELTA_ANGULAR), -np.pi/6, np.pi/6),
             "roll":0,# np.clip(get_mean(self.goal.get("roll", 0.0)) + np.random.uniform(-MAX_DELTA_ANGULAR, MAX_DELTA_ANGULAR), -np.pi/6, np.pi/6)
         }
+        
+    def switch_goal_randomly(self):
+        """
+        Selects one of 10 predefined goals to reduce goal space complexity.
+        Prevents exploration from diverging due to random drift.
+        """
+        MAIN_GOALS = [
+            {"vx": +0.5, "vy": 0.0, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+            {"vx": -0.5, "vy": 0.0, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+            {"vx": 0.0, "vy": +0.5, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+            {"vx": 0.0, "vy": -0.5, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+            {"vx": +0.35, "vy": +0.35, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+            {"vx": -0.35, "vy": -0.35, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+            {"vx": +0.5, "vy": 0.0, "vz": 0.0, "yaw": +np.pi/6, "pitch": 0.0, "roll": 0.0},
+            {"vx": -0.5, "vy": 0.0, "vz": 0.0, "yaw": -np.pi/6, "pitch": 0.0, "roll": 0.0},
+            {"vx": 0.0, "vy": 0.0, "vz": 0.0, "yaw": +np.pi/3, "pitch": 0.0, "roll": 0.0},
+            {"vx": 0.0, "vy": 0.0, "vz": 0.0, "yaw": -np.pi/3, "pitch": 0.0, "roll": 0.0},
+        ]
+        self.goal = random.choice(MAIN_GOALS)
+
+
 
         
     def update_success_tracking(self, reward_components):

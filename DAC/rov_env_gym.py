@@ -11,9 +11,10 @@ SPEED_UP = 5
 
 class ROVEnvGymWrapper(gym.Env):
     def __init__(self, rov_env: ROVEnvironment):
+        self.action_dim = 4 
         super().__init__()
-        self.rov = rov_env                                      
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(8,), dtype=np.float32)
+        self.rov = rov_env                                         #change shape for motors here
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(self.action_dim,), dtype=np.float32)
         self.state_history = []
         obs_sample = self._state_to_obs()
         self.observation_space = spaces.Box(
@@ -46,7 +47,7 @@ class ROVEnvGymWrapper(gym.Env):
         time.sleep(0.05) #!mavlink guaranteed update time to avoid missing values
         if no_update :
             time.sleep(0.01)
-        reward = self.rov.compute_reward()
+        reward = self.rov.compute_reward_2()
         done = self.rov.is_terminal()
         obs = self._state_to_obs()  
         state = self.rov.get_state(start_of_action_time)
@@ -58,7 +59,7 @@ class ROVEnvGymWrapper(gym.Env):
         return obs, reward, done, {}, state
 
     def _apply_action_continuous(self, action):
-        for i in range(8):
+        for i in range(self.action_dim):
             thrust = float(np.clip(action[i], -1.0, 1.0))
             pwm = int(1500 + thrust * 400)
             self.rov.connection.mav.command_long_send(

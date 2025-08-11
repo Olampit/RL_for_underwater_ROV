@@ -206,23 +206,19 @@ class ROVEnvironment:
     # Function: compute_reward
     # Computes the score that we want to give the state we are in.
     # --------------------------
-    def compute_reward(self):
+    def compute_reward_2(self):
         CLIP = 100.0
         MAX_AGE = 0.1
-        VMAX = 1.5
-        HUBER_DELTA = 1.0
-        VELOCITY_WEIGHT = 5.0
-        ORIENTATION_WEIGHT = 1.0
-        ANGULAR_SPEED_WEIGHT = 0.2
+        SHAPING_WEIGHT = 2.0
 
         def wrap(angle):
             return (angle + np.pi) % (2 * np.pi) - np.pi
 
-        def huber(x, delta):
+        def huber(x, delta=1.0):
             abs_x = np.abs(x)
-            return np.where(abs_x < delta,
-                            0.5 * x**2,
-                            delta * (abs_x - 0.5 * delta))
+            quadratic = np.minimum(abs_x, delta)
+            linear = abs_x - quadratic
+            return 0.5 * quadratic**2 + delta * linear
 
         now = time.time()
         vel_seq = velocity_buffer.get_since(now - MAX_AGE, max_age=MAX_AGE)
@@ -232,53 +228,68 @@ class ROVEnvironment:
         if not vel_seq or not att_seq or not goal_seq:
             return {"total": -CLIP, "reason": "missing data"}
 
+        if len(vel_seq) < 2 or len(att_seq) < 2 or len(goal_seq) < 2:
+            return {"total": -CLIP, "reason": "insufficient data"}
+
         vel_values = [v for _, v in vel_seq]
         att_values = [a for _, a in att_seq]
         goal_values = [g for _, g in goal_seq]
 
-        velocity_penalties = []
+        vel_penalties = []
         orientation_penalties = []
+        spin_penalties = []
+        improvement_terms = []
 
+        N = min(len(vel_values), len(att_values), len(goal_values))
+        if N < 2:
+            return {"total": -CLIP, "reason": "insufficient data"}
 
-        for vel, att, goal in zip(vel_values, att_values, goal_values):
-            vx_err = (vel.get("vx", 0.0) - goal.get("vx", 0.0)) / VMAX
-            vy_err = (vel.get("vy", 0.0) - goal.get("vy", 0.0)) / VMAX
-            vz_err = (vel.get("vz", 0.0) - goal.get("vz", 0.0)) / VMAX
+        for i in range(1, N):
 
-            velocity_penalties.append(
-                huber(vx_err, HUBER_DELTA) +
-                huber(vy_err, HUBER_DELTA) +
-                huber(vz_err, HUBER_DELTA)
-            )
+            prev_vel = vel_values[i - 1]
+            prev_att = att_values[i - 1]
+            prev_goal = goal_values[i - 1]
 
+            curr_vel = vel_values[i]
+            curr_att = att_values[i]
+            curr_goal = goal_values[i]
 
+            prev_vel_vec = np.array([prev_vel.get("vx", 0.0), prev_vel.get("vy", 0.0), prev_vel.get("vz", 0.0)]) / 1.5
+            curr_vel_vec = np.array([curr_vel.get("vx", 0.0), curr_vel.get("vy", 0.0), curr_vel.get("vz", 0.0)]) / 1.5
+            prev_goal_vel = np.array([prev_goal.get("vx", 0.0), prev_goal.get("vy", 0.0), prev_goal.get("vz", 0.0)]) / 0.5
+            curr_goal_vel = np.array([curr_goal.get("vx", 0.0), curr_goal.get("vy", 0.0), curr_goal.get("vz", 0.0)]) / 0.5
 
-            roll_error = wrap(att.get("roll", 0.0) - goal.get("roll", 0.0)) / np.pi
-            pitch_error = wrap(att.get("pitch", 0.0) - goal.get("pitch", 0.0)) / np.pi
-            yaw_error = wrap(att.get("yaw", 0.0) - goal.get("yaw", 0.0)) / np.pi
+            prev_err = prev_vel_vec - prev_goal_vel
+            curr_err = curr_vel_vec - curr_goal_vel
 
-            angle_penalty = roll_error**2 + pitch_error**2 + yaw_error**2
+            vel_penalty = np.sum(huber(curr_err))
+            vel_penalties.append(vel_penalty)
 
-            rollspeed = att.get("rollspeed", 0.0)
-            pitchspeed = att.get("pitchspeed", 0.0)
-            yawspeed = att.get("yawspeed", 0.0)
+            delta_err = np.linalg.norm(prev_err) - np.linalg.norm(curr_err)
+            improvement_terms.append(np.clip(delta_err, -1.0, 1.0) * SHAPING_WEIGHT)
 
-            angular_penalty = rollspeed**2 + pitchspeed**2 + yawspeed**2
+            roll_error = wrap(curr_att.get("roll", 0.0) - curr_goal.get("roll", 0.0)) / np.pi
+            pitch_error = wrap(curr_att.get("pitch", 0.0) - curr_goal.get("pitch", 0.0)) / np.pi
+            yaw_error = wrap(curr_att.get("yaw", 0.0) - curr_goal.get("yaw", 0.0)) / np.pi
 
+            orientation_error = np.array([roll_error, pitch_error, yaw_error])
+            orientation_penalty = np.sum(huber(orientation_error))
+            orientation_penalties.append(orientation_penalty)
 
-            orientation_penalties.append(
-                angle_penalty + ANGULAR_SPEED_WEIGHT * angular_penalty
-            )
-            
-            
-            
-        velocity_penalty = np.mean(velocity_penalties)
-        orientation_penalty = np.mean(orientation_penalties)
+            rollspeed = curr_att.get("rollspeed", 0.0)
+            pitchspeed = curr_att.get("pitchspeed", 0.0)
+            yawspeed = curr_att.get("yawspeed", 0.0)
+            spin = np.array([rollspeed, pitchspeed, yawspeed])
+            spin_penalty = np.sum(huber(spin))
+            spin_penalties.append(spin_penalty)
 
-        velocity_penalty *= VELOCITY_WEIGHT
-        orientation_penalty *= ORIENTATION_WEIGHT
+        vel_term = np.mean(vel_penalties)
+        ori_term = np.mean(orientation_penalties)
+        spin_term = np.mean(spin_penalties)
+        shaping_bonus = np.mean(improvement_terms)
 
-        total = -velocity_penalty - orientation_penalty
+        total = -vel_term - ori_term - 0.1 * spin_term + shaping_bonus
+        total = total / 0.1
         total = np.clip(total, -CLIP, CLIP)
 
         vx = vel_values[-1].get("vx", 0.0)
@@ -299,23 +310,21 @@ class ROVEnvironment:
 
         return {
             "total": total,
-            "velocity_alignment": velocity_penalty,
-            "orientation_alignment": orientation_penalty,
-
+            "velocity_alignment": -vel_term,
+            "orientation_alignment": -ori_term,
+            "shaping_bonus": shaping_bonus,
             "goal_vx": goal_vx,
             "goal_vy": goal_vy,
             "goal_vz": goal_vz,
             "goal_yaw": goal_yaw,
             "goal_pitch": goal_pitch,
             "goal_roll": goal_roll,
-
             "vx": vx,
             "vy": vy,
             "vz": vz,
             "yaw": yaw,
             "pitch": pitch,
             "roll": roll,
-
             "vx_error": vx - goal_vx,
             "vy_error": vy - goal_vy,
             "vz_error": vz - goal_vz,
@@ -323,8 +332,6 @@ class ROVEnvironment:
             "pitch_error": wrap(pitch - goal_pitch),
             "roll_error": wrap(roll - goal_roll),
         }
-
-
 
 
 

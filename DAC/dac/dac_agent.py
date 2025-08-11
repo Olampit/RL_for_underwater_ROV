@@ -416,10 +416,16 @@ class DeterministicGCAgent:
         
         s, a, r, s2, d, w, idx = self.replay_buffer.sample(batch_size, beta=beta)
         s, a, r, s2, d, w = s.to(self.device), a.to(self.device), r.to(self.device), s2.to(self.device), d.to(self.device), w.to(self.device)
-
+         
+        
+        Q_CLIP = 20
+        
         with torch.no_grad():
-            a2 = self.actor(s2)
-            q_target = r + self.gamma + (1-d) * self.target_critic(s2, a2)
+            a2 = self.target_actor(s2) #Changed from actor to target_actor ... 
+            q_target = r + self.gamma * (1-d) * self.target_critic(s2, a2)
+            
+            #Maybe clip the q target so that it does not get out of bounds ?? Or will it make the td error strange since we do not clip q val ?
+            q_target = torch.clamp(q_target, -Q_CLIP, Q_CLIP)
 
 
         q_val = self.critic(s, a)
@@ -553,6 +559,8 @@ class DeterministicGCAgent:
         """
         Performs only a critic update step (no actor update).
         Used during exploration phase where policy shouldn't change yet.
+        
+        DO NOT USE SINCE IT TAKES THE INPUT OF ACTOR AS AN INPUT TO THE TD values
         """
         if len(self.replay_buffer) < batch_size:
             return {
@@ -590,7 +598,7 @@ class DeterministicGCAgent:
 
         self.soft_update(self.critic, self.target_critic, self.tau)
 
-        # self.replay_buffer.update_priorities(idx, td_error)
+        self.replay_buffer.update_priorities(idx, td_error)
 
         # Only critic stats
         critic_grad_norm = sum(p.grad.data.norm(2).item() for p in self.critic.parameters() if p.grad is not None)
@@ -612,24 +620,25 @@ class DeterministicGCAgent:
         }
 
     @torch.no_grad()
-    def sample_random_structured(self, batch_size=1):
+    def sample_random_structured(self, action_dim, batch_size=1):
         """
-        Generates a random but physically plausible motor command pattern
-        to be used during exploration or initialization.
+        Generates a random but physically plausible 4-motor command pattern
+        for planar ROV motion (forward + yaw).
         """
-        
+
         device = self.device
         B = batch_size
 
-        # Create base
-        base = torch.zeros((B, 8)).to(device)
+        # Initialize action tensor
+        base = torch.zeros((B, action_dim)).to(device)
 
         def rand(minval, maxval, shape=(B, 1)):
             return torch.FloatTensor(*shape).uniform_(minval, maxval).to(device)
 
-        motor_signs = torch.tensor([+1, -1, +1, -1, +1, +1, +1, +1]).float().to(device)
+        # Motor signs (M1–M4), use +1 if your ESC mapping doesn't require inversion
+        motor_signs = torch.tensor([+1, -1, +1, -1]).float().to(device)
 
-        # --- FORWARD + YAW ---
+        # Forward and yaw commands
         forward_cmd = rand(-1.0, 1.0)
         yaw_cmd = rand(-0.5, 0.5)
 
@@ -638,18 +647,10 @@ class DeterministicGCAgent:
         base[:, 2] = yaw_cmd[:, 0]                      # M3
         base[:, 3] = -yaw_cmd[:, 0]                     # M4
 
-        # --- LIFT + PITCH + ROLL ---
-        lift_cmd = rand(-0.8, 0.8)
-        pitch_cmd = rand(-0.4, 0.4)
-        roll_cmd = rand(-0.4, 0.4)
-
-        base[:, 4] = lift_cmd[:, 0] + pitch_cmd[:, 0] + roll_cmd[:, 0]  # M5
-        base[:, 5] = lift_cmd[:, 0] + pitch_cmd[:, 0] - roll_cmd[:, 0]  # M6
-        base[:, 6] = lift_cmd[:, 0] - pitch_cmd[:, 0] + roll_cmd[:, 0]  # M7
-        base[:, 7] = lift_cmd[:, 0] - pitch_cmd[:, 0] - roll_cmd[:, 0]  # M8
-
-        # Add structured Gaussian noise
+        # Add small noise
         base += torch.randn_like(base) * 0.03
 
+        # Apply motor sign inversion and clip
         x_t = base * motor_signs
         return torch.tanh(x_t).cpu().numpy()[0]
+

@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "no more dots as it did not seem to work"
+git commit --author="Olampit <olampit@gmail.com>" -m "much better commit with correct target_actor instead of actor in update"
 git push -u origin main
 
 # Increment and save back

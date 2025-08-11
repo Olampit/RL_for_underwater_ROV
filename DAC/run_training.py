@@ -81,7 +81,7 @@ def train(
     max_steps=20,
     batch_size=32,
     update_every = 30,
-    start_steps=1000,  #exploration, make it bigger...
+    start_steps=5000,  #exploration, make it bigger...
     gamma=0.99,
     learning_rate_start=5e-2,
     learning_rate_end=1e-4,
@@ -168,7 +168,7 @@ def train(
 
 
     # enable motors initially to permit movement
-    for i in range(1, 9): # set only the first 8 motors currently
+    for i in range(1, 5): # set only the first 8 motors currently
         set_servo_function(i, conn, 0)
         
     
@@ -222,7 +222,7 @@ def train(
                 print("resetting firmware")
                 response = requests.post(url)
                 time.sleep(120) # Give blueos time to reboot
-                for i in range(1, 9): #! only 8 motors here too
+                for i in range(1, 5): #! only 8 motors here too
                     set_servo_function(i, conn, 0)
                 restart_countdown = 1000
             else : 
@@ -236,7 +236,7 @@ def train(
                 
                 
             # Update joystick target 
-            if phase in ["exploration"]:
+            if phase in ["exploration"]and ep%update_every == 0:
                 joystick.switch_goal_randomly()
                 
             if phase in ["actor_learning"] and ep%update_every == 0 :
@@ -265,9 +265,12 @@ def train(
                 
                 
                 if phase == "exploration":
-                    action = agent.sample_random_structured()  # Random action
+                    action = agent.sample_random_structured(action_dim)  # Random action
                 elif phase == "actor_learning":
-                    action = agent.select_action(obs)          # Deterministic actor (no noise)
+                    if np.random.randint(0,100) < 90:
+                        action = agent.select_action(obs)          # Deterministic actor (no noise)
+                    else : 
+                        action = agent.sample_random_structured(action_dim)
                 else:  # "noisy_learning"
                     action = agent.select_action(obs, noise_std=0.05)  # Add noise for robustness
 
@@ -299,10 +302,7 @@ def train(
             
                 # === Perform periodic training update ===
                 if total_steps % update_every == 0:
-                    if phase == "exploration":
-                        update_info = agent.update_critic_only(batch_size=batch_size)
-                    else:
-                        update_info = agent.update(batch_size=batch_size, total_step=total_steps)
+                    update_info = agent.update(batch_size=batch_size, total_step=total_steps)
 
                     critic_loss = update_info.get("critic_loss", 0.0)
                     actor_loss = update_info.get("actor_loss", 0.0)
