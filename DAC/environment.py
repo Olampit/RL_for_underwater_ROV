@@ -225,11 +225,7 @@ class ROVEnvironment:
         att_seq = attitude_buffer.get_since(now - MAX_AGE, max_age=MAX_AGE)
         goal_seq = goal_buffer.get_since(now - MAX_AGE, max_age=MAX_AGE)
 
-        if not vel_seq or not att_seq or not goal_seq:
-            return {"total": -CLIP, "reason": "missing data"}
 
-        if len(vel_seq) < 2 or len(att_seq) < 2 or len(goal_seq) < 2:
-            return {"total": -CLIP, "reason": "insufficient data"}
 
         vel_values = [v for _, v in vel_seq]
         att_values = [a for _, a in att_seq]
@@ -241,8 +237,6 @@ class ROVEnvironment:
         improvement_terms = []
 
         N = min(len(vel_values), len(att_values), len(goal_values))
-        if N < 2:
-            return {"total": -CLIP, "reason": "insufficient data"}
 
         for i in range(1, N):
 
@@ -289,7 +283,7 @@ class ROVEnvironment:
         shaping_bonus = np.mean(improvement_terms)
 
         total = -vel_term - ori_term - 3.0 * spin_term + shaping_bonus
-        total = total / 0.1
+        total = total
         total = np.clip(total, -CLIP, CLIP)
 
         vx = vel_values[-1].get("vx", 0.0)

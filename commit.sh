@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "before the model change (back to the old stable one/ with motors centered)"
+git commit --author="Olampit <olampit@gmail.com>" -m "no model changes but better results - fixed issue in imu_reader for sampling at least 2"
 git push -u origin main
 
 # Increment and save back

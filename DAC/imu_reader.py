@@ -166,7 +166,7 @@ def start_imu_listener(connection, joystick):
 
             try:
                 while rclpy.ok() and not stop_event.is_set():
-                    executor.spin_once(timeout_sec=0.1)
+                    executor.spin_once(timeout_sec=0.001)
             finally:
                 executor.shutdown()
                 node.destroy_node()
