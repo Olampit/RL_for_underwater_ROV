@@ -214,7 +214,7 @@ class ROVEnvironment:
         def wrap(angle):
             return (angle + np.pi) % (2 * np.pi) - np.pi
 
-        def huber(x, delta=1.0):
+        def huber(x, delta=0.1):
             abs_x = np.abs(x)
             quadratic = np.minimum(abs_x, delta)
             linear = abs_x - quadratic
@@ -288,7 +288,7 @@ class ROVEnvironment:
         spin_term = np.mean(spin_penalties)
         shaping_bonus = np.mean(improvement_terms)
 
-        total = -vel_term - ori_term - 0.1 * spin_term + shaping_bonus
+        total = -vel_term - ori_term - 3.0 * spin_term + shaping_bonus
         total = total / 0.1
         total = np.clip(total, -CLIP, CLIP)
 

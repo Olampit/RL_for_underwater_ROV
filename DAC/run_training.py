@@ -81,7 +81,7 @@ def train(
     max_steps=20,
     batch_size=32,
     update_every = 30,
-    start_steps=5000,  #exploration, make it bigger...
+    start_steps=1000,  #exploration, make it bigger...
     gamma=0.99,
     learning_rate_start=5e-2,
     learning_rate_end=1e-4,
@@ -168,7 +168,7 @@ def train(
 
 
     # enable motors initially to permit movement
-    for i in range(1, 5): # set only the first 8 motors currently
+    for i in range(1, 9): # set only the first 8 motors currently
         set_servo_function(i, conn, 0)
         
     
@@ -195,7 +195,8 @@ def train(
         for ep in range(5, episodes + 6): # Start at episode 5 for safety
             
             
-            if ep % 10_000 == 0:  # Save every 10_000 episodes
+            if ep % 5_000 == 0:  # Save every 10_000 episodes
+                print(f"[SAVE] saved at episode : {ep}")
                 torch.save(agent.actor.state_dict(), f"checkpoints/actor_ep{ep}.pth")
                 torch.save(agent.critic.state_dict(), f"checkpoints/critic_ep{ep}.pth")
             
@@ -222,7 +223,7 @@ def train(
                 print("resetting firmware")
                 response = requests.post(url)
                 time.sleep(120) # Give blueos time to reboot
-                for i in range(1, 5): #! only 8 motors here too
+                for i in range(1, 9): #! only 8 motors here too
                     set_servo_function(i, conn, 0)
                 restart_countdown = 1000
             else : 

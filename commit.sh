@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "much better commit with correct target_actor instead of actor in update"
+git commit --author="Olampit <olampit@gmail.com>" -m "before the model change (back to the old stable one/ with motors centered)"
 git push -u origin main
 
 # Increment and save back
