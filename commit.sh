@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "cannot save, but correct action sampling"
+git commit --author="Olampit <olampit@gmail.com>" -m "correct saving, resuming, run_policy, and kinda working model (with no good checkpoint yet)"
 git push -u origin main
 
 # Increment and save back

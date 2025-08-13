@@ -528,6 +528,13 @@ class RLGui:
             "shutdown_flag": self.shutdown_flag,
         
         }
+        
+        config.update({
+            "resume_training": True,  # CHANGE HERE IF WE DO NOT WANT TO RESUME TRAINING FROM LATEST WEIGHTS
+            "checkpoint_dir": "checkpoints",
+            "resume_path": "checkpoints/latest.pt"
+        })
+
 
         self.shutdown_flag.clear()
         self.training_thread = threading.Thread(target=self.run_training, args=(self.agent_type.get(), config))

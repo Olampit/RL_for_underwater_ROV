@@ -19,6 +19,13 @@ def wait_for_heartbeat(conn, timeout=30):
     conn.wait_heartbeat(timeout=timeout)
     print(f"[INFO] Connected: system={conn.target_system}, component={conn.target_component}")
 
+def load_actor_from_checkpoint(agent, checkpoint_path, device="cpu"):
+    ckpt = torch.load(checkpoint_path, map_location=device)
+    if "net" in ckpt and "actor" in ckpt["net"]:
+        agent.actor.load_state_dict(ckpt["net"]["actor"])
+        print(f"[LOAD] Actor loaded from {checkpoint_path}")
+    else:
+        raise KeyError(f"No actor weights found in checkpoint: {checkpoint_path}")
 
 def make_env(connection):
     rov_env = ROVEnvironment(action_map=[], connection=connection)
@@ -45,7 +52,7 @@ def set_servo_function(servo_number, connection, value=0):
 
 
 def run_policy_with_goals(
-    model_path="checkpoints/actor_ep5000.pth",
+    model_path="checkpoints/latest.pt",
     goals=None,
     steps_per_goal=200,
     device=None,
@@ -95,7 +102,7 @@ def run_policy_with_goals(
         device=device,
         use_writer=False
     )
-    agent.load_actor(model_path)
+    load_actor_from_checkpoint(model_path)
 
     try:
         for goal_idx, goal in enumerate(goals):

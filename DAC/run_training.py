@@ -76,6 +76,74 @@ def set_servo_function(servo_number, connection, value=0):
     
     print(f"{param_name.decode()} set to {value}")
 
+
+# --- Checkpoint helpers (actor + critic1 + critic2, + optimizers if present) ---
+
+def _pick_attr(obj, candidates):
+    for name in candidates:
+        if hasattr(obj, name):
+            return getattr(obj, name)
+    return None
+
+def save_checkpoint(agent, path, episode=None, total_steps=None, extra=None):
+    # yes, this is a lot of possible names, but all names we had at some point sadly... It also includes meta data so it is still important ! 
+    actor   = _pick_attr(agent, ["actor", "policy", "actor_net"])
+    critic1 = _pick_attr(agent, ["critic1", "q1", "critic_a", "critic"])
+    critic2 = _pick_attr(agent, ["critic2", "q2", "critic_b"])
+
+    a_opt   = _pick_attr(agent, ["actor_optimizer", "actor_opt", "optimizer_actor"])
+    c1_opt  = _pick_attr(agent, ["critic1_optimizer", "critic_optimizer", "critic_opt", "q1_optimizer"])
+    c2_opt  = _pick_attr(agent, ["critic2_optimizer", "q2_optimizer"])
+
+    payload = {
+        "episode": episode,
+        "total_steps": total_steps,
+        "net": {
+            "actor":   actor.state_dict() if actor is not None else None,
+            "critic1": critic1.state_dict() if critic1 is not None else None,
+            "critic2": critic2.state_dict() if critic2 is not None else None,
+        },
+        "opt": {
+            "actor":   a_opt.state_dict() if a_opt is not None else None,
+            "critic1": c1_opt.state_dict() if c1_opt is not None else None,
+            "critic2": c2_opt.state_dict() if c2_opt is not None else None,
+        },
+        "extra": extra or {},
+    }
+    torch.save(payload, path)
+
+def load_checkpoint(agent, path, device="cpu"):
+    ckpt = torch.load(path, map_location=device)
+
+    actor   = _pick_attr(agent, ["actor", "policy", "actor_net"])
+    critic1 = _pick_attr(agent, ["critic1", "q1", "critic_a", "critic"])
+    critic2 = _pick_attr(agent, ["critic2", "q2", "critic_b"])
+
+    a_opt   = _pick_attr(agent, ["actor_optimizer", "actor_opt", "optimizer_actor"])
+    c1_opt  = _pick_attr(agent, ["critic1_optimizer", "critic_optimizer", "critic_opt", "q1_optimizer"])
+    c2_opt  = _pick_attr(agent, ["critic2_optimizer", "q2_optimizer"])
+
+    nets = ckpt.get("net", {})
+    if actor   is not None and nets.get("actor")   is not None: actor.load_state_dict(nets["actor"])
+    if critic1 is not None and nets.get("critic1") is not None: critic1.load_state_dict(nets["critic1"])
+    if critic2 is not None and nets.get("critic2") is not None: critic2.load_state_dict(nets["critic2"])
+
+    opts = ckpt.get("opt", {})
+    # Optimizers are optional; load only if present
+    if a_opt  is not None and opts.get("actor")   is not None: a_opt.load_state_dict(opts["actor"])
+    if c1_opt is not None and opts.get("critic1") is not None: c1_opt.load_state_dict(opts["critic1"])
+    if c2_opt is not None and opts.get("critic2") is not None: c2_opt.load_state_dict(opts["critic2"])
+
+    return {
+        "episode": ckpt.get("episode", None),
+        "total_steps": ckpt.get("total_steps", None),
+        "extra": ckpt.get("extra", {}),
+    }
+
+
+#____________________________________________________________________________________________________
+#
+
 def train(
     episodes=500,
     max_steps=20,
@@ -90,9 +158,9 @@ def train(
     progress_callback=None,
     pause_flag=None,
     shutdown_flag=None,
-    resume_training=False,              # <--- new flag
-    resume_actor_path="checkpoints/LATESTACORTPATHHERE.pth",  # <--- default paths
-    resume_critic_path="checkpoints/LATESTCRITICPATHHERE.pth"
+    resume_training=False,                      
+    checkpoint_dir="checkpoints",                
+    resume_path="checkpoints/latest.pt"
 ):
     
     """
@@ -160,16 +228,24 @@ def train(
         use_writer=False
     )
     
-    if resume_training:
-        if os.path.exists(resume_actor_path) and os.path.exists(resume_critic_path):
-            print(f"[RESUME] Loading actor from {resume_actor_path}")
-            agent.actor.load_state_dict(torch.load(resume_actor_path, map_location=device))
-            print(f"[RESUME] Loading critic from {resume_critic_path}")
-            agent.critic.load_state_dict(torch.load(resume_critic_path, map_location=device))
+    # --- Resume (optional) ---
+    os.makedirs(checkpoint_dir, exist_ok=True)
+
+    if resume_training and os.path.exists(resume_path):
+        print(f"[RESUME] Loading checkpoint from {resume_path}")
+        meta = load_checkpoint(agent, resume_path, device=device)
+        # Optionally restore counters if present
+        if isinstance(meta.get("total_steps"), int):
+            total_steps = meta["total_steps"]
+            print(f"[RESUME] Restored total_steps={total_steps}")
         else:
-            print("[RESUME] No checkpoint files found — starting from scratch.")
+            print("[RESUME] total_steps not found; continuing with current counter.")
     else:
-        print("[START] Starting training from scratch (random initialization).")
+        if resume_training:
+            print(f"[RESUME] Checkpoint not found at {resume_path}. Starting from scratch.")
+        else:
+            print("[START] Starting from scratch.")
+
     
     episode_rewards = []    # Logs episode return for debugging
     total_steps = 1         # Total env steps (global counter)
@@ -208,10 +284,22 @@ def train(
         for ep in range(5, episodes + 6): # Start at episode 5 for safety
             
             
-            if ep % 5_000 == 0:  # Save every 10_000 episodes
-                print(f"[SAVE] saved at episode : {ep}")
-                torch.save(agent.actor.state_dict(), f"checkpoints/actor_ep{ep}.pth")
-                torch.save(agent.critic.state_dict(), f"checkpoints/critic_ep{ep}.pth")
+            if ep % 5_000 == 0:
+                print(f"[SAVE] Episode {ep}: saving combined checkpoint...")
+                save_checkpoint(
+                    agent,
+                    os.path.join(checkpoint_dir, f"checkpoint_ep{ep}.pt"),
+                    episode=ep,
+                    total_steps=total_steps
+                )
+                # Also keep a rolling "latest"
+                save_checkpoint(
+                    agent,
+                    os.path.join(checkpoint_dir, "latest.pt"),
+                    episode=ep,
+                    total_steps=total_steps
+                )
+
             
             phase = get_training_phase(total_steps)
             
@@ -417,8 +505,20 @@ def train(
         
         
         # === End of training: Save models ===
-        torch.save(agent.actor.state_dict(), "policy_actor.pth")
-        torch.save(agent.critic.state_dict(), "policy_critic.pth")
+        save_checkpoint(
+            agent,
+            os.path.join(checkpoint_dir, "final.pt"),
+            episode=ep,          # last episode seen in loop
+            total_steps=total_steps
+        )
+        # Update "latest" too
+        save_checkpoint(
+            agent,
+            os.path.join(checkpoint_dir, "latest.pt"),
+            episode=ep,
+            total_steps=total_steps
+        )
+
 
 
     # --- Error handling ---
