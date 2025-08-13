@@ -89,7 +89,10 @@ def train(
     mavlink_endpoint="udp:127.0.0.1:14550",
     progress_callback=None,
     pause_flag=None,
-    shutdown_flag=None
+    shutdown_flag=None,
+    resume_training=False,              # <--- new flag
+    resume_actor_path="checkpoints/LATESTACORTPATHHERE.pth",  # <--- default paths
+    resume_critic_path="checkpoints/LATESTCRITICPATHHERE.pth"
 ):
     
     """
@@ -157,6 +160,16 @@ def train(
         use_writer=False
     )
     
+    if resume_training:
+        if os.path.exists(resume_actor_path) and os.path.exists(resume_critic_path):
+            print(f"[RESUME] Loading actor from {resume_actor_path}")
+            agent.actor.load_state_dict(torch.load(resume_actor_path, map_location=device))
+            print(f"[RESUME] Loading critic from {resume_critic_path}")
+            agent.critic.load_state_dict(torch.load(resume_critic_path, map_location=device))
+        else:
+            print("[RESUME] No checkpoint files found — starting from scratch.")
+    else:
+        print("[START] Starting training from scratch (random initialization).")
     
     episode_rewards = []    # Logs episode return for debugging
     total_steps = 1         # Total env steps (global counter)

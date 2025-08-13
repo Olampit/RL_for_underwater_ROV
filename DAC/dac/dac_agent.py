@@ -466,7 +466,7 @@ class DeterministicGCAgent:
         if total_step % policy_delay == 0:
             # Maximize Q -> minimize negative Q
             pred_action = self.actor(s)
-            actor_loss  = -self.critic1(s, pred_action).mean()
+            actor_loss  = self.critic1(s, pred_action).mean() #NEGATIVE BECAUSE WE USED MAXIMIZE = TRUE
 
             self.actor_opt.zero_grad()
             actor_loss.backward()
@@ -571,27 +571,24 @@ class DeterministicGCAgent:
 
         self.current_lr = lr
         
-    
+        
     @torch.no_grad()
     def sample_random_structured(self, action_dim, batch_size=1):
         """
-        Generates a random but physically plausible 4-motor command pattern
-        for planar ROV motion (forward + yaw).
+        Generates a random but physically plausible motor command pattern
+        for planar (4 motors) or full 6DoF (8 motors) ROV configurations.
+        Works for action_dim = 4 or 8 without hardcoding motor mappings outside logic.
         """
-
         device = self.device
         B = batch_size
 
         # Initialize action tensor
-        base = torch.zeros((B, action_dim)).to(device)
+        base = torch.zeros((B, action_dim), device=device)
 
         def rand(minval, maxval, shape=(B, 1)):
-            return torch.FloatTensor(*shape).uniform_(minval, maxval).to(device)
+            return torch.empty(*shape, device=device).uniform_(minval, maxval)
 
-        # Motor signs (M1–M4), use +1 if your ESC mapping doesn't require inversion
-        motor_signs = torch.tensor([+1, -1, +1, -1]).float().to(device)
-
-        # Forward and yaw commands
+        # --- Always present: FORWARD + YAW ---
         forward_cmd = rand(-1.0, 1.0)
         yaw_cmd = rand(-0.5, 0.5)
 
@@ -600,10 +597,27 @@ class DeterministicGCAgent:
         base[:, 2] = yaw_cmd[:, 0]                      # M3
         base[:, 3] = -yaw_cmd[:, 0]                     # M4
 
-        # Add small noise
+        # --- If we have more than 4 motors: LIFT + PITCH + ROLL ---
+        if action_dim > 4:
+            lift_cmd = rand(-0.8, 0.8)
+            pitch_cmd = rand(-0.4, 0.4)
+            roll_cmd = rand(-0.4, 0.4)
+
+            base[:, 4] = lift_cmd[:, 0] + pitch_cmd[:, 0] + roll_cmd[:, 0]  # M5
+            base[:, 5] = lift_cmd[:, 0] + pitch_cmd[:, 0] - roll_cmd[:, 0]  # M6
+            base[:, 6] = lift_cmd[:, 0] - pitch_cmd[:, 0] + roll_cmd[:, 0]  # M7
+            base[:, 7] = lift_cmd[:, 0] - pitch_cmd[:, 0] - roll_cmd[:, 0]  # M8
+
+        # Motor signs (extend automatically if needed)
+        motor_signs = torch.tensor(
+            [+1, -1, +1, -1, +1, +1, +1, +1][:action_dim],
+            dtype=torch.float32,
+            device=device
+        )
+
+        # Add Gaussian noise
         base += torch.randn_like(base) * 0.03
 
         # Apply motor sign inversion and clip
         x_t = base * motor_signs
         return torch.tanh(x_t).cpu().numpy()[0]
-
