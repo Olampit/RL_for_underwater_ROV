@@ -303,16 +303,21 @@ class DeterministicGCAgent:
         self.use_writer = use_writer
         self.actor = DeterministicGCActor(state_dim, action_dim)
         self.actor.to(device)
-        self.critic = GRUCritic(state_dim, action_dim)
-        self.critic.to(device)
+        self.critic1 = GRUCritic(state_dim, action_dim).to(device)
+        self.critic2 = GRUCritic(state_dim, action_dim).to(device)
+
+        self.target_critic1 = GRUCritic(state_dim, action_dim).to(device)
+        self.target_critic2 = GRUCritic(state_dim, action_dim).to(device)
+
+        self.target_critic1.load_state_dict(self.critic1.state_dict())
+        self.target_critic2.load_state_dict(self.critic2.state_dict())
+
 
         self.target_actor = DeterministicGCActor(state_dim, action_dim)
         self.target_actor.to(device)
-        self.target_critic = GRUCritic(state_dim, action_dim)
-        self.target_critic.to(device)
+       
 
         self.target_actor.load_state_dict(self.actor.state_dict())
-        self.target_critic.load_state_dict(self.critic.state_dict())
 
 
         # Lowering B1 results in : 
@@ -325,7 +330,8 @@ class DeterministicGCAgent:
         # Dont touch actor too much ?
         
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=lr, maximize=True)
-        self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=lr)
+        self.critic1_opt = torch.optim.Adam(self.critic1.parameters(), lr=lr)
+        self.critic2_opt = torch.optim.Adam(self.critic2.parameters(), lr=lr)
 
         if self.use_writer:
             self.log_dir = os.path.join("runs", "dac_agent", datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
@@ -414,51 +420,64 @@ class DeterministicGCAgent:
             "learning_rate": 0.0
         }
         
+        # ---- TD3 update step ----
         s, a, r, s2, d, w, idx = self.replay_buffer.sample(batch_size, beta=beta)
-        s, a, r, s2, d, w = s.to(self.device), a.to(self.device), r.to(self.device), s2.to(self.device), d.to(self.device), w.to(self.device)
-         
-        
-        Q_CLIP = 20
-        
+        s, a, r, s2, d, w = (t.to(self.device) for t in (s, a, r, s2, d, w))
+
+        gamma = self.gamma
+        tau   = self.tau
+
+        policy_noise = 0.2
+        noise_clip   = 0.5
+        policy_delay = 2          # update actor every 2 critic steps
+        Q_CLIP       = 20.0
+
         with torch.no_grad():
-            a2 = self.target_actor(s2) #Changed from actor to target_actor ... 
-            q_target = r + self.gamma * (1-d) * self.target_critic(s2, a2)
-            
-            #Maybe clip the q target so that it does not get out of bounds ?? Or will it make the td error strange since we do not clip q val ?
+            # Target policy smoothing
+            noise = (torch.randn_like(a) * policy_noise).clamp(-noise_clip, noise_clip)
+            a2 = (self.target_actor(s2) + noise).clamp(-1.0, 1.0)
+
+            # Double target critics, clipped double Q
+            q1_tgt, q2_tgt = self.target_critic1(s2, a2), self.target_critic2(s2, a2)
+            q_tgt_min = torch.min(q1_tgt, q2_tgt)
+
+            # Bootstrap target
+            q_target = r + gamma * (1.0 - d) * q_tgt_min
             q_target = torch.clamp(q_target, -Q_CLIP, Q_CLIP)
 
-
-        q_val = self.critic(s, a)
+        # Critic losses (two critics)
+        q1 = self.critic1(s, a)
+        q2 = self.critic2(s, a)
         
-        
-        td_error = (q_target - q_val).detach().cpu().numpy()
-        # td_error = np.clip(td_error, 1e-6, 1e2)
-        
-        #!change here for the weights on monday ? 
-        if total_step % 1000 == 0:
-            for name, param in self.actor.named_parameters():
-                if param.data.dim() == 2:  # Only log matrices
-                    if self.writer is not None:
-                        self.writer.add_embedding(param.data, tag=f"actor/weights/{name}", global_step=total_step)
+        td_error = q_target - q1 #for logging purposes
 
+        critic1_loss = (F.mse_loss(q1, q_target, reduction='none') * w).mean()
+        critic2_loss = (F.mse_loss(q2, q_target, reduction='none') * w).mean()
+        critic_loss  = critic1_loss + critic2_loss
 
-        critic_loss = (F.mse_loss(q_val, q_target, reduction='none') * w).mean() 
-
-        self.critic_opt.zero_grad()
+        self.critic1_opt.zero_grad()
+        self.critic2_opt.zero_grad()
         critic_loss.backward()
-        # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0)
-        self.critic_opt.step()
+        # torch.nn.utils.clip_grad_norm_(list(self.critic1.parameters())+list(self.critic2.parameters()), 1.0)
+        self.critic1_opt.step()
+        self.critic2_opt.step()
 
-        pred_action = self.actor(s)
-        actor_loss = self.critic(s, pred_action).mean()  #No - for the ascent because we put maximize = true in adam
+        # Delayed policy update
+        if total_step % policy_delay == 0:
+            # Maximize Q -> minimize negative Q
+            pred_action = self.actor(s)
+            actor_loss  = -self.critic1(s, pred_action).mean()
 
-        self.actor_opt.zero_grad()
-        actor_loss.backward()
-        # torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)
-        self.actor_opt.step()
+            self.actor_opt.zero_grad()
+            actor_loss.backward()
+            # torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1.0)
+            self.actor_opt.step()
 
-        self.soft_update(self.critic, self.target_critic, self.tau)
-        self.soft_update(self.actor, self.target_actor, self.tau)
+            # Soft updates
+            self.soft_update(self.critic1, self.target_critic1, tau)
+            self.soft_update(self.critic2, self.target_critic2, tau)
+            self.soft_update(self.actor,   self.target_actor,   tau)
+
 
         
         #! Adam uses exponential moving averages internally to adapt gradients 
@@ -477,7 +496,7 @@ class DeterministicGCAgent:
                         self.writer.add_histogram(f"actor/params/{name}", param, total_step)
                         self.writer.add_histogram(f"actor/grads/{name}", param.grad, total_step)
 
-                for name, param in self.critic.named_parameters():
+                for name, param in self.critic1.named_parameters():
                     if param.grad is not None:
                         self.writer.add_histogram(f"critic/params/{name}", param, total_step)
                         self.writer.add_histogram(f"critic/grads/{name}", param.grad, total_step)
@@ -490,8 +509,8 @@ class DeterministicGCAgent:
                 self.writer.add_scalar("td_error/min", float(td_error.min()), total_step)
                 self.writer.add_scalar("lr/actor", self.current_lr, total_step)
                 self.writer.add_scalar("lr/critic", self.current_lr, total_step)
-                self.writer.add_scalar("q_value/mean", q_val.mean().item(), total_step)
-                self.writer.add_scalar("q_value/std", q_val.std().item(), total_step)
+                self.writer.add_scalar("q_value/mean", q1.mean().item(), total_step)
+                self.writer.add_scalar("q_value/std", q1.std().item(), total_step)
 
                 # Track action stats
                 action_tensor = self.actor(s)
@@ -506,10 +525,10 @@ class DeterministicGCAgent:
 
         # Calculate norms for debug
         actor_grad_norm = sum(p.grad.data.norm(2).item() for p in self.actor.parameters() if p.grad is not None)
-        critic_grad_norm = sum(p.grad.data.norm(2).item() for p in self.critic.parameters() if p.grad is not None)
+        critic_grad_norm = sum(p.grad.data.norm(2).item() for p in self.critic1.parameters() if p.grad is not None)
 
         actor_weight_norm = sum(p.data.norm(2).item() for p in self.actor.parameters())
-        critic_weight_norm = sum(p.data.norm(2).item() for p in self.critic.parameters())
+        critic_weight_norm = sum(p.data.norm(2).item() for p in self.critic1.parameters())
 
         return {
             "critic_loss": critic_loss.item(),
@@ -547,78 +566,12 @@ class DeterministicGCAgent:
 
         for param_group in self.actor_opt.param_groups:
             param_group['lr'] = lr
-        for param_group in self.critic_opt.param_groups:
+        for param_group in self.critic1_opt.param_groups:
             param_group['lr'] = lr
 
         self.current_lr = lr
         
     
-    
-    
-    def update_critic_only(self, batch_size=128, beta=0.4):
-        """
-        Performs only a critic update step (no actor update).
-        Used during exploration phase where policy shouldn't change yet.
-        
-        DO NOT USE SINCE IT TAKES THE INPUT OF ACTOR AS AN INPUT TO THE TD values
-        """
-        if len(self.replay_buffer) < batch_size:
-            return {
-                "critic_loss": 0.0,
-                "actor_loss": 0.0,  # no actor update
-                "td_mean": 0.0,
-                "td_max": 0.0,
-                "td_min": 0.0,
-                "actor_grad_norm": 0.0,
-                "critic_grad_norm": 0.0,
-                "actor_weight_norm": 0.0,
-                "critic_weight_norm": 0.0,
-                "learning_rate": self.current_lr
-            }
-
-        # Sample batch
-        s, a, r, s2, d, w, idx = self.replay_buffer.sample(batch_size, beta=beta)
-        s, a, r, s2, d, w = s.to(self.device), a.to(self.device), r.to(self.device), s2.to(self.device), d.to(self.device), w.to(self.device)
-
-        # Target Q
-        with torch.no_grad():
-            a2 = self.actor(s2)
-            q_target = r + self.gamma * (1 - d) * self.target_critic(s2, a2)
-
-        # Current Q
-        q_val = self.critic(s, a)
-
-        td_error = (q_target - q_val).detach().cpu().numpy()
-
-        critic_loss = (F.mse_loss(q_val, q_target, reduction='none') * w).mean()
-
-        self.critic_opt.zero_grad()
-        critic_loss.backward()
-        self.critic_opt.step()
-
-        self.soft_update(self.critic, self.target_critic, self.tau)
-
-        self.replay_buffer.update_priorities(idx, td_error)
-
-        # Only critic stats
-        critic_grad_norm = sum(p.grad.data.norm(2).item() for p in self.critic.parameters() if p.grad is not None)
-        critic_weight_norm = sum(p.data.norm(2).item() for p in self.critic.parameters())
-
-        actor_weight_norm = sum(p.data.norm(2).item() for p in self.actor.parameters())  # Useful for tracking even if no update
-
-        return {
-            "critic_loss": critic_loss.item(),
-            "actor_loss": 0.0,  # No actor update
-            "td_mean": float(td_error.mean()),
-            "td_max": float(td_error.max()),
-            "td_min": float(td_error.min()),
-            "actor_grad_norm": 0.0,
-            "critic_grad_norm": critic_grad_norm,
-            "actor_weight_norm": actor_weight_norm,
-            "critic_weight_norm": critic_weight_norm,
-            "learning_rate": self.current_lr
-        }
-
     @torch.no_grad()
     def sample_random_structured(self, action_dim, batch_size=1):
         """

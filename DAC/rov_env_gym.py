@@ -11,7 +11,7 @@ SPEED_UP = 5
 
 class ROVEnvGymWrapper(gym.Env):
     def __init__(self, rov_env: ROVEnvironment):
-        self.action_dim = 4 
+        self.action_dim = 8 #DONT FORGET TO CHANGE ACTION SPACE IF YOU CHANGE MOTORS
         super().__init__()
         self.rov = rov_env                                         #change shape for motors here
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(self.action_dim,), dtype=np.float32)

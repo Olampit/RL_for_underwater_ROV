@@ -1,17 +1,17 @@
-# run_policy.py
-
+#run_policy.py
 import time
 import numpy as np
-import torch
 from pymavlink import mavutil
+import torch
 
 from imu_reader import start_imu_listener, stop_event, imu_thread, ros_thread
 from environment import ROVEnvironment
 from rov_env_gym import ROVEnvGymWrapper
 from dac.dac_agent import DeterministicGCAgent
-
 from joystick_input import FakeJoystick
 
+import os
+import traceback
 
 
 def wait_for_heartbeat(conn, timeout=30):
@@ -20,102 +20,129 @@ def wait_for_heartbeat(conn, timeout=30):
     print(f"[INFO] Connected: system={conn.target_system}, component={conn.target_component}")
 
 
-def make_env(connection, latest_imu):
-    rov_env = ROVEnvironment(action_map=[], connection=connection, latest_imu=latest_imu)
+def make_env(connection):
+    rov_env = ROVEnvironment(action_map=[], connection=connection)
     return ROVEnvGymWrapper(rov_env)
 
+def set_servo_function(servo_number, connection, value=0):
+    """
+    Set the function of a specific servo channel on the ROV.
+    This is often used to disable/enable motors during setup or reset.
+    """
+    
+    param_name = f"SERVO{servo_number}_FUNCTION"
+    param_name = param_name.encode("utf-8")
 
-goal_sequence = [
-    {"vx": 0.2, "vy": 0.0, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
-    {"vx": 0.0, "vy": 0.2, "vz": 0.0, "yaw": 0.2, "pitch": 0.0, "roll": 0.0},
-    {"vx": 0.0, "vy": 0.0, "vz": 0.0, "yaw": 0.0, "pitch": 0.1, "roll": -0.1},
-]
+    connection.mav.param_set_send(
+        connection.target_system,
+        connection.target_component,
+        param_name,
+        float(value),
+        mavutil.mavlink.MAV_PARAM_TYPE_REAL32
+    )
+    
+    print(f"{param_name.decode()} set to {value}")
 
 
-
-
-
-
-def run_policy(
-    actor_path="policy_actor.pth",
-    mavlink_endpoint="udp:127.0.0.1:14550",
-    max_steps=1000,
-    device=None
+def run_policy_with_goals(
+    model_path="checkpoints/actor_ep5000.pth",
+    goals=None,
+    steps_per_goal=200,
+    device=None,
+    mavlink_endpoint="udp:127.0.0.1:14550"
 ):
+    """
+    Runs a trained deterministic policy through a list of preset goals.
+    Each goal is held for `steps_per_goal` steps.
+    """
+    if goals is None:
+        goals = [
+            {"vx": 0.5, "vy": 0.0, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+            {"vx": -0.5, "vy": 0.0, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+            {"vx": 0.0, "vy": 0.5, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+            {"vx": 0.0, "vy": -0.5, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+        ]
+
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    # Connect
     conn = mavutil.mavlink_connection(mavlink_endpoint)
     wait_for_heartbeat(conn)
+    
+    # Enable motors
+    for i in range(1, 9):
+        set_servo_function(i, conn, 0)
 
-    GOAL_DURATION = 5.0  # seconds  
-    goal_idx = 0
-    goal_start_time = time.time()
+
+    # Joystick with manual goal injection
     joystick = FakeJoystick()
-    
-    joystick.set_manual_goal(goal_sequence[goal_idx])
-    
-    
-    latest_imu = {}
-    start_imu_listener(conn, latest_imu, joystick)
+
+    # Start IMU listener
+    start_imu_listener(conn, joystick)
     time.sleep(1)
 
-    env = make_env(conn, latest_imu)
+    # Environment
+    env = make_env(conn)
     obs = env.reset(conn)
-
     state_dim = obs.shape[1]
     action_dim = env.action_space.shape[0]
-    sequence_dim = env.history_length
 
+    # Agent
     agent = DeterministicGCAgent(
         state_dim=state_dim,
         action_dim=action_dim,
         device=device,
         use_writer=False
     )
-    agent.load_actor(actor_path)
-
-    print("[INFO] Running policy…")
+    agent.load_actor(model_path)
 
     try:
-        for step in range(max_steps):
-            obs_tensor = torch.tensor(obs, dtype=torch.float32).to(device)
-            with torch.no_grad():
-                action = agent.select_action(obs_tensor, noise_std=0.0)
+        for goal_idx, goal in enumerate(goals):
+            joystick.goal = goal  # Directly set goal
+            print(f"[GOAL {goal_idx+1}/{len(goals)}] {goal}")
+            ep_reward = 0.0
+            for step in range(steps_per_goal):
+                action = agent.select_action(obs)
+                next_obs, reward_components, done, _, _ = env.step(action)
+                ep_reward += reward_components.get("total", 0.0)
+                obs = next_obs
+                if done:
+                    break
 
-            next_obs, reward_components, done, _, _ = env.step(action)
+            print(f"    Reward for goal {goal_idx+1}: {ep_reward:.3f}")
 
-            print(f"[STEP {step}] Reward: {reward_components['total']:.3f}")
-
-            obs = next_obs
-
-            if done:
-                print("[DONE] Episode ended.")
-                break
-            
-            if time.time() - goal_start_time > GOAL_DURATION:
-                goal_idx = (goal_idx + 1) % len(goal_sequence)  # loop or stop
-                joystick.set_manual_goal(goal_sequence[goal_idx])
-                goal_start_time = time.time()
-                
+    except Exception as e:
+        print(f"[ERROR] Exception in policy run: {e}")
+        traceback.print_exc()
     finally:
-        print("[CLEANUP] Stopping threads and motors.")
+        print("[CLEANUP] Stopping imu listener threads...")
         stop_event.set()
         if imu_thread:
             imu_thread.join()
         if ros_thread:
             ros_thread.join()
 
+        print("[CLEANUP] Stopping motors and closing environment.")
         try:
             env.rov.stop_motors(conn)
         except Exception as e:
             print(f"[CLEANUP] Error stopping motors: {e}")
-
         try:
             env.close()
         except Exception as e:
             print(f"[CLEANUP] Error closing env: {e}")
+        print("[DONE] Policy loop exited.")
+
 
 
 if __name__ == "__main__":
-    run_policy()
+    run_policy_with_goals(
+        model_path="policy_actor.pth",
+        goals=[
+            {"vx": 0.5, "vy": 0.0, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+            {"vx": -0.5, "vy": 0.0, "vz": 0.0, "yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+        ],
+        steps_per_goal=200,
+        device="cuda"  # or "cpu"
+    )

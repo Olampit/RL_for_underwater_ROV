@@ -13,7 +13,7 @@ count=$(cat "$COUNTER_FILE")
 
 # Git commands
 git add .
-git commit --author="Olampit <olampit@gmail.com>" -m "no model changes but better results - fixed issue in imu_reader for sampling at least 2"
+git commit --author="Olampit <olampit@gmail.com>" -m "with working run_policy AND two critics"
 git push -u origin main
 
 # Increment and save back

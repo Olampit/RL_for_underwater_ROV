@@ -81,7 +81,7 @@ def train(
     max_steps=20,
     batch_size=32,
     update_every = 30,
-    start_steps=0,  #exploration, dont ? make it bigger...
+    start_steps=5000,  #exploration, dont ? make it bigger...
     gamma=0.99,
     learning_rate_start=5e-2,   
     learning_rate_end=1e-4,
@@ -373,7 +373,7 @@ def train(
                     # --- Individual reward scores ---
                     "vx_score": safe_scalar(reward_components.get("velocity_alignment", 0.0)),
                     "vy_score": safe_scalar(reward_components.get("orientation_alignment", 0.0)),
-                    "vz_score": safe_scalar(reward_components.get("vz_score", 0.0)),
+                    "vz_score": safe_scalar(reward_components.get("spin_term", 0.0)),
                     "yaw_score": safe_scalar(reward_components.get("yaw_score", 0.0)),
                     "pitch_score": safe_scalar(reward_components.get("pitch_score", 0.0)),
                     "roll_score": safe_scalar(reward_components.get("roll_score", 0.0)),

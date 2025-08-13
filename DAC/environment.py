@@ -279,10 +279,10 @@ class ROVEnvironment:
 
         vel_term = np.mean(vel_penalties)
         ori_term = np.mean(orientation_penalties)
-        spin_term = np.mean(spin_penalties)
+        spin_term = 3.0 * np.mean(spin_penalties)
         shaping_bonus = np.mean(improvement_terms)
 
-        total = -vel_term - ori_term - 3.0 * spin_term + shaping_bonus
+        total = -vel_term - ori_term - spin_term #+ shaping_bonus
         total = total
         total = np.clip(total, -CLIP, CLIP)
 
@@ -325,6 +325,7 @@ class ROVEnvironment:
             "yaw_error": wrap(yaw - goal_yaw),
             "pitch_error": wrap(pitch - goal_pitch),
             "roll_error": wrap(roll - goal_roll),
+            "spin_term": - spin_term,
         }
 
 
